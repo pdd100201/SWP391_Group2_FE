@@ -1,10 +1,10 @@
-import HomePage from './pages/HomePage'
 import './App.css'
 
 function App() {
-
   return (
-    <HomePage />
+    <main>
+      <h1>Restaurant Management System</h1>
+    </main>
   )
 }
 
