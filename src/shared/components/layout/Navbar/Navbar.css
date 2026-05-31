@@ -78,25 +78,42 @@
 
 .navbar__user {
   position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-.navbar__icon-button {
-  display: grid;
-  place-items: center;
-  width: 42px;
+.navbar__user-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   height: 42px;
+  padding: 0 14px 0 10px;
   border: 0;
-  border-radius: 50%;
+  border-radius: 999px;
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
   cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.navbar__user-icon {
   font-size: 1.25rem;
+}
+
+.navbar__user-name {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .navbar__dropdown {
   position: absolute;
-  right: 0;
+  left: 50%;
   top: calc(100% + 12px);
+  transform: translateX(-50%);
   min-width: 160px;
   padding: 10px;
   border-radius: 16px;
@@ -106,16 +123,25 @@
 
 .navbar__dropdown-item {
   display: block;
+  width: 100%;
   padding: 10px 14px;
   border-radius: 12px;
   color: #f7f1e3;
   text-decoration: none;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease;
 }
 
 .navbar__dropdown-item:hover {
   background: rgba(242, 196, 109, 0.12);
   color: #f2c46d;
+}
+
+.navbar__dropdown-item--button {
+  font: inherit;
 }
 
 .navbar__book-button {

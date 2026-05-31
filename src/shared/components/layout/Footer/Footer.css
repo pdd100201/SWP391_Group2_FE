@@ -1,0 +1,135 @@
+.site-footer {
+  background: #071311;
+  color: rgba(255, 255, 255, 0.88);
+  padding: 42px 24px 18px;
+}
+
+.site-footer__inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 1.2fr;
+  gap: 28px;
+}
+
+.site-footer__brand h2 {
+  margin: 0 0 12px;
+  color: #d7cfbc;
+  font-size: 1.1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.site-footer__brand p {
+  margin: 0;
+  max-width: 320px;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.site-footer__socials {
+  display: flex;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.site-footer__socials a {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  text-decoration: none;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.site-footer__column h3 {
+  margin: 0 0 14px;
+  color: #d7cfbc;
+  font-size: 0.92rem;
+  letter-spacing: 0.06em;
+  text-transform: capitalize;
+}
+
+.site-footer__column ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.site-footer__column li {
+  margin: 10px 0;
+  line-height: 1.5;
+}
+
+.site-footer__column a {
+  color: rgba(255, 255, 255, 0.82);
+  text-decoration: none;
+}
+
+.site-footer__column a:hover {
+  text-decoration: underline;
+}
+
+.site-footer__contact-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.site-footer__bottom {
+  max-width: 1180px;
+  margin: 26px auto 0;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 0.82rem;
+}
+
+.site-footer__bottom p {
+  margin: 0;
+}
+
+.site-footer__bottom a {
+  color: rgba(255, 255, 255, 0.82);
+  text-decoration: none;
+  margin-left: 14px;
+}
+
+.site-footer__bottom a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 1120px) {
+  .site-footer__inner {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .site-footer {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  .site-footer__inner {
+    grid-template-columns: 1fr;
+  }
+
+  .site-footer__bottom {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .site-footer__bottom a {
+    margin-left: 0;
+    margin-right: 14px;
+  }
+}

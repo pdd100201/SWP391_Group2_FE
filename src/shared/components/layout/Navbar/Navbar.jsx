@@ -1,12 +1,59 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { FaUserCircle } from 'react-icons/fa'
 import './Navbar.css'
 
-const navItems = ['Home', 'Reservations', 'About Us', 'Contact']
-const userMenuItems = ['Login', 'Register']
+const navItems = [
+  { label: 'Home', to: '/' },
+  { label: 'Reservations', to: '/reservations' },
+  { label: 'About Us', to: '/about' },
+  { label: 'Contact', to: '/contact' },
+]
 
 function Navbar() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
+  const [user, setUser] = useState(null)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const syncUser = () => {
+      const fullName = localStorage.getItem('fullName')
+      const role = localStorage.getItem('role')
+      const token = localStorage.getItem('token')
+      const email = localStorage.getItem('email')
+
+      if (token && fullName) {
+        setUser({ fullName, role, email })
+      } else {
+        setUser(null)
+      }
+    }
+
+    syncUser()
+    window.addEventListener('storage', syncUser)
+    window.addEventListener('auth-changed', syncUser)
+
+    return () => {
+      window.removeEventListener('storage', syncUser)
+      window.removeEventListener('auth-changed', syncUser)
+    }
+  }, [])
+
+  const handleLogout = () => {
+    localStorage.removeItem('token')
+    localStorage.removeItem('role')
+    localStorage.removeItem('fullName')
+    localStorage.removeItem('email')
+    setUser(null)
+    setIsUserMenuOpen(false)
+    window.dispatchEvent(new Event('auth-changed'))
+    navigate('/')
+  }
+
+  const handleMenuClick = (target) => {
+    setIsUserMenuOpen(false)
+    navigate(target)
+  }
 
   return (
     <header className="navbar">
@@ -22,35 +69,76 @@ function Navbar() {
 
       <nav className="navbar__nav" aria-label="Primary navigation">
         {navItems.map((item) => (
-          <a key={item} href={`#${item.toLowerCase().replace(/\s+/g, '-')}`} className="navbar__link">
-            {item}
-          </a>
+          <Link key={item.label} to={item.to} className="navbar__link">
+            {item.label}
+          </Link>
         ))}
       </nav>
 
       <div className="navbar__actions">
-        <div
-          className="navbar__user"
-          onMouseEnter={() => setIsUserMenuOpen(true)}
-          onMouseLeave={() => setIsUserMenuOpen(false)}
-        >
+        <div className="navbar__user">
           <button
             type="button"
-            className="navbar__icon-button"
+            className="navbar__user-trigger"
             aria-haspopup="menu"
             aria-expanded={isUserMenuOpen}
             onClick={() => setIsUserMenuOpen((open) => !open)}
           >
-            <FaUserCircle />
+            <FaUserCircle className="navbar__user-icon" />
+            <span className="navbar__user-name">
+              {user?.fullName || 'Account'}
+            </span>
           </button>
 
           {isUserMenuOpen && (
             <div className="navbar__dropdown" role="menu" aria-label="User menu">
-              {userMenuItems.map((item) => (
-                <a key={item} href={`/${item.toLowerCase()}`} role="menuitem" className="navbar__dropdown-item">
-                  {item}
-                </a>
-              ))}
+              {user ? (
+                <>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="navbar__dropdown-item navbar__dropdown-item--button"
+                    onClick={() => handleMenuClick('/profile')}
+                  >
+                    View Profile
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="navbar__dropdown-item navbar__dropdown-item--button"
+                    onClick={() => handleMenuClick('/reservation-history')}
+                  >
+                    Reservation History
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="navbar__dropdown-item navbar__dropdown-item--button"
+                    onClick={handleLogout}
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="navbar__dropdown-item navbar__dropdown-item--button"
+                    onClick={() => handleMenuClick('/login')}
+                  >
+                    Login
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="navbar__dropdown-item navbar__dropdown-item--button"
+                    onClick={() => handleMenuClick('/register')}
+                  >
+                    Register
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
