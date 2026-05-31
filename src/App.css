@@ -1,2 +1,18 @@
-/* Clear old Vite styles */
+html {
+  scroll-behavior: smooth;
+}
 
+body {
+  margin: 0;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #071311;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+a {
+  font: inherit;
+}

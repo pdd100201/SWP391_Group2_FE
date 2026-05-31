@@ -1,0 +1,144 @@
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 14px 40px;
+  background: rgba(9, 20, 18, 0.82);
+  backdrop-filter: blur(12px);
+  color: #f7f1e3;
+}
+
+.navbar__brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+}
+
+.navbar__logo {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f2c46d, #c88a2f);
+  color: #1c1407;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.navbar__brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+
+.navbar__brand-text span {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.navbar__brand-text small {
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+.navbar__nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  flex: 1;
+}
+
+.navbar__link {
+  color: #f7f1e3;
+  text-decoration: none;
+  font-size: 0.98rem;
+  font-weight: 500;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.navbar__link:hover {
+  color: #f2c46d;
+}
+
+.navbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 0 0 auto;
+}
+
+.navbar__user {
+  position: relative;
+}
+
+.navbar__icon-button {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  cursor: pointer;
+  font-size: 1.25rem;
+}
+
+.navbar__dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 12px);
+  min-width: 160px;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(17, 29, 27, 0.98);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+}
+
+.navbar__dropdown-item {
+  display: block;
+  padding: 10px 14px;
+  border-radius: 12px;
+  color: #f7f1e3;
+  text-decoration: none;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.navbar__dropdown-item:hover {
+  background: rgba(242, 196, 109, 0.12);
+  color: #f2c46d;
+}
+
+.navbar__book-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 22px;
+  background: linear-gradient(135deg, #e7b24f, #c98a2e);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 900px) {
+  .navbar {
+    padding: 14px 20px;
+    flex-wrap: wrap;
+  }
+
+  .navbar__nav {
+    order: 3;
+    flex-basis: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+}

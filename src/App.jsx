@@ -1,11 +1,8 @@
 import './App.css'
+import HomeScreen from './features/home/screens/HomeScreen'
 
 function App() {
-  return (
-    <main>
-      <h1>Restaurant Management System</h1>
-    </main>
-  )
+  return <HomeScreen />
 }
 
 export default App
