@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { FaChevronDown, FaUserCircle } from 'react-icons/fa'
+import { FaUserCircle } from 'react-icons/fa'
 import './Navbar.css'
 
 const navItems = ['Home', 'Reservations', 'About Us', 'Contact']
@@ -56,7 +56,7 @@ function Navbar() {
         </div>
 
         <button type="button" className="navbar__book-button">
-          Book a Table
+          Make a Reservations
         </button>
       </div>
     </header>
