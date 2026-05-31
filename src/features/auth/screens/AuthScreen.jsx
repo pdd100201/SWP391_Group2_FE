@@ -54,7 +54,12 @@ function AuthScreen() {
         localStorage.setItem('fullName', response.data.fullName)
         localStorage.setItem('email', response.data.email)
         window.dispatchEvent(new Event('auth-changed'))
-        navigate('/')
+
+        if (response.data.role === 'CUSTOMER') {
+          navigate('/')
+        } else {
+          navigate('/dashboard')
+        }
         return
       }
 
