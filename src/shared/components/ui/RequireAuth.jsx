@@ -1,4 +1,4 @@
-import { Navigate, useLocation } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 
 function RequireAuth({ children, allowedRoles }) {
   const location = useLocation()
@@ -16,7 +16,8 @@ function RequireAuth({ children, allowedRoles }) {
     return <Navigate to="/dashboard" replace />
   }
 
-  return children
+  // If used as a layout route wrapper (no children), render nested routes via Outlet
+  return children ?? <Outlet />
 }
 
 export default RequireAuth
