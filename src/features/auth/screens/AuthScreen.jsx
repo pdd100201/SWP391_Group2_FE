@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import axios from 'axios'
+import { GoogleLogin } from '@react-oauth/google'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Mail, Lock, Eye, EyeOff, User, Phone } from 'lucide-react'
 import Navbar from '../../../shared/components/layout/Navbar/Navbar'
@@ -37,6 +38,40 @@ function AuthScreen() {
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
+  const persistAuthAndRedirect = (data) => {
+    sessionStorage.setItem('token', data.token)
+    sessionStorage.setItem('role', data.role)
+    sessionStorage.setItem('fullName', data.fullName)
+    sessionStorage.setItem('email', data.email)
+    window.dispatchEvent(new Event('auth-changed'))
+
+    if (data.role === 'CUSTOMER') {
+      navigate('/')
+    } else {
+      navigate('/dashboard')
+    }
+  }
+
+  const handleGoogleSuccess = async (response) => {
+    try {
+      setError('')
+      setIsSubmitting(true)
+      const backendResponse = await axios.post(`${API_BASE_URL}/api/auth/google`, {
+        credentialToken: response.credential,
+      })
+      persistAuthAndRedirect(backendResponse.data)
+    } catch (err) {
+      const message = err.response?.data?.message || 'Google login failed'
+      setError(message)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleGoogleError = () => {
+    setError('Google login was cancelled or failed')
+  }
+
   const handleSubmit = async (event) => {
     event.preventDefault()
     setError('')
@@ -44,25 +79,44 @@ function AuthScreen() {
 
     try {
       if (isLogin) {
+        if (!formData.email.trim()) {
+          setError('Email is required')
+          return
+        }
+        if (!formData.password.trim()) {
+          setError('Password is required')
+          return
+        }
+
         const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
           email: formData.email,
           password: formData.password,
         })
 
-        sessionStorage.setItem('token', response.data.token)
-        sessionStorage.setItem('role', response.data.role)
-        sessionStorage.setItem('fullName', response.data.fullName)
-        sessionStorage.setItem('email', response.data.email)
-        window.dispatchEvent(new Event('auth-changed'))
-
-        if (response.data.role === 'CUSTOMER') {
-          navigate('/')
-        } else {
-          navigate('/dashboard')
-        }
+        persistAuthAndRedirect(response.data)
         return
       }
 
+      if (!formData.fullName.trim()) {
+        setError('Full name is required')
+        return
+      }
+      if (!formData.phone.trim()) {
+        setError('Phone number is required')
+        return
+      }
+      if (!formData.customersEmail.trim()) {
+        setError('Email is required')
+        return
+      }
+      if (!formData.password.trim()) {
+        setError('Password is required')
+        return
+      }
+      if (!formData.confirmPassword.trim()) {
+        setError('Confirm password is required')
+        return
+      }
       if (formData.password !== formData.confirmPassword) {
         setError('Passwords do not match')
         return
@@ -76,12 +130,7 @@ function AuthScreen() {
         avatarUrl: formData.avatarUrl,
       })
 
-      localStorage.setItem('token', response.data.token)
-      localStorage.setItem('role', response.data.role)
-      localStorage.setItem('fullName', response.data.fullName)
-      localStorage.setItem('email', response.data.email)
-      window.dispatchEvent(new Event('auth-changed'))
-      navigate('/')
+      persistAuthAndRedirect(response.data)
     } catch (err) {
       const message = err.response?.data?.message || 'Something went wrong'
       setError(message)
@@ -225,10 +274,9 @@ function AuthScreen() {
               <span>Or continue with</span>
             </div>
 
-            <button type="button" className="auth-screen__google-button">
-              <span className="auth-screen__google-badge" aria-hidden="true">G</span>
-              <span>Continue with Google</span>
-            </button>
+            <div className="auth-screen__google-button">
+              <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} width="100%" />
+            </div>
           </div>
         </div>
       </main>
