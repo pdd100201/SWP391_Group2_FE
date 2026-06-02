@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react'
-import axios from 'axios'
 import { GoogleLogin } from '@react-oauth/google'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Mail, Lock, Eye, EyeOff, User, Phone } from 'lucide-react'
 import Navbar from '../../../shared/components/layout/Navbar/Navbar'
 import Footer from '../../../shared/components/layout/Footer/Footer'
+import { login, loginWithGoogle, registerCustomer } from '../api/authApi'
 import './AuthScreen.css'
-
-const API_BASE_URL = 'http://localhost:8080'
 
 function AuthScreen() {
   const location = useLocation()
@@ -56,9 +54,7 @@ function AuthScreen() {
     try {
       setError('')
       setIsSubmitting(true)
-      const backendResponse = await axios.post(`${API_BASE_URL}/api/auth/google`, {
-        credentialToken: response.credential,
-      })
+      const backendResponse = await loginWithGoogle(response.credential)
       persistAuthAndRedirect(backendResponse.data)
     } catch (err) {
       const message = err.response?.data?.message || 'Google login failed'
@@ -88,10 +84,7 @@ function AuthScreen() {
           return
         }
 
-        const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
-          email: formData.email,
-          password: formData.password,
-        })
+        const response = await login(formData.email, formData.password)
 
         persistAuthAndRedirect(response.data)
         return
@@ -122,7 +115,7 @@ function AuthScreen() {
         return
       }
 
-      const response = await axios.post(`${API_BASE_URL}/api/auth/customer/register`, {
+      const response = await registerCustomer({
         fullName: formData.fullName,
         customersEmail: formData.customersEmail,
         password: formData.password,
