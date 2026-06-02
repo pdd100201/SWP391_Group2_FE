@@ -49,10 +49,10 @@ function AuthScreen() {
           password: formData.password,
         })
 
-        localStorage.setItem('token', response.data.token)
-        localStorage.setItem('role', response.data.role)
-        localStorage.setItem('fullName', response.data.fullName)
-        localStorage.setItem('email', response.data.email)
+        sessionStorage.setItem('token', response.data.token)
+        sessionStorage.setItem('role', response.data.role)
+        sessionStorage.setItem('fullName', response.data.fullName)
+        sessionStorage.setItem('email', response.data.email)
         window.dispatchEvent(new Event('auth-changed'))
 
         if (response.data.role === 'CUSTOMER') {

@@ -16,10 +16,10 @@ function MainLayout({ children }) {
   }, [location.pathname])
 
   const handleLogout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('role')
-    localStorage.removeItem('fullName')
-    localStorage.removeItem('email')
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('role')
+    sessionStorage.removeItem('fullName')
+    sessionStorage.removeItem('email')
     window.dispatchEvent(new Event('auth-changed'))
     navigate('/login')
   }
