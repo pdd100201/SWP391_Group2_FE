@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   AlertTriangle,
+  Bell,
   Boxes,
   CheckCircle2,
   Info,
@@ -11,6 +12,7 @@ import {
   RefreshCw,
   RotateCcw,
   Search,
+  ShoppingCart,
   X,
 } from 'lucide-react'
 import { inventoryService } from '../services/inventoryService'
@@ -266,6 +268,12 @@ function UpdateQuantityModal({ item, onClose, onSuccess }) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
+  const numQty = parseFloat(quantity)
+  const isBelowMin = !isNaN(numQty) && numQty < item.minimumQuantity
+  const isOutOfStock = !isNaN(numQty) && numQty === 0
+  const needRestock = isBelowMin || isOutOfStock
+  const suggestedQty = item.minimumQuantity * 2
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
@@ -305,6 +313,37 @@ function UpdateQuantityModal({ item, onClose, onSuccess }) {
           </div>
         )}
 
+        {/* ── Live restock warning ── */}
+        {needRestock && (
+          <div
+            className={`inv-restock-alert ${isOutOfStock ? 'inv-restock-alert--danger' : 'inv-restock-alert--warn'}`}
+            role="alert"
+          >
+            <div className="inv-restock-alert__icon">
+              {isOutOfStock ? <PackageX size={22} /> : <AlertTriangle size={22} />}
+            </div>
+            <div className="inv-restock-alert__body">
+              <strong>
+                {isOutOfStock
+                  ? '⚠ Hết hàng! Cần nhập thêm ngay'
+                  : '⚠ Tồn kho dưới mức tối thiểu'}
+              </strong>
+              <p>
+                Số lượng hiện tại{' '}
+                <em>{isNaN(numQty) ? '—' : numQty} {item.unit}</em>
+                {' '}thấp hơn mức tối thiểu{' '}
+                <em>{item.minimumQuantity} {item.unit}</em>.
+              </p>
+              <p className="inv-restock-alert__suggestion">
+                <ShoppingCart size={13} />
+                Đề xuất: nhập thêm ít nhất{' '}
+                <strong>{suggestedQty} {item.unit}</strong>{' '}
+                để đảm bảo vận hành nhà hàng không bị gián đoạn.
+              </p>
+            </div>
+          </div>
+        )}
+
         <form className="inv-modal__form" onSubmit={handleSubmit} noValidate>
           <div className="inv-form-field">
             <label htmlFor="upd-quantity">New Quantity ({item.unit}) *</label>
@@ -312,34 +351,39 @@ function UpdateQuantityModal({ item, onClose, onSuccess }) {
               id="upd-quantity"
               type="number"
               min="0"
-              step="0.01"
+              step="1"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
               required
               autoFocus
+              className={needRestock ? (isOutOfStock ? 'inv-input--danger' : 'inv-input--warn') : ''}
             />
-            <span className="inv-form-field__hint">
-              Min threshold: {item.minimumQuantity} {item.unit}
+            <span className={`inv-form-field__hint ${isBelowMin ? 'inv-form-field__hint--warn' : ''}`}>
+              Mức tối thiểu: <strong>{item.minimumQuantity} {item.unit}</strong>
             </span>
           </div>
 
           <div className="inv-form-field">
-            <label htmlFor="upd-note">Note (optional)</label>
+            <label htmlFor="upd-note">Ghi chú (tuỳ chọn)</label>
             <input
               id="upd-note"
               type="text"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="e.g. Weekly restocking"
+              placeholder="VD: Nhập hàng tuần, sau sự kiện..."
             />
           </div>
 
           <div className="inv-modal__actions">
             <button type="button" className="inv-btn inv-btn--ghost" onClick={onClose}>
-              Cancel
+              Hủy
             </button>
-            <button type="submit" className="inv-btn inv-btn--primary" disabled={submitting}>
-              {submitting ? 'Updating...' : 'Confirm Update'}
+            <button
+              type="submit"
+              className={`inv-btn ${needRestock ? (isOutOfStock ? 'inv-btn--danger' : 'inv-btn--warn') : 'inv-btn--primary'}`}
+              disabled={submitting}
+            >
+              {submitting ? 'Đang cập nhật...' : needRestock ? '⚠ Xác nhận cập nhật' : 'Xác nhận'}
             </button>
           </div>
         </form>
@@ -564,6 +608,7 @@ function InventoryScreen() {
   const [toggling, setToggling] = useState(false)
   const [statusTarget, setStatusTarget] = useState(null)
   const [toast, setToast] = useState(null)
+  const [alertDismissed, setAlertDismissed] = useState(false)
   const searchTimeout = useRef(null)
 
   // ── Fetch items ────────────────────────────────────────────────────────────
@@ -614,7 +659,20 @@ function InventoryScreen() {
   const handleUpdateSuccess = (updatedItem) => {
     setItems((prev) => prev.map((it) => (it.id === updatedItem.id ? updatedItem : it)))
     setUpdateTarget(null)
-    showToast(`Quantity updated for "${updatedItem.itemName}"`)
+    setAlertDismissed(false) // re-show banner if new items are low
+    if (updatedItem.status === 'OUT_OF_STOCK') {
+      showToast(
+        `🔴 "${updatedItem.itemName}" đã hết hàng! Hãy nhập thêm để tránh gián đoạn vận hành.`,
+        'error'
+      )
+    } else if (updatedItem.status === 'LOW_STOCK') {
+      showToast(
+        `⚠ "${updatedItem.itemName}" dưới mức tối thiểu. Cần bổ sung hàng sớm!`,
+        'warning'
+      )
+    } else {
+      showToast(`✅ Đã cập nhật số lượng "${updatedItem.itemName}"`)
+    }
   }
 
   const handleStatusSuccess = (updatedItem) => {
@@ -662,6 +720,11 @@ function InventoryScreen() {
     lowStock: items.filter((it) => it.status === 'LOW_STOCK').length,
     outOfStock: items.filter((it) => it.status === 'OUT_OF_STOCK').length,
   }
+
+  // ── Items needing restock (active only) ────────────────────────────────────
+  const restockItems = items.filter(
+    (it) => it.isActive && (it.status === 'LOW_STOCK' || it.status === 'OUT_OF_STOCK')
+  )
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
@@ -741,6 +804,76 @@ function InventoryScreen() {
           </div>
         </article>
       </div>
+
+      {/* ── Restock Alert Banner ── */}
+      {!alertDismissed && restockItems.length > 0 && (
+        <div
+          className={`inv-restock-banner ${
+            restockItems.some((it) => it.status === 'OUT_OF_STOCK')
+              ? 'inv-restock-banner--danger'
+              : 'inv-restock-banner--warn'
+          }`}
+          role="alert"
+          aria-live="polite"
+        >
+          <div className="inv-restock-banner__left">
+            <Bell size={20} className="inv-restock-banner__bell" />
+            <div>
+              <strong className="inv-restock-banner__title">
+                {restockItems.some((it) => it.status === 'OUT_OF_STOCK')
+                  ? `${restockItems.filter((it) => it.status === 'OUT_OF_STOCK').length} mặt hàng đã hết — cần nhập kho ngay!`
+                  : `${restockItems.length} mặt hàng dưới mức tối thiểu — cần bổ sung sớm`}
+              </strong>
+              <ul className="inv-restock-banner__list">
+                {restockItems.slice(0, 5).map((it) => (
+                  <li key={it.id}>
+                    <span
+                      className={`inv-restock-banner__dot ${
+                        it.status === 'OUT_OF_STOCK'
+                          ? 'inv-restock-banner__dot--red'
+                          : 'inv-restock-banner__dot--yellow'
+                      }`}
+                    />
+                    <strong>{it.itemName}</strong>:
+                    {' '}{it.status === 'OUT_OF_STOCK'
+                      ? <span className="inv-restock-banner__out">Hết hàng</span>
+                      : <span className="inv-restock-banner__low">Còn {it.quantity} {it.unit} (min: {it.minimumQuantity})</span>
+                    }
+                    {' — '}
+                    <button
+                      type="button"
+                      className="inv-restock-banner__action-link"
+                      onClick={() => setUpdateTarget(it)}
+                    >
+                      Nhập hàng ngay →
+                    </button>
+                  </li>
+                ))}
+                {restockItems.length > 5 && (
+                  <li className="inv-restock-banner__more">
+                    ...và {restockItems.length - 5} mặt hàng khác.
+                    <button
+                      type="button"
+                      className="inv-restock-banner__action-link"
+                      onClick={() => setStatusFilter('LOW_STOCK')}
+                    >
+                      Xem tất cả →
+                    </button>
+                  </li>
+                )}
+              </ul>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="inv-restock-banner__dismiss"
+            onClick={() => setAlertDismissed(true)}
+            aria-label="Ẩn thông báo"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
 
       {/* Filter Bar */}
       <div className="inv-filter-bar">
