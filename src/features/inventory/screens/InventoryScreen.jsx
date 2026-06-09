@@ -33,6 +33,8 @@ const INITIAL_FORM = {
   imageUrl: '',
 }
 
+const ITEMS_PER_PAGE = 10
+
 // ─── Status Badge (clickable) ─────────────────────────────────────────────────
 function StatusBadge({ status, isOverridden, onEdit }) {
   const map = {
@@ -602,6 +604,7 @@ function InventoryScreen() {
   const [keyword, setKeyword] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
   const [showAddModal, setShowAddModal] = useState(false)
   const [updateTarget, setUpdateTarget] = useState(null)
   const [confirmToggle, setConfirmToggle] = useState(null)
@@ -635,6 +638,7 @@ function InventoryScreen() {
   const handleKeywordChange = (e) => {
     const val = e.target.value
     setKeyword(val)
+    setCurrentPage(1)
     clearTimeout(searchTimeout.current)
     searchTimeout.current = setTimeout(() => fetchItems(val, categoryFilter), 400)
   }
@@ -642,7 +646,13 @@ function InventoryScreen() {
   const handleCategoryChange = (e) => {
     const val = e.target.value
     setCategoryFilter(val)
+    setCurrentPage(1)
     fetchItems(keyword, val)
+  }
+
+  const handleStatusFilterChange = (e) => {
+    setStatusFilter(e.target.value)
+    setCurrentPage(1)
   }
 
   // ── Toast ──────────────────────────────────────────────────────────────────
@@ -652,6 +662,7 @@ function InventoryScreen() {
   // ── Handlers ───────────────────────────────────────────────────────────────
   const handleAddSuccess = (newItem) => {
     setItems((prev) => [newItem, ...prev])
+    setCurrentPage(1)
     setShowAddModal(false)
     showToast(`"${newItem.itemName}" added successfully!`)
   }
@@ -709,9 +720,15 @@ function InventoryScreen() {
   }
 
   // ── Filtered by status (client-side) ──────────────────────────────────────
+  // ── Lọc status PHÍA CLIENT (không gọi thêm API)
+  // // Sau khi items đã có từ API, filter ngay trong bộ nhớ React
   const displayedItems = statusFilter
     ? items.filter((it) => it.status === statusFilter)
     : items
+  const totalPages = Math.max(1, Math.ceil(displayedItems.length / ITEMS_PER_PAGE))
+  const activePage = Math.min(currentPage, totalPages)
+  const pageStartIndex = (activePage - 1) * ITEMS_PER_PAGE
+  const paginatedItems = displayedItems.slice(pageStartIndex, pageStartIndex + ITEMS_PER_PAGE)
 
   // ── Stats ──────────────────────────────────────────────────────────────────
   const stats = {
@@ -906,7 +923,7 @@ function InventoryScreen() {
         <select
           id="inv-filter-status"
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={handleStatusFilterChange}
           className="inv-filter-bar__select"
           aria-label="Filter by status"
         >
@@ -956,7 +973,7 @@ function InventoryScreen() {
               </tr>
             </thead>
             <tbody>
-              {displayedItems.map((item, index) => (
+              {paginatedItems.map((item, index) => (
                 <tr key={item.id} className={!item.isActive ? 'inv-table__row--inactive' : ''}>
                   <td className="inv-table__img-cell">
                     {item.imageUrl ? (
@@ -975,7 +992,7 @@ function InventoryScreen() {
                       <Boxes size={20} />
                     </div>
                   </td>
-                  <td className="inv-table__num">{index + 1}</td>
+                  <td className="inv-table__num">{pageStartIndex + index + 1}</td>
                   <td className="inv-table__name">{item.itemName}</td>
                   <td>
                     <span className="inv-category-chip">{item.category}</span>
@@ -1023,6 +1040,49 @@ function InventoryScreen() {
               ))}
             </tbody>
           </table>
+        )}
+        {!loading && displayedItems.length > 0 && (
+          <div className="inv-pagination" aria-label="Inventory pagination">
+            <span className="inv-pagination__summary">
+              Showing {pageStartIndex + 1}-{Math.min(pageStartIndex + ITEMS_PER_PAGE, displayedItems.length)}
+              {' '}of {displayedItems.length} items
+            </span>
+            <div className="inv-pagination__controls">
+              <button
+                type="button"
+                className="inv-pagination__button"
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                disabled={activePage === 1}
+              >
+                Previous
+              </button>
+              {Array.from({ length: totalPages }, (_, index) => {
+                const page = index + 1
+                return (
+                  <button
+                    key={page}
+                    type="button"
+                    className={`inv-pagination__button inv-pagination__page ${
+                      activePage === page ? 'inv-pagination__page--active' : ''
+                    }`}
+                    onClick={() => setCurrentPage(page)}
+                    aria-label={`Go to page ${page}`}
+                    aria-current={activePage === page ? 'page' : undefined}
+                  >
+                    {page}
+                  </button>
+                )
+              })}
+              <button
+                type="button"
+                className="inv-pagination__button"
+                onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                disabled={activePage === totalPages}
+              >
+                Next
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
