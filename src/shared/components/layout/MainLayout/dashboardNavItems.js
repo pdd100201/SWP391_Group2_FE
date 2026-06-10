@@ -19,5 +19,12 @@ export const dashboardNavItems = [
   { label: 'Promotions', to: '/dashboard/promotions', icon: BadgePercent },
   { label: 'Inventory', to: '/dashboard/inventory', icon: Boxes },
   { label: 'Reports', to: '/dashboard/reports', icon: BarChart3 },
-  { label: 'Account Management', to: '/dashboard/account-management', icon: Users },
+  {
+    label: 'Account Management',
+    icon: Users,
+    children: [
+      { label: 'Staff Account', to: '/dashboard/accounts/staff' },
+      { label: 'Customer Account', to: '/dashboard/accounts/customer' },
+    ],
+  },
 ]
