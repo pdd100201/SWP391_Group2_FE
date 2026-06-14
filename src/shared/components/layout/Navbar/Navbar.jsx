@@ -50,6 +50,11 @@ function Navbar() {
     navigate('/')
   }
 
+  const handleProfileClick = () => {
+    setIsUserMenuOpen(false)
+    navigate('/profile')
+  }
+
   const handleMenuClick = (target) => {
     setIsUserMenuOpen(false)
     navigate(target)
@@ -98,7 +103,7 @@ function Navbar() {
                     type="button"
                     role="menuitem"
                     className="navbar__dropdown-item navbar__dropdown-item--button"
-                    onClick={() => handleMenuClick('/profile')}
+                    onClick={handleProfileClick}
                   >
                     View Profile
                   </button>

@@ -175,9 +175,14 @@
   font-weight: 600;
   cursor: pointer;
   padding: 0;
+  outline: none;
 }
 
 .auth-screen__link-button:hover {
+  text-decoration: underline;
+}
+
+.auth-screen__link-button:focus-visible {
   text-decoration: underline;
 }
 

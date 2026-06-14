@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { Lock, Eye, EyeOff } from 'lucide-react'
 import Navbar from '../../../shared/components/layout/Navbar/Navbar'
 import Footer from '../../../shared/components/layout/Footer/Footer'
+import Button from '../../../shared/components/ui/Button'
+import InputField from '../../../shared/components/ui/InputField'
 import { resetPassword } from '../api/authApi'
 import './AuthScreen.css'
 
@@ -59,48 +61,48 @@ function ResetPasswordScreen() {
             {error && <p className="auth-screen__error">{error}</p>}
             {successMessage && <p className="auth-screen__success">{successMessage}</p>}
             <form className="auth-screen__form" onSubmit={handleSubmit}>
-              <div className="auth-screen__field auth-screen__field--password">
-                <Lock className="auth-screen__field-icon" aria-hidden="true" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={newPassword}
-                  onChange={(event) => setNewPassword(event.target.value)}
-                  placeholder="New Password"
-                  aria-label="New Password"
-                />
-                <button
-                  type="button"
-                  className="auth-screen__eye-button"
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  onClick={() => setShowPassword((prev) => !prev)}
-                >
-                  {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
-                </button>
-              </div>
-              <div className="auth-screen__field auth-screen__field--password">
-                <Lock className="auth-screen__field-icon" aria-hidden="true" />
-                <input
-                  type={showConfirmPassword ? 'text' : 'password'}
-                  value={confirmNewPassword}
-                  onChange={(event) => setConfirmNewPassword(event.target.value)}
-                  placeholder="Confirm New Password"
-                  aria-label="Confirm New Password"
-                />
-                <button
-                  type="button"
-                  className="auth-screen__eye-button"
-                  aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
-                  onClick={() => setShowConfirmPassword((prev) => !prev)}
-                >
-                  {showConfirmPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
-                </button>
-              </div>
-              <button type="submit" className="auth-screen__primary-button" disabled={isSubmitting}>
+              <InputField
+                icon={Lock}
+                type={showPassword ? 'text' : 'password'}
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                placeholder="New Password"
+                ariaLabel="New Password"
+                passwordToggle={
+                  <button
+                    type="button"
+                    className="auth-screen__eye-button"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    onClick={() => setShowPassword((prev) => !prev)}
+                  >
+                    {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+                  </button>
+                }
+              />
+              <InputField
+                icon={Lock}
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={confirmNewPassword}
+                onChange={(event) => setConfirmNewPassword(event.target.value)}
+                placeholder="Confirm New Password"
+                ariaLabel="Confirm New Password"
+                passwordToggle={
+                  <button
+                    type="button"
+                    className="auth-screen__eye-button"
+                    aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  >
+                    {showConfirmPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+                  </button>
+                }
+              />
+              <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? 'Please wait...' : 'Reset Password'}
-              </button>
-              <button type="button" className="auth-screen__secondary-button" onClick={() => navigate('/login')}>
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => navigate('/login')}>
                 Back to Login
-              </button>
+              </Button>
             </form>
           </div>
         </div>
