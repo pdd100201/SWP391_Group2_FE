@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { Lock } from 'lucide-react'
 import Navbar from '../../../shared/components/layout/Navbar/Navbar'
 import Footer from '../../../shared/components/layout/Footer/Footer'
+import Button from '../../../shared/components/ui/Button'
+import InputField from '../../../shared/components/ui/InputField'
 import { verifyOtp } from '../api/authApi'
 import './AuthScreen.css'
 
@@ -48,22 +50,20 @@ function VerifyOtpScreen() {
             {error && <p className="auth-screen__error">{error}</p>}
             {successMessage && <p className="auth-screen__success">{successMessage}</p>}
             <form className="auth-screen__form" onSubmit={handleSubmit}>
-              <div className="auth-screen__field">
-                <Lock className="auth-screen__field-icon" aria-hidden="true" />
-                <input
-                  type="text"
-                  value={otp}
-                  onChange={(event) => setOtp(event.target.value)}
-                  placeholder="Enter OTP"
-                  aria-label="OTP"
-                />
-              </div>
-              <button type="submit" className="auth-screen__primary-button" disabled={isSubmitting}>
+              <InputField
+                icon={Lock}
+                type="text"
+                value={otp}
+                onChange={(event) => setOtp(event.target.value)}
+                placeholder="Enter OTP"
+                ariaLabel="OTP"
+              />
+              <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? 'Please wait...' : 'Verify OTP'}
-              </button>
-              <button type="button" className="auth-screen__secondary-button" onClick={() => navigate('/forgot-password')}>
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => navigate('/forgot-password')}>
                 Back
-              </button>
+              </Button>
             </form>
           </div>
         </div>

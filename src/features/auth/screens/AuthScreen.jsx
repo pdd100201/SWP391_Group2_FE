@@ -4,7 +4,9 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { Mail, Lock, Eye, EyeOff, User, Phone } from 'lucide-react'
 import Navbar from '../../../shared/components/layout/Navbar/Navbar'
 import Footer from '../../../shared/components/layout/Footer/Footer'
-import { login, loginWithGoogle, registerCustomer } from '../api/authApi'
+import Button from '../../../shared/components/ui/Button'
+import InputField from '../../../shared/components/ui/InputField'
+import { forgotPassword, login, loginWithGoogle, registerCustomer, resetPassword, verifyOtp } from '../api/authApi'
 import './AuthScreen.css'
 
 function AuthScreen() {
@@ -173,8 +175,27 @@ function AuthScreen() {
 
       persistAuthAndRedirect(response.data)
     } catch (err) {
-      const message = err.response?.data?.message || 'Something went wrong'
-      setError(message)
+      const status = err.response?.status
+      const backendMessage = err.response?.data?.message
+      const fieldErrors = err.response?.data?.errors
+
+      if (fieldErrors && typeof fieldErrors === 'object') {
+        const prioritizedField = isLogin
+          ? fieldErrors.password || fieldErrors.email
+          : fieldErrors.confirmPassword || fieldErrors.password || fieldErrors.customersEmail || fieldErrors.phone || fieldErrors.fullName
+
+        setError(prioritizedField || backendMessage || 'Please check your input again')
+      } else {
+        setError(
+          backendMessage ||
+            (isLogin && status === 401
+              ? 'Incorrect email or password'
+              : status === 400
+                ? 'Please check your input again'
+                : 'Something went wrong')
+        )
+      }
+
       setSuccessMessage('')
     } finally {
       setIsSubmitting(false)
@@ -199,23 +220,21 @@ function AuthScreen() {
     if (authStep === 'forgot-email') {
       return (
         <>
-          <div className="auth-screen__field">
-            <Mail className="auth-screen__field-icon" aria-hidden="true" />
-            <input
-              type="email"
-              name="resetEmail"
-              value={formData.resetEmail}
-              onChange={handleChange}
-              placeholder="Enter your email"
-              aria-label="Enter your email"
-            />
-          </div>
-          <button type="submit" className="auth-screen__primary-button" disabled={isSubmitting}>
+          <InputField
+            icon={Mail}
+            type="email"
+            name="resetEmail"
+            value={formData.resetEmail}
+            onChange={handleChange}
+            placeholder="Enter your email"
+            ariaLabel="Enter your email"
+          />
+          <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? 'Please wait...' : 'Send OTP'}
-          </button>
-          <button type="button" className="auth-screen__secondary-button" onClick={() => setAuthStep('credentials')}>
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => setAuthStep('credentials')}>
             Back to Login
-          </button>
+          </Button>
         </>
       )
     }
@@ -223,23 +242,22 @@ function AuthScreen() {
     if (authStep === 'otp') {
       return (
         <>
-          <div className="auth-screen__field">
-            <Lock className="auth-screen__field-icon" aria-hidden="true" />
-            <input
-              type="text"
-              name="otp"
-              value={formData.otp}
-              onChange={handleChange}
-              placeholder="Enter OTP"
-              aria-label="Enter OTP"
-            />
-          </div>
-          <button type="submit" className="auth-screen__primary-button" disabled={isSubmitting}>
+          <InputField
+            icon={Lock}
+            type="text"
+            name="otp"
+            value={formData.otp}
+            onChange={handleChange}
+            placeholder="Enter OTP"
+            ariaLabel="Enter OTP"
+          />
+          <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? 'Please wait...' : 'Verify OTP'}
-          </button>
-          <button type="button" className="auth-screen__secondary-button" onClick={() => setAuthStep('forgot-email')}>
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => setAuthStep('forgot-email')}>
             Back
-          </button>
+          </Button>
+     
         </>
       )
     }
@@ -247,50 +265,50 @@ function AuthScreen() {
     if (authStep === 'new-password') {
       return (
         <>
-          <div className="auth-screen__field auth-screen__field--password">
-            <Lock className="auth-screen__field-icon" aria-hidden="true" />
-            <input
-              type={showPassword ? 'text' : 'password'}
-              name="newPassword"
-              value={formData.newPassword}
-              onChange={handleChange}
-              placeholder="New Password"
-              aria-label="New Password"
-            />
-            <button
-              type="button"
-              className="auth-screen__eye-button"
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
-              onClick={() => setShowPassword((prev) => !prev)}
-            >
-              {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
-            </button>
-          </div>
-          <div className="auth-screen__field auth-screen__field--password">
-            <Lock className="auth-screen__field-icon" aria-hidden="true" />
-            <input
-              type={showConfirmPassword ? 'text' : 'password'}
-              name="confirmNewPassword"
-              value={formData.confirmNewPassword}
-              onChange={handleChange}
-              placeholder="Confirm New Password"
-              aria-label="Confirm New Password"
-            />
-            <button
-              type="button"
-              className="auth-screen__eye-button"
-              aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
-              onClick={() => setShowConfirmPassword((prev) => !prev)}
-            >
-              {showConfirmPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
-            </button>
-          </div>
-          <button type="submit" className="auth-screen__primary-button" disabled={isSubmitting || !otpVerified}>
+          <InputField
+            icon={Lock}
+            type={showPassword ? 'text' : 'password'}
+            name="newPassword"
+            value={formData.newPassword}
+            onChange={handleChange}
+            placeholder="New Password"
+            ariaLabel="New Password"
+            passwordToggle={
+              <button
+                type="button"
+                className="auth-screen__eye-button"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                onClick={() => setShowPassword((prev) => !prev)}
+              >
+                {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+              </button>
+            }
+          />
+          <InputField
+            icon={Lock}
+            type={showConfirmPassword ? 'text' : 'password'}
+            name="confirmNewPassword"
+            value={formData.confirmNewPassword}
+            onChange={handleChange}
+            placeholder="Confirm New Password"
+            ariaLabel="Confirm New Password"
+            passwordToggle={
+              <button
+                type="button"
+                className="auth-screen__eye-button"
+                aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                onClick={() => setShowConfirmPassword((prev) => !prev)}
+              >
+                {showConfirmPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+              </button>
+            }
+          />
+          <Button type="submit" disabled={isSubmitting || !otpVerified}>
             {isSubmitting ? 'Please wait...' : 'Reset Password'}
-          </button>
-          <button type="button" className="auth-screen__secondary-button" onClick={() => setAuthStep('credentials')}>
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => setAuthStep('credentials')}>
             Back to Login
-          </button>
+          </Button>
         </>
       )
     }
@@ -299,84 +317,78 @@ function AuthScreen() {
       <>
         {!isLogin && (
           <>
-            <div className="auth-screen__field">
-              <User className="auth-screen__field-icon" aria-hidden="true" />
-              <input
-                type="text"
-                name="fullName"
-                value={formData.fullName}
-                onChange={handleChange}
-                placeholder="Full Name"
-                aria-label="Full Name"
-              />
-            </div>
+            <InputField
+              icon={User}
+              type="text"
+              name="fullName"
+              value={formData.fullName}
+              onChange={handleChange}
+              placeholder="Full Name"
+              ariaLabel="Full Name"
+            />
 
-            <div className="auth-screen__field">
-              <Phone className="auth-screen__field-icon" aria-hidden="true" />
-              <input
-                type="tel"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                placeholder="Phone Number"
-                aria-label="Phone Number"
-              />
-            </div>
+            <InputField
+              icon={Phone}
+              type="tel"
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
+              placeholder="Phone Number"
+              ariaLabel="Phone Number"
+            />
           </>
         )}
 
-        <div className="auth-screen__field">
-          <Mail className="auth-screen__field-icon" aria-hidden="true" />
-          <input
-            type="email"
-            name={isLogin ? 'email' : 'customersEmail'}
-            value={isLogin ? formData.email : formData.customersEmail}
-            onChange={handleChange}
-            placeholder="Email"
-            aria-label="Email"
-          />
-        </div>
+        <InputField
+          icon={Mail}
+          type="email"
+          name={isLogin ? 'email' : 'customersEmail'}
+          value={isLogin ? formData.email : formData.customersEmail}
+          onChange={handleChange}
+          placeholder="Email"
+          ariaLabel="Email"
+        />
 
-        <div className="auth-screen__field auth-screen__field--password">
-          <Lock className="auth-screen__field-icon" aria-hidden="true" />
-          <input
-            type={showPassword ? 'text' : 'password'}
-            name="password"
-            value={formData.password}
-            onChange={handleChange}
-            placeholder="Password"
-            aria-label="Password"
-          />
-          <button
-            type="button"
-            className="auth-screen__eye-button"
-            aria-label={showPassword ? 'Hide password' : 'Show password'}
-            onClick={() => setShowPassword((prev) => !prev)}
-          >
-            {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
-          </button>
-        </div>
-
-        {!isLogin && (
-          <div className="auth-screen__field auth-screen__field--password">
-            <Lock className="auth-screen__field-icon" aria-hidden="true" />
-            <input
-              type={showConfirmPassword ? 'text' : 'password'}
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              placeholder="Confirm Password"
-              aria-label="Confirm Password"
-            />
+        <InputField
+          icon={Lock}
+          type={showPassword ? 'text' : 'password'}
+          name="password"
+          value={formData.password}
+          onChange={handleChange}
+          placeholder="Password"
+          ariaLabel="Password"
+          passwordToggle={
             <button
               type="button"
               className="auth-screen__eye-button"
-              aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
-              onClick={() => setShowConfirmPassword((prev) => !prev)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              onClick={() => setShowPassword((prev) => !prev)}
             >
-              {showConfirmPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+              {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
             </button>
-          </div>
+          }
+        />
+
+        {!isLogin && (
+          <InputField
+            icon={Lock}
+            type={showConfirmPassword ? 'text' : 'password'}
+            name="confirmPassword"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            placeholder="Confirm Password"
+            ariaLabel="Confirm Password"
+            passwordToggle={
+              <button
+                type="button"
+                className="auth-screen__eye-button"
+                aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                onClick={() => setShowConfirmPassword((prev) => !prev)}
+              >
+                {showConfirmPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+              </button>
+            }
+          />
         )}
 
         {isLogin && (
@@ -391,9 +403,9 @@ function AuthScreen() {
           </div>
         )}
 
-        <button type="submit" className="auth-screen__primary-button" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? 'Please wait...' : isLogin ? 'Login' : 'Register'}
-        </button>
+        </Button>
       </>
     )
   }

@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { Mail } from 'lucide-react'
 import Navbar from '../../../shared/components/layout/Navbar/Navbar'
 import Footer from '../../../shared/components/layout/Footer/Footer'
+import Button from '../../../shared/components/ui/Button'
+import InputField from '../../../shared/components/ui/InputField'
 import { forgotPassword } from '../api/authApi'
 import './AuthScreen.css'
 
@@ -46,22 +48,20 @@ function ForgotPasswordScreen() {
             {error && <p className="auth-screen__error">{error}</p>}
             {successMessage && <p className="auth-screen__success">{successMessage}</p>}
             <form className="auth-screen__form" onSubmit={handleSubmit}>
-              <div className="auth-screen__field">
-                <Mail className="auth-screen__field-icon" aria-hidden="true" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="Enter your email"
-                  aria-label="Email"
-                />
-              </div>
-              <button type="submit" className="auth-screen__primary-button" disabled={isSubmitting}>
+              <InputField
+                icon={Mail}
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="Enter your email"
+                ariaLabel="Email"
+              />
+              <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? 'Please wait...' : 'Send OTP'}
-              </button>
-              <button type="button" className="auth-screen__secondary-button" onClick={() => navigate('/login')}>
+              </Button>
+              <Button type="button" variant="secondary" onClick={() => navigate('/login')}>
                 Back to Login
-              </button>
+              </Button>
             </form>
           </div>
         </div>
