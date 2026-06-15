@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 import { Bell, LogOut, Menu, Search, UserCircle2, X } from 'lucide-react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import './MainLayout.css'
 
-function MainLayout({ children }) {
+function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
@@ -68,8 +68,8 @@ function MainLayout({ children }) {
                 <UserCircle2 size={20} />
               </div>
               <div className="dashboard-layout__profile-meta">
-                <strong>{localStorage.getItem('fullName') || 'Admin User'}</strong>
-                <span>{localStorage.getItem('role') || 'Administrator'}</span>
+                <strong>{sessionStorage.getItem('fullName') || 'Admin User'}</strong>
+                <span>{sessionStorage.getItem('role') || 'Administrator'}</span>
               </div>
             </div>
 
@@ -85,7 +85,7 @@ function MainLayout({ children }) {
             <Search size={18} />
             <input type="search" placeholder="Search dashboard" aria-label="Search dashboard" />
           </div>
-          {children}
+          <Outlet />
         </main>
       </div>
     </div>
