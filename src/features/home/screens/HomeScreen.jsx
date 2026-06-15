@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Building2, ChefHat, Users, UtensilsCrossed, Leaf, MapPin, Phone, Mail, Clock } from 'lucide-react'
 import Navbar from '../../../shared/components/layout/Navbar/Navbar'
 import './HomeScreen.css'
@@ -76,6 +77,7 @@ const footerContacts = [
 
 function HomeScreen() {
   const [activeSlide, setActiveSlide] = useState(0)
+  const navigate = useNavigate()
 
   return (
     <div className="home-screen">
@@ -86,7 +88,7 @@ function HomeScreen() {
         <div className="home-screen__content">
           <h1>Golden Spoon Restaurant</h1>
           <p>Exquisite flavors served in a warm and elegant atmosphere.</p>
-          <button type="button" className="home-screen__cta">
+          <button type="button" className="home-screen__cta" onClick={() => navigate('/reservations')}>
             Reserve Now
           </button>
         </div>
