@@ -148,7 +148,7 @@ function Navbar() {
           )}
         </div>
 
-        <button type="button" className="navbar__book-button">
+        <button type="button" className="navbar__book-button" onClick={() => navigate('/reservations')}>
           Make a Reservations
         </button>
       </div>
