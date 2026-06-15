@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   AlertTriangle,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   Bell,
   Boxes,
   CheckCircle2,
@@ -29,11 +32,11 @@ const INITIAL_FORM = {
   quantity: '',
   minimumQuantity: '',
   pricePerUnit: '',
-  supplier: '',
+  supplier: ''  ,
   imageUrl: '',
 }
 
-const ITEMS_PER_PAGE = 10
+const ITEMS_PER_PAGE = 12
 
 // ─── Status Badge (clickable) ─────────────────────────────────────────────────
 function StatusBadge({ status, isOverridden, onEdit }) {
@@ -71,6 +74,30 @@ function ToggleSwitch({ checked, onChange, id }) {
       />
       <span className="inv-toggle__track" aria-hidden="true" />
     </label>
+  )
+}
+
+function SortableHeader({ field, label, sortConfig, onSort }) {
+  const isActive = sortConfig.field === field
+  const direction = isActive ? sortConfig.direction : null
+  const SortIcon = direction === 'asc'
+    ? ArrowUp
+    : direction === 'desc'
+      ? ArrowDown
+      : ArrowUpDown
+
+  return (
+    <th aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}>
+      <button
+        type="button"
+        className={`inv-table__sort-button ${isActive ? 'inv-table__sort-button--active' : ''}`}
+        onClick={() => onSort(field)}
+        title={`Sort ${label} ${direction === 'asc' ? 'descending' : 'ascending'}`}
+      >
+        <span>{label}</span>
+        <SortIcon size={14} aria-hidden="true" />
+      </button>
+    </th>
   )
 }
 
@@ -263,41 +290,77 @@ function AddItemModal({ onClose, onSuccess }) {
   )
 }
 
-// ─── Update Quantity Modal ────────────────────────────────────────────────────
-function UpdateQuantityModal({ item, onClose, onSuccess }) {
-  const [quantity, setQuantity] = useState(item.quantity.toString())
-  const [note, setNote] = useState('')
+// ─── Update Inventory Item Modal ──────────────────────────────────────────────
+function UpdateItemModal({ item, onClose, onSuccess }) {
+  const [formData, setFormData] = useState({
+    category: item.category,
+    unit: item.unit,
+    quantity: item.quantity?.toString() ?? '',
+    minimumQuantity: item.minimumQuantity?.toString() ?? '',
+    pricePerUnit: item.pricePerUnit?.toString() ?? '',
+    supplier: item.supplier ?? '',
+  })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
-  const numQty = parseFloat(quantity)
-  const isBelowMin = !isNaN(numQty) && numQty < item.minimumQuantity
+  const numQty = parseFloat(formData.quantity)
+  const numMinQty = parseFloat(formData.minimumQuantity)
+  const isBelowMin = !isNaN(numQty) && !isNaN(numMinQty) && numQty <= numMinQty && numQty > 0
   const isOutOfStock = !isNaN(numQty) && numQty === 0
   const needRestock = isBelowMin || isOutOfStock
-  const suggestedQty = item.minimumQuantity * 2
+  const suggestedQty = !isNaN(numMinQty) ? numMinQty * 2 : 0
+
+  const handleChange = (e) => {
+    const { name, value } = e.target
+    setFormData((current) => ({ ...current, [name]: value }))
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+
+    const quantity = parseFloat(formData.quantity)
+    const minimumQuantity = parseFloat(formData.minimumQuantity)
+    const pricePerUnit = formData.pricePerUnit === '' ? null : parseFloat(formData.pricePerUnit)
+
+    if (!formData.category || !formData.unit || Number.isNaN(quantity) || Number.isNaN(minimumQuantity)) {
+      setError('Please complete all required fields')
+      return
+    }
+
+    if (quantity < 0 || minimumQuantity < 0 || (pricePerUnit != null && (Number.isNaN(pricePerUnit) || pricePerUnit < 0))) {
+      setError('Quantity, minimum quantity and price cannot be negative')
+      return
+    }
+
     setSubmitting(true)
     try {
-      const res = await inventoryService.updateQuantity(item.id, {
-        quantity: parseFloat(quantity),
-        note: note || undefined,
+      const res = await inventoryService.updateItem(item.id, {
+        category: formData.category,
+        unit: formData.unit,
+        quantity,
+        minimumQuantity,
+        pricePerUnit,
+        supplier: formData.supplier.trim() || null,
       })
       onSuccess(res.data)
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update quantity')
+      const validationErrors = err.response?.data?.errors
+      setError(
+        validationErrors
+          ? Object.values(validationErrors).join('. ')
+          : err.response?.data?.message || 'Failed to update inventory item'
+      )
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <div className="inv-modal-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-label="Update inventory quantity">
-      <div className="inv-modal inv-modal--sm" onClick={(e) => e.stopPropagation()}>
+    <div className="inv-modal-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-label="Edit inventory item">
+      <div className="inv-modal" onClick={(e) => e.stopPropagation()}>
         <div className="inv-modal__header">
-          <h2 className="inv-modal__title">Update Quantity</h2>
+          <h2 className="inv-modal__title">Edit Inventory Item</h2>
           <button type="button" className="inv-modal__close" onClick={onClose} aria-label="Close modal">
             <X size={20} />
           </button>
@@ -305,7 +368,7 @@ function UpdateQuantityModal({ item, onClose, onSuccess }) {
 
         <div className="inv-modal__item-info">
           <span className="inv-modal__item-name">{item.itemName}</span>
-          <span className="inv-modal__item-meta">{item.category} · {item.unit}</span>
+          <span className="inv-modal__item-meta">Correct item details entered during creation</span>
         </div>
 
         {error && (
@@ -332,14 +395,14 @@ function UpdateQuantityModal({ item, onClose, onSuccess }) {
               </strong>
               <p>
                 Số lượng hiện tại{' '}
-                <em>{isNaN(numQty) ? '—' : numQty} {item.unit}</em>
+                <em>{isNaN(numQty) ? '—' : numQty} {formData.unit}</em>
                 {' '}thấp hơn mức tối thiểu{' '}
-                <em>{item.minimumQuantity} {item.unit}</em>.
+                <em>{isNaN(numMinQty) ? '—' : numMinQty} {formData.unit}</em>.
               </p>
               <p className="inv-restock-alert__suggestion">
                 <ShoppingCart size={13} />
                 Đề xuất: nhập thêm ít nhất{' '}
-                <strong>{suggestedQty} {item.unit}</strong>{' '}
+                <strong>{suggestedQty} {formData.unit}</strong>{' '}
                 để đảm bảo vận hành nhà hàng không bị gián đoạn.
               </p>
             </div>
@@ -347,33 +410,94 @@ function UpdateQuantityModal({ item, onClose, onSuccess }) {
         )}
 
         <form className="inv-modal__form" onSubmit={handleSubmit} noValidate>
-          <div className="inv-form-field">
-            <label htmlFor="upd-quantity">New Quantity ({item.unit}) *</label>
-            <input
-              id="upd-quantity"
-              type="number"
-              min="0"
-              step="1"
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              required
-              autoFocus
-              className={needRestock ? (isOutOfStock ? 'inv-input--danger' : 'inv-input--warn') : ''}
-            />
-            <span className={`inv-form-field__hint ${isBelowMin ? 'inv-form-field__hint--warn' : ''}`}>
-              Mức tối thiểu: <strong>{item.minimumQuantity} {item.unit}</strong>
-            </span>
-          </div>
+          <div className="inv-modal__grid">
+            <div className="inv-form-field">
+              <label htmlFor="upd-category">Category *</label>
+              <select
+                id="upd-category"
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                required
+                autoFocus
+              >
+                <option value="">Select category</option>
+                {item.category && !CATEGORIES.includes(item.category) && (
+                  <option value={item.category}>{item.category}</option>
+                )}
+                {CATEGORIES.map((category) => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
+            </div>
 
-          <div className="inv-form-field">
-            <label htmlFor="upd-note">Ghi chú (tuỳ chọn)</label>
-            <input
-              id="upd-note"
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="VD: Nhập hàng tuần, sau sự kiện..."
-            />
+            <div className="inv-form-field">
+              <label htmlFor="upd-unit">Unit *</label>
+              <select id="upd-unit" name="unit" value={formData.unit} onChange={handleChange} required>
+                <option value="">Select unit</option>
+                {item.unit && !UNITS.includes(item.unit) && (
+                  <option value={item.unit}>{item.unit}</option>
+                )}
+                {UNITS.map((unit) => (
+                  <option key={unit} value={unit}>{unit}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="inv-form-field">
+              <label htmlFor="upd-quantity">Quantity *</label>
+              <input
+                id="upd-quantity"
+                name="quantity"
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.quantity}
+                onChange={handleChange}
+                required
+                className={needRestock ? (isOutOfStock ? 'inv-input--danger' : 'inv-input--warn') : ''}
+              />
+            </div>
+
+            <div className="inv-form-field">
+              <label htmlFor="upd-minimumQuantity">Min Qty *</label>
+              <input
+                id="upd-minimumQuantity"
+                name="minimumQuantity"
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.minimumQuantity}
+                onChange={handleChange}
+                required
+              />
+            </div>
+
+            <div className="inv-form-field">
+              <label htmlFor="upd-pricePerUnit">Price / Unit (VND)</label>
+              <input
+                id="upd-pricePerUnit"
+                name="pricePerUnit"
+                type="number"
+                min="0"
+                step="1"
+                value={formData.pricePerUnit}
+                onChange={handleChange}
+                placeholder="0"
+              />
+            </div>
+
+            <div className="inv-form-field">
+              <label htmlFor="upd-supplier">Supplier</label>
+              <input
+                id="upd-supplier"
+                name="supplier"
+                type="text"
+                value={formData.supplier}
+                onChange={handleChange}
+                placeholder="e.g. Fresh Farm Co."
+              />
+            </div>
           </div>
 
           <div className="inv-modal__actions">
@@ -385,7 +509,7 @@ function UpdateQuantityModal({ item, onClose, onSuccess }) {
               className={`inv-btn ${needRestock ? (isOutOfStock ? 'inv-btn--danger' : 'inv-btn--warn') : 'inv-btn--primary'}`}
               disabled={submitting}
             >
-              {submitting ? 'Đang cập nhật...' : needRestock ? '⚠ Xác nhận cập nhật' : 'Xác nhận'}
+              {submitting ? 'Đang cập nhật...' : needRestock ? '⚠ Lưu thay đổi' : 'Lưu thay đổi'}
             </button>
           </div>
         </form>
@@ -604,6 +728,7 @@ function InventoryScreen() {
   const [keyword, setKeyword] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [sortConfig, setSortConfig] = useState({ field: '', direction: 'asc' })
   const [currentPage, setCurrentPage] = useState(1)
   const [showAddModal, setShowAddModal] = useState(false)
   const [updateTarget, setUpdateTarget] = useState(null)
@@ -655,6 +780,25 @@ function InventoryScreen() {
     setCurrentPage(1)
   }
 
+  const handleSort = (field) => {
+    setSortConfig((current) => ({
+      field,
+      direction: current.field === field && current.direction === 'asc' ? 'desc' : 'asc',
+    }))
+    setCurrentPage(1)
+  }
+
+  const handleRefresh = () => {
+    clearTimeout(searchTimeout.current)
+    setKeyword('')
+    setCategoryFilter('')
+    setStatusFilter('')
+    setSortConfig({ field: '', direction: 'asc' })
+    setCurrentPage(1)
+    setAlertDismissed(false)
+    fetchItems('', '')
+  }
+
   // ── Toast ──────────────────────────────────────────────────────────────────
   const showToast = (message, type = 'success') => setToast({ message, type })
   const clearToast = () => setToast(null)
@@ -682,7 +826,7 @@ function InventoryScreen() {
         'warning'
       )
     } else {
-      showToast(`✅ Đã cập nhật số lượng "${updatedItem.itemName}"`)
+      showToast(`✅ Đã cập nhật "${updatedItem.itemName}"`)
     }
   }
 
@@ -722,9 +866,26 @@ function InventoryScreen() {
   // ── Filtered by status (client-side) ──────────────────────────────────────
   // ── Lọc status PHÍA CLIENT (không gọi thêm API)
   // // Sau khi items đã có từ API, filter ngay trong bộ nhớ React
-  const displayedItems = statusFilter
+  const filteredItems = statusFilter
     ? items.filter((it) => it.status === statusFilter)
     : items
+  const displayedItems = sortConfig.field
+    ? [...filteredItems].sort((a, b) => {
+        const aRawValue = a[sortConfig.field]
+        const bRawValue = b[sortConfig.field]
+        const aValue = Number(aRawValue)
+        const bValue = Number(bRawValue)
+        const aIsValid = aRawValue != null && Number.isFinite(aValue)
+        const bIsValid = bRawValue != null && Number.isFinite(bValue)
+
+        if (!aIsValid && !bIsValid) return 0
+        if (!aIsValid) return 1
+        if (!bIsValid) return -1
+
+        const comparison = aValue - bValue
+        return sortConfig.direction === 'asc' ? comparison : -comparison
+      })
+    : filteredItems
   const totalPages = Math.max(1, Math.ceil(displayedItems.length / ITEMS_PER_PAGE))
   const activePage = Math.min(currentPage, totalPages)
   const pageStartIndex = (activePage - 1) * ITEMS_PER_PAGE
@@ -761,7 +922,7 @@ function InventoryScreen() {
           <button
             type="button"
             className="inv-btn inv-btn--ghost-sm"
-            onClick={() => fetchItems()}
+            onClick={handleRefresh}
             aria-label="Refresh inventory"
           >
             <RefreshCw size={16} />
@@ -854,7 +1015,9 @@ function InventoryScreen() {
                     <strong>{it.itemName}</strong>:
                     {' '}{it.status === 'OUT_OF_STOCK'
                       ? <span className="inv-restock-banner__out">Hết hàng</span>
-                      : <span className="inv-restock-banner__low">Còn {it.quantity} {it.unit} (min: {it.minimumQuantity})</span>
+                      : <span className="inv-restock-banner__low">
+                          Còn {it.availableQuantity ?? it.quantity} {it.unit} khả dụng (min: {it.minimumQuantity})
+                        </span>
                     }
                     {' — '}
                     <button
@@ -862,7 +1025,7 @@ function InventoryScreen() {
                       className="inv-restock-banner__action-link"
                       onClick={() => setUpdateTarget(it)}
                     >
-                      Nhập hàng ngay →
+                      Cập nhật ngay →
                     </button>
                   </li>
                 ))}
@@ -963,9 +1126,24 @@ function InventoryScreen() {
                 <th>Item Name</th>
                 <th>Category</th>
                 <th>Unit</th>
-                <th>Quantity</th>
-                <th>Min Qty</th>
-                <th>Price / Unit</th>
+                <SortableHeader
+                  field="quantity"
+                  label="Quantity"
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                />
+                <SortableHeader
+                  field="minimumQuantity"
+                  label="Min Qty"
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                />
+                <SortableHeader
+                  field="pricePerUnit"
+                  label="Price / Unit"
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                />
                 <th>Supplier</th>
                 <th>Status</th>
                 <th>Active</th>
@@ -1004,6 +1182,11 @@ function InventoryScreen() {
                     : ''
                   }>
                     {item.quantity}
+                    {item.reservedQuantity > 0 && (
+                      <span className="inv-table__reservation">
+                        Giữ: {item.reservedQuantity} · Khả dụng: {item.availableQuantity}
+                      </span>
+                    )}
                   </td>
                   <td>{item.minimumQuantity}</td>
                   <td>
@@ -1031,9 +1214,9 @@ function InventoryScreen() {
                       type="button"
                       className="inv-btn inv-btn--action"
                       onClick={() => setUpdateTarget(item)}
-                      aria-label={`Update quantity for ${item.itemName}`}
+                      aria-label={`Edit ${item.itemName}`}
                     >
-                      Update Qty
+                      Edit Item
                     </button>
                   </td>
                 </tr>
@@ -1091,7 +1274,7 @@ function InventoryScreen() {
         <AddItemModal onClose={() => setShowAddModal(false)} onSuccess={handleAddSuccess} />
       )}
       {updateTarget && (
-        <UpdateQuantityModal
+        <UpdateItemModal
           item={updateTarget}
           onClose={() => setUpdateTarget(null)}
           onSuccess={handleUpdateSuccess}

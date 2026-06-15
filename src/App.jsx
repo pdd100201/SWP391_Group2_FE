@@ -6,6 +6,7 @@ import MainLayout from './shared/components/layout/MainLayout/MainLayout'
 import RequireAuth from './shared/components/ui/RequireAuth'
 import RedirectByRole from './shared/components/ui/RedirectByRole'
 import InventoryScreen from './features/inventory/screens/InventoryScreen'
+import MenuManagementScreen from './features/menu/screens/MenuManagementScreen'
 
 function DashboardPage() {
   return <div className="dashboard-placeholder">Dashboard content goes here</div>
@@ -48,7 +49,14 @@ function App() {
           <Route path="/dashboard/check-in-tables" element={<DashboardPage />} />
           <Route path="/dashboard/reservations" element={<DashboardPage />} />
           <Route path="/dashboard/orders-service" element={<DashboardPage />} />
-          <Route path="/dashboard/menu-management" element={<DashboardPage />} />
+          <Route
+            path="/dashboard/menu-management"
+            element={
+              <RequireAuth allowedRoles={['ADMIN', 'MANAGER']}>
+                <MenuManagementScreen />
+              </RequireAuth>
+            }
+          />
           <Route path="/dashboard/promotions" element={<DashboardPage />} />
           <Route path="/dashboard/reports" element={<DashboardPage />} />
           <Route path="/dashboard/account-management" element={<DashboardPage />} />

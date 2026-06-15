@@ -233,6 +233,44 @@
   white-space: nowrap;
 }
 
+.inv-table__sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: -6px -8px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.inv-table__sort-button:hover,
+.inv-table__sort-button:focus-visible,
+.inv-table__sort-button--active {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+.inv-table__sort-button:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.8);
+  outline-offset: 2px;
+}
+
+.inv-table__sort-button svg {
+  flex-shrink: 0;
+  opacity: 0.72;
+}
+
+.inv-table__sort-button--active svg {
+  opacity: 1;
+}
+
 .inv-table tbody tr {
   border-bottom: 1px solid var(--border);
   transition: background 0.15s ease;
@@ -259,6 +297,15 @@
 
 .inv-table__qty--warn   { color: #d97706; font-weight: 700; }
 .inv-table__qty--danger { color: #dc2626; font-weight: 700; }
+
+.inv-table__reservation {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
 
 /* Pagination */
 .inv-pagination {
