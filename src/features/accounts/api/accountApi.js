@@ -40,10 +40,6 @@ export const updateCustomer = (id, data) => {
   return axiosClient.put(`/admin/accounts/customer/${id}`, data);
 };
 
-export const toggleCustomerStatus = (id) => {
-  return axiosClient.patch(`/admin/accounts/customer/${id}/status`);
-};
-
 export const deleteCustomer = (id) => {
   return axiosClient.delete(`/admin/accounts/customer/${id}`);
 };
