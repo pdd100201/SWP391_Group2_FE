@@ -1,10 +1,10 @@
-﻿import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   Search, Eye, Pencil, Trash2, ChevronLeft, ChevronRight,
-  ChevronsLeft, ChevronsRight, X, UserCircle2, Power,
+  ChevronsLeft, ChevronsRight, X, UserCircle2,
 } from 'lucide-react'
 import {
-  getCustomerAccounts, getCustomerById, updateCustomer, deleteCustomer, toggleCustomerStatus
+  getCustomerAccounts, getCustomerById, updateCustomer, deleteCustomer
 } from '../api/accountApi'
 import { usePagination } from '../../../shared/hooks/usePagination'
 import { useToast } from '../../../shared/components/ui/Toast/Toast'
@@ -23,7 +23,6 @@ function CustomerAccountPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
-  const [isActiveFilter, setIsActiveFilter] = useState('')
 
   const pagination = usePagination(allAccounts, PAGE_SIZE)
 
@@ -40,7 +39,6 @@ function CustomerAccountPage() {
     try {
       const params = {}
       if (search) params.keyword = search
-      if (isActiveFilter !== '') params.isActive = isActiveFilter === 'true'
       const res = await getCustomerAccounts(params)
       setAllAccounts(res.data?.data || [])
     } catch {
@@ -48,7 +46,7 @@ function CustomerAccountPage() {
     } finally {
       setLoading(false)
     }
-  }, [search, isActiveFilter, showToast])
+  }, [search, showToast])
 
   useEffect(() => { fetchAccounts() }, [fetchAccounts])
 
@@ -65,16 +63,6 @@ function CustomerAccountPage() {
       setViewData(null)
     } finally {
       setViewLoading(false)
-    }
-  }
-
-  const handleToggleStatus = async (id) => {
-    try {
-      await toggleCustomerStatus(id)
-      showToast('Status updated successfully')
-      fetchAccounts()
-    } catch (err) {
-      showToast(err.response?.data?.message || 'Failed to update status', 'error')
     }
   }
 
@@ -160,13 +148,6 @@ function CustomerAccountPage() {
             <Search size={18} />
           </button>
         </div>
-        <div className="customer-page__filter-group">
-          <select value={isActiveFilter} onChange={(e) => { setIsActiveFilter(e.target.value); pagination.reset() }}>
-            <option value="">All Status</option>
-            <option value="true">ACTIVE</option>
-            <option value="false">DEACTIVE</option>
-          </select>
-        </div>
       </div>
 
       <div className="customer-page__table-wrapper">
@@ -175,12 +156,12 @@ function CustomerAccountPage() {
           <thead>
             <tr>
               <th>STT</th><th>Avatar</th><th>Full Name</th><th>Email</th>
-              <th>Phone</th><th>Status</th><th>Actions</th>
+              <th>Phone</th><th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {!loading && pagination.currentItems.length === 0 && (
-              <tr><td colSpan={7} className="customer-page__empty">No customer accounts found</td></tr>
+              <tr><td colSpan={6} className="customer-page__empty">No customer accounts found</td></tr>
             )}
             {pagination.currentItems.map((acc, idx) => (
               <tr key={acc.id}>
@@ -194,20 +175,9 @@ function CustomerAccountPage() {
                 <td>{acc.email}</td>
                 <td>{acc.phone}</td>
                 <td>
-                  <span className={`customer-page__status customer-page__status--${acc.isActive ? 'active' : 'deactive'}`}>
-                    {acc.isActive ? 'ACTIVE' : 'DEACTIVE'}
-                  </span>
-                </td>
-                <td>
                   <div className="customer-page__actions">
                     <button type="button" className="customer-page__action-btn customer-page__action-btn--view" title="View" onClick={() => handleView(acc.id)}><Eye size={16} /></button>
                     <button type="button" className="customer-page__action-btn customer-page__action-btn--edit" title="Edit" onClick={() => openEdit(acc)}><Pencil size={16} /></button>
-                    <button type="button"
-                      className={`customer-page__action-btn ${acc.isActive ? 'customer-page__action-btn--deactive' : 'customer-page__action-btn--active'}`}
-                      title={acc.isActive ? 'Deactivate' : 'Activate'}
-                      onClick={() => handleToggleStatus(acc.id)}>
-                      <Power size={16} />
-                    </button>
                     <button type="button" className="customer-page__action-btn customer-page__action-btn--delete" title="Delete" onClick={() => setDeleteModal({ open: true, id: acc.id, name: acc.fullName })}><Trash2 size={16} /></button>
                   </div>
                 </td>
@@ -251,12 +221,6 @@ function CustomerAccountPage() {
                     <div className="customer-page__detail-item"><label>Full Name</label><span>{viewData.fullName}</span></div>
                     <div className="customer-page__detail-item"><label>Email</label><span>{viewData.email}</span></div>
                     <div className="customer-page__detail-item"><label>Phone</label><span>{viewData.phone}</span></div>
-                    <div className="customer-page__detail-item">
-                      <label>Status</label>
-                      <span className={`customer-page__status customer-page__status--${viewData.isActive ? 'active' : 'deactive'}`}>
-                        {viewData.isActive ? 'ACTIVE' : 'DEACTIVE'}
-                      </span>
-                    </div>
                     {viewData.createdAt && (
                       <div className="customer-page__detail-item">
                         <label>Created At</label>
