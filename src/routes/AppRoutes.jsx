@@ -5,6 +5,9 @@ import ForgotPasswordScreen from '../features/auth/screens/ForgotPasswordScreen'
 import VerifyOtpScreen from '../features/auth/screens/VerifyOtpScreen'
 import ResetPasswordScreen from '../features/auth/screens/ResetPasswordScreen'
 import ProfileScreen from '../features/profile/screens/ProfileScreen'
+import CreateReservationScreen from '../features/reservations/screens/CreateReservationScreen'
+import ReservationHistoryScreen from '../features/reservations/screens/ReservationHistoryScreen'
+import DashboardReservationsScreen from '../features/reservations/screens/DashboardReservationsScreen'
 import MainLayout from '../shared/components/layout/MainLayout/MainLayout'
 import RequireAuth from '../shared/components/ui/RequireAuth'
 import RedirectByRole from '../shared/components/ui/RedirectByRole'
@@ -23,6 +26,30 @@ function AppRoutes() {
       <Route path="/verify-otp" element={<VerifyOtpScreen />} />
       <Route path="/reset-password" element={<ResetPasswordScreen />} />
       <Route
+        path="/reservations"
+        element={(
+          <RequireAuth allowedRoles={['CUSTOMER']}>
+            <CreateReservationScreen />
+          </RequireAuth>
+        )}
+      />
+      <Route
+        path="/reservations/create"
+        element={(
+          <RequireAuth allowedRoles={['CUSTOMER']}>
+            <CreateReservationScreen />
+          </RequireAuth>
+        )}
+      />
+      <Route
+        path="/reservation-history"
+        element={(
+          <RequireAuth allowedRoles={['CUSTOMER']}>
+            <ReservationHistoryScreen />
+          </RequireAuth>
+        )}
+      />
+      <Route
         path="/profile"
         element={(
           <RequireAuth allowedRoles={['ADMIN', 'MANAGER', 'RECEPTIONIST', 'WAITER', 'CUSTOMER']}>
@@ -37,6 +64,16 @@ function AppRoutes() {
           <RequireAuth allowedRoles={['ADMIN', 'MANAGER', 'RECEPTIONIST', 'WAITER']}>
             <MainLayout>
               <DashboardPage />
+            </MainLayout>
+          </RequireAuth>
+        )}
+      />
+      <Route
+        path="/dashboard/reservations"
+        element={(
+          <RequireAuth allowedRoles={['ADMIN', 'MANAGER', 'RECEPTIONIST']}>
+            <MainLayout>
+              <DashboardReservationsScreen />
             </MainLayout>
           </RequireAuth>
         )}
