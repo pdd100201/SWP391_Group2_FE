@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Bell, LogOut, Menu, Search, UserCircle2, X } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import Sidebar from './Sidebar'
@@ -6,8 +6,27 @@ import './MainLayout.css'
 
 function MainLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [currentUser, setCurrentUser] = useState({
+    fullName: sessionStorage.getItem('fullName'),
+    role: sessionStorage.getItem('role'),
+  })
   const location = useLocation()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    const syncUser = () => {
+      setCurrentUser({
+        fullName: sessionStorage.getItem('fullName'),
+        role: sessionStorage.getItem('role'),
+      })
+    }
+    window.addEventListener('auth-changed', syncUser)
+    window.addEventListener('storage', syncUser)
+    return () => {
+      window.removeEventListener('auth-changed', syncUser)
+      window.removeEventListener('storage', syncUser)
+    }
+  }, [])
 
   const breadcrumb = useMemo(() => {
     const path = location.pathname.replace('/dashboard', '')
@@ -68,8 +87,8 @@ function MainLayout({ children }) {
                 <UserCircle2 size={20} />
               </div>
               <div className="dashboard-layout__profile-meta">
-                <strong>{localStorage.getItem('fullName') || 'Admin User'}</strong>
-                <span>{localStorage.getItem('role') || 'Administrator'}</span>
+                <strong>{currentUser.fullName || 'Unknown User'}</strong>
+                <span>{currentUser.role || 'Unknown Role'}</span>
               </div>
             </div>
 

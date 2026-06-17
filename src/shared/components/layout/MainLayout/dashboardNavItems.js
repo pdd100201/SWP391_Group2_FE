@@ -22,6 +22,7 @@ export const dashboardNavItems = [
   {
     label: 'Account Management',
     icon: Users,
+    roles: ['ADMIN', 'MANAGER'],
     children: [
       { label: 'Staff Account', to: '/dashboard/accounts/staff' },
       { label: 'Customer Account', to: '/dashboard/accounts/customer' },

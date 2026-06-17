@@ -6,6 +6,11 @@ import { dashboardNavItems } from './dashboardNavItems'
 function Sidebar({ open, onClose }) {
   const location = useLocation()
   const [openMenus, setOpenMenus] = useState({})
+  const userRole = sessionStorage.getItem('role')
+
+  const visibleNavItems = dashboardNavItems.filter(
+    (item) => !item.roles || item.roles.includes(userRole)
+  )
 
   const toggleMenu = (label) => {
     setOpenMenus((prev) => ({ ...prev, [label]: !prev[label] }))
@@ -29,7 +34,7 @@ function Sidebar({ open, onClose }) {
       </div>
 
       <nav className="dashboard-layout__nav" aria-label="Dashboard navigation">
-        {dashboardNavItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const Icon = item.icon
 
           /* ── Item with children (dropdown) ── */
