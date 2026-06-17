@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Navbar from '../../../shared/components/layout/Navbar/Navbar'
+import Footer from '../../../shared/components/layout/Footer/Footer'
 import { cancelReservation, getMyReservations } from '../api/reservationApi'
 import './ReservationScreens.css'
 
@@ -15,6 +17,7 @@ function ReservationHistoryScreen() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [cancelingId, setCancelingId] = useState(null)
+  const navigate = useNavigate()
 
   const loadReservations = async () => {
     setLoading(true)
@@ -53,18 +56,28 @@ function ReservationHistoryScreen() {
       <Navbar />
 
       <main className="reservation-page__main">
-        <header className="reservation-list-header">
-          <div>
-            <p className="reservation-eyebrow">Reservation History</p>
-            <h1>Your reservations</h1>
-          </div>
+        <header className="reservation-header-section" style={{ textAlign: 'left', marginBottom: '36px' }}>
+          <span className="reservation-eyebrow">My Account</span>
+          <h1 className="reservation-title" style={{ fontSize: '2.5rem' }}>Reservation History</h1>
+          <p className="reservation-subtitle" style={{ margin: '0', maxWidth: 'none' }}>
+            View and manage your table reservations below.
+          </p>
         </header>
 
         {error && <div className="reservation-alert reservation-alert--error">{error}</div>}
         {loading ? (
-          <div className="reservation-empty">Loading reservations...</div>
+          <div className="reservation-loading">Loading reservations...</div>
         ) : reservations.length === 0 ? (
-          <div className="reservation-empty">No reservations found.</div>
+          <div className="reservation-empty-state">
+            <p>You don't have any reservations yet.</p>
+            <button
+              type="button"
+              className="reservation-primary-button"
+              onClick={() => navigate('/reservations/create')}
+            >
+              Book a Table
+            </button>
+          </div>
         ) : (
           <div className="reservation-list">
             {reservations.map((reservation) => {
@@ -72,38 +85,60 @@ function ReservationHistoryScreen() {
 
               return (
                 <article key={reservation.reservationId} className="reservation-card">
-                  <div>
-                    <div className="reservation-card__title-row">
-                      <h2>{displayValue(reservation.reservationDate)} at {displayValue(reservation.reservationTime)}</h2>
-                      <span className={`reservation-status reservation-status--${reservation.status?.toLowerCase()}`}>
+                  <div className="reservation-card__body">
+                    <div className="reservation-card__header-row">
+                      <h2 className="reservation-card__date-time">
+                        {displayValue(reservation.reservationDate)} at {displayValue(reservation.reservationTime)}
+                      </h2>
+                      <span className={`reservation-status-badge reservation-status-badge--${reservation.status?.toLowerCase()}`}>
                         {displayValue(reservation.status)}
                       </span>
                     </div>
-                    <p>{displayValue(reservation.numberOfGuests)} guests - {displayValue(reservation.fullName)}</p>
-                    <p>{displayValue(reservation.phone)} - {displayValue(reservation.email)}</p>
-                    {reservation.note && <p className="reservation-card__note">{reservation.note}</p>}
+
+                    <div className="reservation-card__details">
+                      <div className="reservation-card__detail-item">
+                        <strong>Guests:</strong> {displayValue(reservation.numberOfGuests)} {reservation.numberOfGuests > 1 ? 'people' : 'person'}
+                      </div>
+                      <div className="reservation-card__detail-item">
+                        <strong>Name:</strong> {displayValue(reservation.fullName)}
+                      </div>
+                      <div className="reservation-card__detail-item">
+                        <strong>Contact:</strong> {displayValue(reservation.phone)} | {displayValue(reservation.email)}
+                      </div>
+                    </div>
+
+                    {reservation.note && (
+                      <div className="reservation-card__note-box">
+                        <strong>Note / Special Request:</strong> "{reservation.note}"
+                      </div>
+                    )}
                   </div>
 
-                  {canCancel ? (
-                    <button
-                      type="button"
-                      className="reservation-secondary-button"
-                      disabled={cancelingId === reservation.reservationId}
-                      onClick={() => handleCancel(reservation.reservationId)}
-                    >
-                      {cancelingId === reservation.reservationId ? 'Canceling...' : 'Cancel'}
-                    </button>
-                  ) : (
-                    <span className="reservation-action-placeholder">No action</span>
-                  )}
+                  <div className="reservation-card__actions">
+                    {canCancel ? (
+                      <button
+                        type="button"
+                        className="reservation-cancel-btn"
+                        disabled={cancelingId === reservation.reservationId}
+                        onClick={() => handleCancel(reservation.reservationId)}
+                      >
+                        {cancelingId === reservation.reservationId ? 'Canceling...' : 'Cancel Reservation'}
+                      </button>
+                    ) : (
+                      <span className="reservation-no-action">No action</span>
+                    )}
+                  </div>
                 </article>
               )
             })}
           </div>
         )}
       </main>
+
+      <Footer />
     </div>
   )
 }
 
 export default ReservationHistoryScreen
+
