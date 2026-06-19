@@ -32,6 +32,15 @@ function CreateReservationScreen() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
+  const todayStr = useMemo(() => {
+    const local = new Date()
+    // format to YYYY-MM-DD
+    const yyyy = local.getFullYear()
+    const mm = String(local.getMonth() + 1).padStart(2, '0')
+    const dd = String(local.getDate()).padStart(2, '0')
+    return `${yyyy}-${mm}-${dd}`
+  }, [])
+
   const handleChange = (event) => {
     const { name, value } = event.target
     setFormData((prev) => ({
@@ -42,6 +51,21 @@ function CreateReservationScreen() {
 
   const handleSubmit = async (event) => {
     event.preventDefault()
+
+    // 1. Validate guest count limit
+    if (formData.numberOfGuests < 1 || formData.numberOfGuests > 30) {
+      setError('Number of guests must be between 1 and 30.')
+      return
+    }
+
+    // 2. Validate future date and time
+    const selectedDateTime = new Date(`${formData.reservationDate}T${formData.reservationTime}`)
+    const currentDateTime = new Date()
+    if (isNaN(selectedDateTime.getTime()) || selectedDateTime <= currentDateTime) {
+      setError('Reservation date and time must be in the future.')
+      return
+    }
+
     setSubmitting(true)
     setMessage('')
     setError('')
@@ -129,6 +153,7 @@ function CreateReservationScreen() {
                 name="numberOfGuests"
                 type="number"
                 min="1"
+                max="30"
                 placeholder="Number of guests"
                 value={formData.numberOfGuests}
                 onChange={handleChange}
@@ -143,6 +168,7 @@ function CreateReservationScreen() {
                 id="reservationDate"
                 name="reservationDate"
                 type="date"
+                min={todayStr}
                 value={formData.reservationDate}
                 onChange={handleChange}
                 required

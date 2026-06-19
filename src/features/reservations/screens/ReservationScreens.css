@@ -745,3 +745,264 @@
     max-width: 200px;
   }
 }
+
+/* --------------------------------------------------------------------------
+   4. Custom Confirmation Modal (Glassmorphism Modal)
+   -------------------------------------------------------------------------- */
+.custom-confirm-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(3, 7, 18, 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+.custom-confirm-modal {
+  background-color: #0c2d28;
+  border: 1px solid rgba(212, 179, 109, 0.3);
+  border-radius: 16px;
+  max-width: 440px;
+  width: min(440px, calc(100% - 32px));
+  padding: 28px;
+  color: #ffffff;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  animation: modalScaleIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-sizing: border-box;
+}
+
+.custom-confirm-modal__title {
+  font-family: 'Times New Roman', Georgia, serif;
+  font-size: 1.5rem;
+  color: #fff8ea;
+  margin: 0 0 12px 0;
+  font-weight: 700;
+}
+
+.custom-confirm-modal__message {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0 0 24px 0;
+}
+
+.custom-confirm-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.custom-confirm-modal__btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.custom-confirm-modal__btn--cancel {
+  background-color: transparent;
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.custom-confirm-modal__btn--cancel:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+}
+
+.custom-confirm-modal__btn--confirm {
+  background-color: #d4b36d;
+  color: #1c1407;
+}
+
+.custom-confirm-modal__btn--confirm:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.custom-confirm-modal__btn--danger {
+  background-color: #dc2626;
+  color: #ffffff;
+}
+
+.custom-confirm-modal__btn--danger:hover {
+  background-color: #b91c1c;
+  transform: translateY(-1px);
+}
+
+/* Modal styles overrides for light-themed Admin Dashboard context */
+.dashboard-reservations-container .custom-confirm-modal {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #0f172a;
+}
+
+.dashboard-reservations-container .custom-confirm-modal__title {
+  color: #0f172a;
+  font-family: inherit;
+  font-weight: 800;
+}
+
+.dashboard-reservations-container .custom-confirm-modal__message {
+  color: #475569;
+}
+
+.dashboard-reservations-container .custom-confirm-modal__btn--cancel {
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.dashboard-reservations-container .custom-confirm-modal__btn--cancel:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.dashboard-reservations-container .custom-confirm-modal__btn--confirm {
+  background-color: #16a34a;
+  color: #ffffff;
+}
+
+.dashboard-reservations-container .custom-confirm-modal__btn--confirm:hover {
+  background-color: #15803d;
+}
+
+/* --------------------------------------------------------------------------
+   5. Pagination Styling
+   -------------------------------------------------------------------------- */
+.pagination-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 32px;
+  flex-wrap: wrap;
+}
+
+.pagination-btn {
+  padding: 8px 14px;
+  min-width: 36px;
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+}
+
+/* Dark Theme (Customer/History View) */
+.reservation-page .pagination-btn {
+  background-color: #071d1a;
+  border-color: #205650;
+  color: #fff8ea;
+}
+
+.reservation-page .pagination-btn:hover:not(:disabled) {
+  border-color: #d4b36d;
+  color: #ffffff;
+}
+
+.reservation-page .pagination-btn--active {
+  background: linear-gradient(135deg, #f0c062, #c88a2f) !important;
+  color: #1c1407 !important;
+  border: none;
+}
+
+.reservation-page .pagination-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Light Theme (Admin Dashboard View) */
+.dashboard-reservations-container .pagination-btn {
+  background-color: #ffffff;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.dashboard-reservations-container .pagination-btn:hover:not(:disabled) {
+  border-color: #94a3b8;
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+.dashboard-reservations-container .pagination-btn--active {
+  background-color: #0284c7 !important;
+  color: #ffffff !important;
+  border-color: #0284c7 !important;
+}
+
+.dashboard-reservations-container .pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* --------------------------------------------------------------------------
+   6. Sorting Controls Styling
+   -------------------------------------------------------------------------- */
+.reservation-controls-bar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.reservation-control-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reservation-control-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: rgba(255, 248, 234, 0.8);
+}
+
+.reservation-control-select {
+  background-color: #071d1a;
+  border: 1px solid #205650;
+  border-radius: 8px;
+  color: #ffffff;
+  padding: 8px 12px;
+  font-size: 0.88rem;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.reservation-control-select:hover {
+  border-color: rgba(212, 179, 109, 0.5);
+}
+
+.reservation-control-select:focus {
+  border-color: #d4b36d;
+}
+
+/* Animations */
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalScaleIn {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
