@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Eye, EyeOff, Lock } from 'lucide-react'
-import Navbar from '../../../shared/components/layout/Navbar/Navbar'
-import Footer from '../../../shared/components/layout/Footer/Footer'
+import { createPortal } from 'react-dom'
+import { Eye, EyeOff, Lock, X } from 'lucide-react'
 import InputField from '../../../shared/components/ui/InputField'
 import { changePassword, getProfile, updateAvatar, updateProfile } from '../api/profileApi'
 import './ProfileScreen.css'
@@ -130,148 +129,149 @@ function ProfileScreen() {
     }
   }
 
-  return (
-    <div className="profile-page">
-      <Navbar />
-      <main className="profile-page__main">
-        <div className="profile-page__container">
-          <div className="profile-page__header">
+  const modalContent = (
+    <div className="profile-modal-backdrop" role="presentation" onClick={() => window.history.back()}>
+      <div className="profile-modal" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title" onClick={(event) => event.stopPropagation()}>
+        <button type="button" className="profile-modal__close" aria-label="Close profile" onClick={() => window.history.back()}>
+          <X size={18} />
+        </button>
+        <div className="profile-page__header">
+          <div>
+            <p className="profile-page__eyebrow">Personal Center</p>
+            <h1 id="profile-modal-title">View & Update Personal Profile</h1>
+            <p className="profile-page__subtitle">Manage your account information, security, and avatar in one place.</p>
+          </div>
+          <div className="profile-page__summary-card">
+            <div className="profile-page__avatar">{userName.charAt(0).toUpperCase()}</div>
             <div>
-              <p className="profile-page__eyebrow">Personal Center</p>
-              <h1>View & Update Personal Profile</h1>
-              <p className="profile-page__subtitle">Manage your account information, security, and avatar in one place.</p>
-            </div>
-            <div className="profile-page__summary-card">
-              <div className="profile-page__avatar">{userName.charAt(0).toUpperCase()}</div>
-              <div>
-                <strong>{userName}</strong>
-                <p>{profile?.email || sessionStorage.getItem('email') || 'No email'}</p>
-              </div>
+              <strong>{userName}</strong>
+              <p>{profile?.email || sessionStorage.getItem('email') || 'No email'}</p>
             </div>
           </div>
-
-          {loading ? (
-            <div className="profile-page__loading">Loading profile...</div>
-          ) : (
-            <div className="profile-page__grid">
-              <section className="profile-card">
-                <h2>Personal Information</h2>
-                {profileError && <p className="profile-message profile-message--error">{profileError}</p>}
-                {profileSuccess && <p className="profile-message profile-message--success">{profileSuccess}</p>}
-                <form className="profile-form" onSubmit={handleProfileSubmit}>
-                  <label>
-                    Full name
-                    <input
-                      type="text"
-                      value={profileForm.fullName}
-                      onChange={(event) => setProfileForm((prev) => ({ ...prev, fullName: event.target.value }))}
-                    />
-                  </label>
-                  <label>
-                    Phone number
-                    <input
-                      type="tel"
-                      value={profileForm.phoneNumber}
-                      onChange={(event) => setProfileForm((prev) => ({ ...prev, phoneNumber: event.target.value }))}
-                    />
-                  </label>
-                  <button type="submit" disabled={submittingSection === 'profile'}>
-                    {submittingSection === 'profile' ? 'Saving...' : 'Update Profile'}
-                  </button>
-                </form>
-              </section>
-
-              <section className="profile-card">
-                <h2>Change Password</h2>
-                <form className="profile-form" onSubmit={handlePasswordSubmit}>
-                  {passwordError && <p className="profile-message profile-message--error">{passwordError}</p>}
-                {passwordSuccess && <p className="profile-message profile-message--success">{passwordSuccess}</p>}
-                  <div className="profile-form-group">
-                    <label>Old password</label>
-                    <InputField
-                      icon={Lock}
-                      type={showOldPassword ? 'text' : 'password'}
-                      value={passwordForm.oldPassword}
-                      onChange={(event) => setPasswordForm((prev) => ({ ...prev, oldPassword: event.target.value }))}
-                      placeholder="Old password"
-                      passwordToggle={
-                        <button
-                          type="button"
-                          className="profile-eye-btn-fix"
-                          onClick={() => setShowOldPassword((prev) => !prev)}
-                        >
-                          {showOldPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                        </button>
-                      }
-                    />
-                  </div>
-                  <div className="profile-form-group">
-                    <label>New password</label>
-                    <InputField
-                      icon={Lock}
-                      type={showNewPassword ? 'text' : 'password'}
-                      value={passwordForm.newPassword}
-                      onChange={(event) => setPasswordForm((prev) => ({ ...prev, newPassword: event.target.value }))}
-                      placeholder="New password"
-                      passwordToggle={
-                        <button
-                          type="button"
-                          className="profile-eye-btn-fix"
-                          onClick={() => setShowNewPassword((prev) => !prev)}
-                        >
-                          {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                        </button>
-                      }
-                    />
-                  </div>
-                  <div className="profile-form-group">
-                    <label>Confirm new password</label>
-                    <InputField
-                      icon={Lock}
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      value={passwordForm.confirmPassword}
-                      onChange={(event) => setPasswordForm((prev) => ({ ...prev, confirmPassword: event.target.value }))}
-                      placeholder="Confirm new password"
-                      passwordToggle={
-                        <button
-                          type="button"
-                          className="profile-eye-btn-fix"
-                          onClick={() => setShowConfirmPassword((prev) => !prev)}
-                        >
-                          {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                        </button>
-                      }
-                    />
-                  </div>
-                  <button type="submit" disabled={submittingSection === 'password'}>
-                    {submittingSection === 'password' ? 'Updating...' : 'Change Password'}
-                  </button>
-                </form>
-              </section>
-
-              <section className="profile-card profile-card--wide">
-                <h2>Upload Profile Avatar</h2>
-                {avatarError && <p className="profile-message profile-message--error">{avatarError}</p>}
-                {avatarSuccess && <p className="profile-message profile-message--success">{avatarSuccess}</p>}
-                <div className="profile-avatar-upload">
-                  <div className="profile-avatar-preview">
-                    {profile?.avatarUrl ? <img src={profile.avatarUrl} alt="Avatar preview" /> : <span>{userName.charAt(0).toUpperCase()}</span>}
-                  </div>
-                  <div className="profile-avatar-actions">
-                    <input type="file" accept="image/*" onChange={(event) => setAvatarFile(event.target.files?.[0] || null)} />
-                    <button type="button" onClick={handleAvatarUpload} disabled={submittingSection === 'avatar'}>
-                      {submittingSection === 'avatar' ? 'Uploading...' : 'Upload Avatar'}
-                    </button>
-                  </div>
-                </div>
-              </section>
-            </div>
-          )}
         </div>
-      </main>
-      <Footer />
+
+        {loading ? (
+          <div className="profile-page__loading">Loading profile...</div>
+        ) : (
+          <div className="profile-page__grid">
+            <section className="profile-card">
+              <h2>Personal Information</h2>
+              {profileError && <p className="profile-message profile-message--error">{profileError}</p>}
+              {profileSuccess && <p className="profile-message profile-message--success">{profileSuccess}</p>}
+              <form className="profile-form" onSubmit={handleProfileSubmit}>
+                <label>
+                  Full name
+                  <input
+                    type="text"
+                    value={profileForm.fullName}
+                    onChange={(event) => setProfileForm((prev) => ({ ...prev, fullName: event.target.value }))}
+                  />
+                </label>
+                <label>
+                  Phone number
+                  <input
+                    type="tel"
+                    value={profileForm.phoneNumber}
+                    onChange={(event) => setProfileForm((prev) => ({ ...prev, phoneNumber: event.target.value }))}
+                  />
+                </label>
+                <button type="submit" disabled={submittingSection === 'profile'}>
+                  {submittingSection === 'profile' ? 'Saving...' : 'Update Profile'}
+                </button>
+              </form>
+            </section>
+
+            <section className="profile-card">
+              <h2>Change Password</h2>
+              <form className="profile-form" onSubmit={handlePasswordSubmit}>
+                {passwordError && <p className="profile-message profile-message--error">{passwordError}</p>}
+                {passwordSuccess && <p className="profile-message profile-message--success">{passwordSuccess}</p>}
+                <div className="profile-form-group">
+                  <label>Old password</label>
+                  <InputField
+                    icon={Lock}
+                    type={showOldPassword ? 'text' : 'password'}
+                    value={passwordForm.oldPassword}
+                    onChange={(event) => setPasswordForm((prev) => ({ ...prev, oldPassword: event.target.value }))}
+                    placeholder="Old password"
+                    passwordToggle={
+                      <button
+                        type="button"
+                        className="profile-eye-btn-fix"
+                        onClick={() => setShowOldPassword((prev) => !prev)}
+                      >
+                        {showOldPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    }
+                  />
+                </div>
+                <div className="profile-form-group">
+                  <label>New password</label>
+                  <InputField
+                    icon={Lock}
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={passwordForm.newPassword}
+                    onChange={(event) => setPasswordForm((prev) => ({ ...prev, newPassword: event.target.value }))}
+                    placeholder="New password"
+                    passwordToggle={
+                      <button
+                        type="button"
+                        className="profile-eye-btn-fix"
+                        onClick={() => setShowNewPassword((prev) => !prev)}
+                      >
+                        {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    }
+                  />
+                </div>
+                <div className="profile-form-group">
+                  <label>Confirm new password</label>
+                  <InputField
+                    icon={Lock}
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={passwordForm.confirmPassword}
+                    onChange={(event) => setPasswordForm((prev) => ({ ...prev, confirmPassword: event.target.value }))}
+                    placeholder="Confirm new password"
+                    passwordToggle={
+                      <button
+                        type="button"
+                        className="profile-eye-btn-fix"
+                        onClick={() => setShowConfirmPassword((prev) => !prev)}
+                      >
+                        {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    }
+                  />
+                </div>
+                <button type="submit" disabled={submittingSection === 'password'}>
+                  {submittingSection === 'password' ? 'Updating...' : 'Change Password'}
+                </button>
+              </form>
+            </section>
+
+            <section className="profile-card profile-card--wide">
+              <h2>Upload Profile Avatar</h2>
+              {avatarError && <p className="profile-message profile-message--error">{avatarError}</p>}
+              {avatarSuccess && <p className="profile-message profile-message--success">{avatarSuccess}</p>}
+              <div className="profile-avatar-upload">
+                <div className="profile-avatar-preview">
+                  {profile?.avatarUrl ? <img src={profile.avatarUrl} alt="Avatar preview" /> : <span>{userName.charAt(0).toUpperCase()}</span>}
+                </div>
+                <div className="profile-avatar-actions">
+                  <input type="file" accept="image/*" onChange={(event) => setAvatarFile(event.target.files?.[0] || null)} />
+                  <button type="button" onClick={handleAvatarUpload} disabled={submittingSection === 'avatar'}>
+                    {submittingSection === 'avatar' ? 'Uploading...' : 'Upload Avatar'}
+                  </button>
+                </div>
+              </div>
+            </section>
+          </div>
+        )}
+      </div>
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }
 
 export default ProfileScreen

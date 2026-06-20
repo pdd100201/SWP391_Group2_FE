@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Bell, LogOut, Menu, Search, UserCircle2, X } from 'lucide-react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import './MainLayout.css'
 
-function MainLayout({ children }) {
+function MainLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [currentUser, setCurrentUser] = useState({
     fullName: sessionStorage.getItem('fullName'),
@@ -82,7 +82,12 @@ function MainLayout({ children }) {
               <Bell size={18} />
             </button>
 
-            <div className="dashboard-layout__profile">
+            <button
+              type="button"
+              className="dashboard-layout__profile"
+              onClick={() => navigate('/dashboard/profile')}
+              aria-label="Open profile"
+            >
               <div className="dashboard-layout__profile-avatar" aria-hidden="true">
                 <UserCircle2 size={20} />
               </div>
@@ -90,7 +95,7 @@ function MainLayout({ children }) {
                 <strong>{currentUser.fullName || 'Unknown User'}</strong>
                 <span>{currentUser.role || 'Unknown Role'}</span>
               </div>
-            </div>
+            </button>
 
             <button type="button" className="dashboard-layout__logout-button" onClick={handleLogout}>
               <LogOut size={16} />
@@ -104,7 +109,7 @@ function MainLayout({ children }) {
             <Search size={18} />
             <input type="search" placeholder="Search dashboard" aria-label="Search dashboard" />
           </div>
-          {children}
+          <Outlet />
         </main>
       </div>
     </div>
