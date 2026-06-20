@@ -1,13 +1,32 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Bell, LogOut, Menu, Search, UserCircle2, X } from 'lucide-react'
-import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import './MainLayout.css'
 
-function MainLayout() {
+function MainLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [currentUser, setCurrentUser] = useState({
+    fullName: sessionStorage.getItem('fullName'),
+    role: sessionStorage.getItem('role'),
+  })
   const location = useLocation()
   const navigate = useNavigate()
+
+  useEffect(() => {
+    const syncUser = () => {
+      setCurrentUser({
+        fullName: sessionStorage.getItem('fullName'),
+        role: sessionStorage.getItem('role'),
+      })
+    }
+    window.addEventListener('auth-changed', syncUser)
+    window.addEventListener('storage', syncUser)
+    return () => {
+      window.removeEventListener('auth-changed', syncUser)
+      window.removeEventListener('storage', syncUser)
+    }
+  }, [])
 
   const breadcrumb = useMemo(() => {
     const path = location.pathname.replace('/dashboard', '')
@@ -68,8 +87,8 @@ function MainLayout() {
                 <UserCircle2 size={20} />
               </div>
               <div className="dashboard-layout__profile-meta">
-                <strong>{sessionStorage.getItem('fullName') || 'Admin User'}</strong>
-                <span>{sessionStorage.getItem('role') || 'Administrator'}</span>
+                <strong>{currentUser.fullName || 'Unknown User'}</strong>
+                <span>{currentUser.role || 'Unknown Role'}</span>
               </div>
             </div>
 
@@ -85,7 +104,7 @@ function MainLayout() {
             <Search size={18} />
             <input type="search" placeholder="Search dashboard" aria-label="Search dashboard" />
           </div>
-          <Outlet />
+          {children}
         </main>
       </div>
     </div>
