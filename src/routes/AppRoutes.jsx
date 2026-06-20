@@ -80,20 +80,10 @@ function AppRoutes() {
             <MainLayout />
           </RequireAuth>
         )}
-      />
-      <Route
-        path="/dashboard/reservations"
-        element={(
-          <RequireAuth allowedRoles={['ADMIN', 'MANAGER', 'RECEPTIONIST']}>
-            <MainLayout>
-              <DashboardReservationsScreen />
-            </MainLayout>
-          </RequireAuth>
-        )}
       >
         <Route index element={<DashboardPage />} />
         <Route path="check-in-tables" element={<DashboardPage />} />
-        <Route path="reservations" element={<DashboardPage />} />
+        <Route path="reservations" element={<DashboardReservationsScreen />} />
         <Route path="orders-service" element={<DashboardPage />} />
         <Route
           path="menu-management"
