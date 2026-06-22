@@ -1,18 +1,11 @@
 .profile-page {
-  min-height: 100vh;
-  background: #071311;
   color: #111;
 }
 
 .profile-page__main {
-  min-height: calc(100vh - 72px);
-  padding: 108px 20px 40px;
-  background: linear-gradient(180deg, rgba(7, 19, 17, 0.96) 0%, rgba(11, 53, 47, 0.96) 100%);
 }
 
 .profile-page__container {
-  width: min(1100px, 100%);
-  margin: 0 auto;
 }
 
 .profile-page__header {
@@ -293,14 +286,11 @@
   padding: 0 !important;
   margin: 0 !important;
   cursor: pointer !important;
-  z-index: 10 !important; /* Đẩy lên lớp trên cùng để dễ click */
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  color: #6b7280 !important; /* Màu xám rõ ràng */
 }
 
-/* Đảm bảo thẻ svg bên trong nút mắt không bị ẩn hoặc thu nhỏ */
 .profile-eye-btn-fix svg {
   display: block !important;
   width: 18px !important;

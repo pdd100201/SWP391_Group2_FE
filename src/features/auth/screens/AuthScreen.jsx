@@ -1,21 +1,19 @@
-import { useState } from 'react'
-import { GoogleLogin } from '@react-oauth/google'
+import { useEffect, useState } from 'react'
+import axios from 'axios'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Mail, Lock, Eye, EyeOff, User, Phone } from 'lucide-react'
 import Navbar from '../../../shared/components/layout/Navbar/Navbar'
 import Footer from '../../../shared/components/layout/Footer/Footer'
-import Button from '../../../shared/components/ui/Button'
-import InputField from '../../../shared/components/ui/InputField'
-import { forgotPassword, login, loginWithGoogle, registerCustomer, resetPassword, verifyOtp } from '../api/authApi'
 import './AuthScreen.css'
+
+const API_BASE_URL = 'http://localhost:8080'
 
 function AuthScreen() {
   const location = useLocation()
   const navigate = useNavigate()
+  const [activeTab, setActiveTab] = useState(location.pathname === '/register' ? 'register' : 'login')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [authStep, setAuthStep] = useState('credentials') // credentials | forgot-email | otp | new-password
-  const [otpVerified, setOtpVerified] = useState(false)
   const [formData, setFormData] = useState({
     fullName: '',
     customersEmail: '',
@@ -23,148 +21,58 @@ function AuthScreen() {
     phone: '',
     password: '',
     confirmPassword: '',
-    otp: '',
-    resetEmail: '',
-    newPassword: '',
-    confirmNewPassword: '',
   })
   const [error, setError] = useState('')
-  const [successMessage, setSuccessMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const isLogin = location.pathname !== '/register'
-
-  const handleAuthModeChange = (path) => {
+  useEffect(() => {
+    setActiveTab(location.pathname === '/register' ? 'register' : 'login')
     setError('')
-    setSuccessMessage('')
-    setAuthStep('credentials')
-    setOtpVerified(false)
-    navigate(path)
-  }
+  }, [location.pathname])
+
+  const isLogin = activeTab === 'login'
 
   const handleChange = (event) => {
     const { name, value } = event.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
 
-  const persistAuthAndRedirect = (data) => {
-    sessionStorage.setItem('token', data.token)
-    sessionStorage.setItem('role', data.role)
-    sessionStorage.setItem('fullName', data.fullName)
-    sessionStorage.setItem('email', data.email)
-    window.dispatchEvent(new Event('auth-changed'))
-
-    if (data.role === 'CUSTOMER') {
-      navigate('/')
-    } else {
-      navigate('/dashboard')
-    }
-  }
-
-  const handleGoogleSuccess = async (response) => {
-    try {
-      setError('')
-      setIsSubmitting(true)
-      const backendResponse = await loginWithGoogle(response.credential)
-      persistAuthAndRedirect(backendResponse.data)
-    } catch (err) {
-      const message = err.response?.data?.message || 'Google login failed'
-      setError(message)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const handleGoogleError = () => {
-    setError('Google login was cancelled or failed')
-  }
-
   const handleSubmit = async (event) => {
     event.preventDefault()
     setError('')
-    setSuccessMessage('')
     setIsSubmitting(true)
 
     try {
-      if (authStep === 'forgot-email') {
-        if (!formData.resetEmail.trim()) {
-          setError('Email is required')
-          return
-        }
-        await forgotPassword(formData.resetEmail)
-        setAuthStep('otp')
-        return
-      }
-
-      if (authStep === 'otp') {
-        if (!formData.otp.trim()) {
-          setError('OTP is required')
-          return
-        }
-        await verifyOtp(formData.resetEmail, formData.otp)
-        setOtpVerified(true)
-        setAuthStep('new-password')
-        return
-      }
-
-      if (authStep === 'new-password') {
-        if (!formData.newPassword.trim()) {
-          setError('New password is required')
-          return
-        }
-        if (formData.newPassword !== formData.confirmNewPassword) {
-          setError('Passwords do not match')
-          return
-        }
-        await resetPassword(formData.resetEmail, formData.newPassword)
-        setSuccessMessage('Password reset successfully. You can now login.')
-        setError('')
-        setAuthStep('credentials')
-        navigate('/login')
-        return
-      }
-
       if (isLogin) {
-        if (!formData.email.trim()) {
-          setError('Email is required')
-          return
-        }
-        if (!formData.password.trim()) {
-          setError('Password is required')
-          return
-        }
+        const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
+          email: formData.email,
+          password: formData.password,
+        })
 
-        const response = await login(formData.email, formData.password)
-        persistAuthAndRedirect(response.data)
+        localStorage.setItem('token', response.data.token)
+        localStorage.setItem('role', response.data.role)
+        localStorage.setItem('fullName', response.data.fullName)
+        localStorage.setItem('email', response.data.email)
+        sessionStorage.setItem('token', response.data.token)
+        sessionStorage.setItem('role', response.data.role)
+        sessionStorage.setItem('fullName', response.data.fullName)
+        sessionStorage.setItem('email', response.data.email)
+        window.dispatchEvent(new Event('auth-changed'))
+
+        if (response.data.role === 'CUSTOMER') {
+          navigate('/')
+        } else {
+          navigate('/dashboard')
+        }
         return
       }
 
-      if (!formData.fullName.trim()) {
-        setError('Full name is required')
-        return
-      }
-      if (!formData.phone.trim()) {
-        setError('Phone number is required')
-        return
-      }
-      if (!formData.customersEmail.trim()) {
-        setError('Email is required')
-        return
-      }
-      if (!formData.password.trim()) {
-        setError('Password is required')
-        return
-      }
-      if (!formData.confirmPassword.trim()) {
-        setError('Confirm password is required')
-        return
-      }
       if (formData.password !== formData.confirmPassword) {
         setError('Passwords do not match')
         return
       }
 
-      const response = await registerCustomer({
+      const response = await axios.post(`${API_BASE_URL}/api/auth/customer/register`, {
         fullName: formData.fullName,
         customersEmail: formData.customersEmail,
         password: formData.password,
@@ -172,241 +80,22 @@ function AuthScreen() {
         avatarUrl: formData.avatarUrl,
       })
 
-      persistAuthAndRedirect(response.data)
+      localStorage.setItem('token', response.data.token)
+      localStorage.setItem('role', response.data.role)
+      localStorage.setItem('fullName', response.data.fullName)
+      localStorage.setItem('email', response.data.email)
+      sessionStorage.setItem('token', response.data.token)
+      sessionStorage.setItem('role', response.data.role)
+      sessionStorage.setItem('fullName', response.data.fullName)
+      sessionStorage.setItem('email', response.data.email)
+      window.dispatchEvent(new Event('auth-changed'))
+      navigate('/')
     } catch (err) {
-      const status = err.response?.status
-      const backendMessage = err.response?.data?.message
-      const fieldErrors = err.response?.data?.errors
-
-      if (fieldErrors && typeof fieldErrors === 'object') {
-        const prioritizedField = isLogin
-          ? fieldErrors.password || fieldErrors.email
-          : fieldErrors.confirmPassword || fieldErrors.password || fieldErrors.customersEmail || fieldErrors.phone || fieldErrors.fullName
-
-        setError(prioritizedField || backendMessage || 'Please check your input again')
-      } else {
-        setError(
-          backendMessage ||
-            (isLogin && status === 401
-              ? 'Incorrect email or password'
-              : status === 400
-                ? 'Please check your input again'
-                : 'Something went wrong')
-        )
-      }
-
-      setSuccessMessage('')
+      const message = err.response?.data?.message || 'Something went wrong'
+      setError(message)
     } finally {
       setIsSubmitting(false)
     }
-  }
-
-  const openForgotFlow = () => {
-    setError('')
-    setSuccessMessage('')
-    setAuthStep('forgot-email')
-    setFormData((prev) => ({ ...prev, resetEmail: prev.email || prev.customersEmail }))
-  }
-
-  const renderTitle = () => {
-    if (authStep === 'forgot-email') return 'Forgot Password'
-    if (authStep === 'otp') return 'Verify OTP'
-    if (authStep === 'new-password') return 'Set New Password'
-    return isLogin ? 'Login' : 'Register'
-  }
-
-  const renderForm = () => {
-    if (authStep === 'forgot-email') {
-      return (
-        <>
-          <InputField
-            icon={Mail}
-            type="email"
-            name="resetEmail"
-            value={formData.resetEmail}
-            onChange={handleChange}
-            placeholder="Enter your email"
-            ariaLabel="Enter your email"
-          />
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Please wait...' : 'Send OTP'}
-          </Button>
-          <Button type="button" variant="secondary" onClick={() => setAuthStep('credentials')}>
-            Back to Login
-          </Button>
-        </>
-      )
-    }
-
-    if (authStep === 'otp') {
-      return (
-        <>
-          <InputField
-            icon={Lock}
-            type="text"
-            name="otp"
-            value={formData.otp}
-            onChange={handleChange}
-            placeholder="Enter OTP"
-            ariaLabel="Enter OTP"
-          />
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Please wait...' : 'Verify OTP'}
-          </Button>
-          <Button type="button" variant="secondary" onClick={() => setAuthStep('forgot-email')}>
-            Back
-          </Button>
-     
-        </>
-      )
-    }
-
-    if (authStep === 'new-password') {
-      return (
-        <>
-          <InputField
-            icon={Lock}
-            type={showPassword ? 'text' : 'password'}
-            name="newPassword"
-            value={formData.newPassword}
-            onChange={handleChange}
-            placeholder="New Password"
-            ariaLabel="New Password"
-            passwordToggle={
-              <button
-                type="button"
-                className="auth-screen__eye-button"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                onClick={() => setShowPassword((prev) => !prev)}
-              >
-                {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
-              </button>
-            }
-          />
-          <InputField
-            icon={Lock}
-            type={showConfirmPassword ? 'text' : 'password'}
-            name="confirmNewPassword"
-            value={formData.confirmNewPassword}
-            onChange={handleChange}
-            placeholder="Confirm New Password"
-            ariaLabel="Confirm New Password"
-            passwordToggle={
-              <button
-                type="button"
-                className="auth-screen__eye-button"
-                aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
-                onClick={() => setShowConfirmPassword((prev) => !prev)}
-              >
-                {showConfirmPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
-              </button>
-            }
-          />
-          <Button type="submit" disabled={isSubmitting || !otpVerified}>
-            {isSubmitting ? 'Please wait...' : 'Reset Password'}
-          </Button>
-          <Button type="button" variant="secondary" onClick={() => setAuthStep('credentials')}>
-            Back to Login
-          </Button>
-        </>
-      )
-    }
-
-    return (
-      <>
-        {!isLogin && (
-          <>
-            <InputField
-              icon={User}
-              type="text"
-              name="fullName"
-              value={formData.fullName}
-              onChange={handleChange}
-              placeholder="Full Name"
-              ariaLabel="Full Name"
-            />
-
-            <InputField
-              icon={Phone}
-              type="tel"
-              name="phone"
-              value={formData.phone}
-              onChange={handleChange}
-              placeholder="Phone Number"
-              ariaLabel="Phone Number"
-            />
-          </>
-        )}
-
-        <InputField
-          icon={Mail}
-          type="email"
-          name={isLogin ? 'email' : 'customersEmail'}
-          value={isLogin ? formData.email : formData.customersEmail}
-          onChange={handleChange}
-          placeholder="Email"
-          ariaLabel="Email"
-        />
-
-        <InputField
-          icon={Lock}
-          type={showPassword ? 'text' : 'password'}
-          name="password"
-          value={formData.password}
-          onChange={handleChange}
-          placeholder="Password"
-          ariaLabel="Password"
-          passwordToggle={
-            <button
-              type="button"
-              className="auth-screen__eye-button"
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
-              onClick={() => setShowPassword((prev) => !prev)}
-            >
-              {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
-            </button>
-          }
-        />
-
-        {!isLogin && (
-          <InputField
-            icon={Lock}
-            type={showConfirmPassword ? 'text' : 'password'}
-            name="confirmPassword"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-            placeholder="Confirm Password"
-            ariaLabel="Confirm Password"
-            passwordToggle={
-              <button
-                type="button"
-                className="auth-screen__eye-button"
-                aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
-                onClick={() => setShowConfirmPassword((prev) => !prev)}
-              >
-                {showConfirmPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
-              </button>
-            }
-          />
-        )}
-
-        {isLogin && (
-          <div className="auth-screen__meta-row">
-            <label className="auth-screen__remember">
-              <input type="checkbox" />
-              <span>Remember me</span>
-            </label>
-            <button type="button" className="auth-screen__link-button" onClick={openForgotFlow}>
-              Forgot password?
-            </button>
-          </div>
-        )}
-
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Please wait...' : isLogin ? 'Login' : 'Register'}
-        </Button>
-      </>
-    )
   }
 
   return (
@@ -422,7 +111,7 @@ function AuthScreen() {
               role="tab"
               aria-selected={isLogin}
               className={`auth-screen__tab ${isLogin ? 'auth-screen__tab--active' : ''}`}
-              onClick={() => handleAuthModeChange('/login')}
+              onClick={() => navigate('/login')}
             >
               Login
             </button>
@@ -431,33 +120,123 @@ function AuthScreen() {
               role="tab"
               aria-selected={!isLogin}
               className={`auth-screen__tab ${!isLogin ? 'auth-screen__tab--active' : ''}`}
-              onClick={() => handleAuthModeChange('/register')}
+              onClick={() => navigate('/register')}
             >
               Register
             </button>
           </div>
 
           <div className="auth-screen__content">
-            <h1>{renderTitle()}</h1>
+            <h1>{isLogin ? 'Login' : 'Register'}</h1>
 
             {error && <p className="auth-screen__error" role="alert">{error}</p>}
-            {successMessage && <p className="auth-screen__success" role="status">{successMessage}</p>}
 
             <form className="auth-screen__form" onSubmit={handleSubmit}>
-              {renderForm()}
+              {!isLogin && (
+                <>
+                  <div className="auth-screen__field">
+                    <User className="auth-screen__field-icon" aria-hidden="true" />
+                    <input
+                      type="text"
+                      name="fullName"
+                      value={formData.fullName}
+                      onChange={handleChange}
+                      placeholder="Full Name"
+                      aria-label="Full Name"
+                    />
+                  </div>
+
+                  <div className="auth-screen__field">
+                    <Phone className="auth-screen__field-icon" aria-hidden="true" />
+                    <input
+                      type="tel"
+                      name="phone"
+                      value={formData.phone}
+                      onChange={handleChange}
+                      placeholder="Phone Number"
+                      aria-label="Phone Number"
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="auth-screen__field">
+                <Mail className="auth-screen__field-icon" aria-hidden="true" />
+                <input
+                  type="email"
+                  name={isLogin ? 'email' : 'customersEmail'}
+                  value={isLogin ? formData.email : formData.customersEmail}
+                  onChange={handleChange}
+                  placeholder="Email"
+                  aria-label="Email"
+                />
+              </div>
+
+              <div className="auth-screen__field auth-screen__field--password">
+                <Lock className="auth-screen__field-icon" aria-hidden="true" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="Password"
+                  aria-label="Password"
+                />
+                <button
+                  type="button"
+                  className="auth-screen__eye-button"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  onClick={() => setShowPassword((prev) => !prev)}
+                >
+                  {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+                </button>
+              </div>
+
+              {!isLogin && (
+                <div className="auth-screen__field auth-screen__field--password">
+                  <Lock className="auth-screen__field-icon" aria-hidden="true" />
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    placeholder="Confirm Password"
+                    aria-label="Confirm Password"
+                  />
+                  <button
+                    type="button"
+                    className="auth-screen__eye-button"
+                    aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  >
+                    {showConfirmPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+                  </button>
+                </div>
+              )}
+
+              {isLogin && (
+                <div className="auth-screen__meta-row">
+                  <label className="auth-screen__remember">
+                    <input type="checkbox" />
+                    <span>Remember me</span>
+                  </label>
+                  <a href="#forgot-password">Forgot password?</a>
+                </div>
+              )}
+
+              <button type="submit" className="auth-screen__primary-button" disabled={isSubmitting}>
+                {isSubmitting ? 'Please wait...' : isLogin ? 'Login' : 'Register'}
+              </button>
             </form>
 
-            {authStep === 'credentials' && (
-              <>
-                <div className="auth-screen__divider">
-                  <span>Or continue with</span>
-                </div>
+            <div className="auth-screen__divider">
+              <span>Or continue with</span>
+            </div>
 
-                <div className="auth-screen__google-button">
-                  <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} width="100%" />
-                </div>
-              </>
-            )}
+            <button type="button" className="auth-screen__google-button">
+              <span className="auth-screen__google-badge" aria-hidden="true">G</span>
+              <span>Continue with Google</span>
+            </button>
           </div>
         </div>
       </main>

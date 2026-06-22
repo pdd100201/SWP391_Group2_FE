@@ -5,7 +5,6 @@ import {
 } from 'lucide-react'
 import { getStaffAccounts, getStaffById, createStaff, updateStaff, deleteStaff, toggleStaffStatus } from '../api/accountApi'
 import { usePagination } from '../../../shared/hooks/usePagination'
-import { useToast } from '../../../shared/components/ui/Toast/ToastContext'
 import ConfirmModal from '../../../shared/components/ui/ConfirmModal/ConfirmModal'
 import LoadingSpinner from '../../../shared/components/ui/LoadingSpinner/LoadingSpinner'
 import './StaffAccountPage.css'
@@ -58,11 +57,6 @@ function StaffAccountPage() {
     }
   }, [search, roleFilter, isActiveFilter, showToast])
 
-  useEffect(() => {
-    // Initial API synchronization for this account screen.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    fetchAccounts()
-  }, [fetchAccounts])
 
   const [searchInput, setSearchInput] = useState('')
   const handleSearch = () => { setSearch(searchInput); pagination.reset() }

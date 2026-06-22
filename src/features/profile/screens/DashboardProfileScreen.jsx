@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Eye, EyeOff, Lock } from 'lucide-react'
 import InputField from '../../../shared/components/ui/InputField'
 import { changePassword, getProfile, updateAvatar, updateProfile } from '../api/profileApi'
 import './ProfileScreen.css'
 
-function ProfileScreen() {
+function DashboardProfileScreen() {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [profileError, setProfileError] = useState('')
@@ -127,9 +128,14 @@ function ProfileScreen() {
     }
   }
 
+  return (
+    <div className="profile-page profile-page--dashboard">
+      <main className="profile-page__main profile-page__main--dashboard">
+        <div className="profile-page__container profile-page__container--dashboard">
           <div className="profile-page__header">
             <div>
               <p className="profile-page__eyebrow">Personal Center</p>
+              <h1>View & Update Personal Profile</h1>
               <p className="profile-page__subtitle">Manage your account information, security, and avatar in one place.</p>
             </div>
             <div className="profile-page__summary-card">
@@ -176,7 +182,7 @@ function ProfileScreen() {
                 <h2>Change Password</h2>
                 <form className="profile-form" onSubmit={handlePasswordSubmit}>
                   {passwordError && <p className="profile-message profile-message--error">{passwordError}</p>}
-                {passwordSuccess && <p className="profile-message profile-message--success">{passwordSuccess}</p>}
+                  {passwordSuccess && <p className="profile-message profile-message--success">{passwordSuccess}</p>}
                   <div className="profile-form-group">
                     <label>Old password</label>
                     <InputField
@@ -259,8 +265,9 @@ function ProfileScreen() {
             </div>
           )}
         </div>
+      </main>
     </div>
   )
 }
 
-export default ProfileScreen
+export default DashboardProfileScreen

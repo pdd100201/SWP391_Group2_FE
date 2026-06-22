@@ -39,6 +39,10 @@ function MainLayout() {
     sessionStorage.removeItem('role')
     sessionStorage.removeItem('fullName')
     sessionStorage.removeItem('email')
+    localStorage.removeItem('token')
+    localStorage.removeItem('role')
+    localStorage.removeItem('fullName')
+    localStorage.removeItem('email')
     window.dispatchEvent(new Event('auth-changed'))
     navigate('/login')
   }

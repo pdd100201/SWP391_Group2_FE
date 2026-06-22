@@ -18,15 +18,15 @@ const API_BASE = 'http://localhost:8080/api/inventory'
 /**
  * Tạo object config chứa HTTP headers xác thực JWT.
  * Hàm này được gọi mỗi lần thực hiện request (không cache) để
- * luôn lấy token mới nhất từ localStorage — tránh trường hợp token
+ * luôn lấy token mới nhất từ sessionStorage — tránh trường hợp token
  * thay đổi giữa chừng (ví dụ: refresh token).
  *
  * @returns {{ headers: { Authorization: string, Content-Type: string } }}
  */
 const getAuthHeaders = () => ({
   headers: {
-    // Bearer token được lưu vào localStorage sau khi đăng nhập
-    Authorization: `Bearer ${localStorage.getItem('token')}`,
+    // Bearer token được lưu vào sessionStorage sau khi đăng nhập
+    Authorization: `Bearer ${sessionStorage.getItem('token')}`,
     // Báo cho backend biết body request là JSON
     'Content-Type': 'application/json',
   },

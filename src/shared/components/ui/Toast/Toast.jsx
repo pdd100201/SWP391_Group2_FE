@@ -1,6 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
 import { CheckCircle, XCircle, X } from 'lucide-react'
-import { ToastContext } from './ToastContext'
 import './Toast.css'
 
 function ToastItem({ toast, onRemove }) {

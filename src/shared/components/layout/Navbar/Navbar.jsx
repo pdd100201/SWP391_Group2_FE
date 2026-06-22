@@ -17,10 +17,10 @@ function Navbar() {
 
   useEffect(() => {
     const syncUser = () => {
-      const fullName = localStorage.getItem('fullName')
-      const role = localStorage.getItem('role')
-      const token = localStorage.getItem('token')
-      const email = localStorage.getItem('email')
+      const fullName = sessionStorage.getItem('fullName')
+      const role = sessionStorage.getItem('role')
+      const token = sessionStorage.getItem('token')
+      const email = sessionStorage.getItem('email')
 
       if (token && fullName) {
         setUser({ fullName, role, email })
@@ -40,6 +40,10 @@ function Navbar() {
   }, [])
 
   const handleLogout = () => {
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('role')
+    sessionStorage.removeItem('fullName')
+    sessionStorage.removeItem('email')
     localStorage.removeItem('token')
     localStorage.removeItem('role')
     localStorage.removeItem('fullName')
