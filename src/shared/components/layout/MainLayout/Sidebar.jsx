@@ -3,6 +3,11 @@ import { NavLink } from 'react-router-dom'
 import { dashboardNavItems } from './dashboardNavItems'
 
 function Sidebar({ open, onClose }) {
+  const role = sessionStorage.getItem('role')
+  const visibleItems = dashboardNavItems.filter(
+    (item) => !item.allowedRoles || item.allowedRoles.includes(role)
+  )
+
   return (
     <aside className={`dashboard-layout__sidebar ${open ? 'dashboard-layout__sidebar--open' : ''}`}>
       <div className="dashboard-layout__brand">
@@ -17,7 +22,7 @@ function Sidebar({ open, onClose }) {
       </div>
 
       <nav className="dashboard-layout__nav" aria-label="Dashboard navigation">
-        {dashboardNavItems.map((item) => {
+        {visibleItems.map((item) => {
           const Icon = item.icon
           return (
             <NavLink

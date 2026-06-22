@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import { CalendarDays, Clock, Mail, Phone, Users } from 'lucide-react'
 import Navbar from '../../../shared/components/layout/Navbar/Navbar'
+import Footer from '../../../shared/components/layout/Footer/Footer'
 import { createReservation } from '../api/reservationApi'
 import './ReservationScreens.css'
 
@@ -32,6 +32,15 @@ function CreateReservationScreen() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
+  const todayStr = useMemo(() => {
+    const local = new Date()
+    // format to YYYY-MM-DD
+    const yyyy = local.getFullYear()
+    const mm = String(local.getMonth() + 1).padStart(2, '0')
+    const dd = String(local.getDate()).padStart(2, '0')
+    return `${yyyy}-${mm}-${dd}`
+  }, [])
+
   const handleChange = (event) => {
     const { name, value } = event.target
     setFormData((prev) => ({
@@ -42,6 +51,21 @@ function CreateReservationScreen() {
 
   const handleSubmit = async (event) => {
     event.preventDefault()
+
+    // 1. Validate guest count limit
+    if (formData.numberOfGuests < 1 || formData.numberOfGuests > 30) {
+      setError('Number of guests must be between 1 and 30.')
+      return
+    }
+
+    // 2. Validate future date and time
+    const selectedDateTime = new Date(`${formData.reservationDate}T${formData.reservationTime}`)
+    const currentDateTime = new Date()
+    if (isNaN(selectedDateTime.getTime()) || selectedDateTime <= currentDateTime) {
+      setError('Reservation date and time must be in the future.')
+      return
+    }
+
     setSubmitting(true)
     setMessage('')
     setError('')
@@ -67,12 +91,12 @@ function CreateReservationScreen() {
       <Navbar />
 
       <main className="reservation-page__main reservation-page__main--public">
-        <section className="reservation-hero">
-          <div>
-            <p className="reservation-eyebrow">Online Reservation</p>
-            <h1>Reserve your table</h1>
-            <p>Choose a date, time, and party size. Golden Spoon will keep your request in pending status until staff confirms it.</p>
-          </div>
+        <section className="reservation-header-section">
+          <span className="reservation-eyebrow">Online Reservation</span>
+          <h1 className="reservation-title">Book A Table</h1>
+          <p className="reservation-subtitle">
+            Choose your preferred date, time, and party size. Golden Spoon will hold your request in pending status until our staff confirms it.
+          </p>
         </section>
 
         <form className="reservation-form" onSubmit={handleSubmit}>
@@ -80,64 +104,115 @@ function CreateReservationScreen() {
           {error && <div className="reservation-alert reservation-alert--error">{error}</div>}
 
           <div className="reservation-form__grid">
-            <label className="reservation-field">
-              <span>Full name</span>
-              <input name="fullName" value={formData.fullName} onChange={handleChange} required />
-            </label>
+            <div className="reservation-form-group">
+              <label htmlFor="fullName" className="reservation-label">Full Name</label>
+              <input
+                id="fullName"
+                name="fullName"
+                type="text"
+                placeholder="Enter your full name"
+                value={formData.fullName}
+                onChange={handleChange}
+                required
+                className="reservation-input"
+              />
+            </div>
 
-            <label className="reservation-field">
-              <span>Phone</span>
-              <div className="reservation-field__control">
-                <Phone size={18} />
-                <input name="phone" value={formData.phone} onChange={handleChange} required />
-              </div>
-            </label>
+            <div className="reservation-form-group">
+              <label htmlFor="phone" className="reservation-label">Phone Number</label>
+              <input
+                id="phone"
+                name="phone"
+                type="tel"
+                placeholder="Enter your phone number"
+                value={formData.phone}
+                onChange={handleChange}
+                required
+                className="reservation-input"
+              />
+            </div>
 
-            <label className="reservation-field">
-              <span>Email</span>
-              <div className="reservation-field__control">
-                <Mail size={18} />
-                <input type="email" name="email" value={formData.email} onChange={handleChange} required />
-              </div>
-            </label>
+            <div className="reservation-form-group">
+              <label htmlFor="email" className="reservation-label">Email Address</label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="Enter your email"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                className="reservation-input"
+              />
+            </div>
 
-            <label className="reservation-field">
-              <span>Date</span>
-              <div className="reservation-field__control">
-                <CalendarDays size={18} />
-                <input type="date" name="reservationDate" value={formData.reservationDate} onChange={handleChange} required />
-              </div>
-            </label>
+            <div className="reservation-form-group">
+              <label htmlFor="numberOfGuests" className="reservation-label">Number of Guests</label>
+              <input
+                id="numberOfGuests"
+                name="numberOfGuests"
+                type="number"
+                min="1"
+                max="30"
+                placeholder="Number of guests"
+                value={formData.numberOfGuests}
+                onChange={handleChange}
+                required
+                className="reservation-input"
+              />
+            </div>
 
-            <label className="reservation-field">
-              <span>Time</span>
-              <div className="reservation-field__control">
-                <Clock size={18} />
-                <input type="time" name="reservationTime" value={formData.reservationTime} onChange={handleChange} required />
-              </div>
-            </label>
+            <div className="reservation-form-group">
+              <label htmlFor="reservationDate" className="reservation-label">Date</label>
+              <input
+                id="reservationDate"
+                name="reservationDate"
+                type="date"
+                min={todayStr}
+                value={formData.reservationDate}
+                onChange={handleChange}
+                required
+                className="reservation-input reservation-input--date"
+              />
+            </div>
 
-            <label className="reservation-field">
-              <span>Guests</span>
-              <div className="reservation-field__control">
-                <Users size={18} />
-                <input min="1" type="number" name="numberOfGuests" value={formData.numberOfGuests} onChange={handleChange} required />
-              </div>
-            </label>
+            <div className="reservation-form-group">
+              <label htmlFor="reservationTime" className="reservation-label">Time</label>
+              <input
+                id="reservationTime"
+                name="reservationTime"
+                type="time"
+                value={formData.reservationTime}
+                onChange={handleChange}
+                required
+                className="reservation-input reservation-input--time"
+              />
+            </div>
           </div>
 
-          <label className="reservation-field">
-            <span>Note</span>
-            <textarea name="note" value={formData.note} onChange={handleChange} rows="4" />
-          </label>
+          <div className="reservation-form-group reservation-form-group--full">
+            <label htmlFor="note" className="reservation-label">Note / Special Request</label>
+            <textarea
+              id="note"
+              name="note"
+              placeholder="Any special requests (allergies, high chairs, preferred seating area, etc.)"
+              value={formData.note}
+              onChange={handleChange}
+              rows="4"
+              className="reservation-textarea"
+            />
+          </div>
 
-          <button type="submit" className="reservation-primary-button" disabled={submitting}>
-            {submitting ? 'Creating...' : 'Create reservation'}
+          <button type="submit" className="reservation-submit-button" disabled={submitting}>
+            {submitting ? 'Processing...' : 'Create Reservation'}
           </button>
         </form>
       </main>
+
+      <Footer />
     </div>
   )
 }
 
 export default CreateReservationScreen
+
