@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { GoogleLogin } from '@react-oauth/google'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Mail, Lock, Eye, EyeOff, User, Phone } from 'lucide-react'
@@ -12,7 +12,6 @@ import './AuthScreen.css'
 function AuthScreen() {
   const location = useLocation()
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState(location.pathname === '/register' ? 'register' : 'login')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [authStep, setAuthStep] = useState('credentials') // credentials | forgot-email | otp | new-password
@@ -33,15 +32,15 @@ function AuthScreen() {
   const [successMessage, setSuccessMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  useEffect(() => {
-    setActiveTab(location.pathname === '/register' ? 'register' : 'login')
+  const isLogin = location.pathname !== '/register'
+
+  const handleAuthModeChange = (path) => {
     setError('')
     setSuccessMessage('')
     setAuthStep('credentials')
     setOtpVerified(false)
-  }, [location.pathname])
-
-  const isLogin = activeTab === 'login'
+    navigate(path)
+  }
 
   const handleChange = (event) => {
     const { name, value } = event.target
@@ -121,7 +120,7 @@ function AuthScreen() {
         setSuccessMessage('Password reset successfully. You can now login.')
         setError('')
         setAuthStep('credentials')
-        setActiveTab('login')
+        navigate('/login')
         return
       }
 
@@ -423,7 +422,7 @@ function AuthScreen() {
               role="tab"
               aria-selected={isLogin}
               className={`auth-screen__tab ${isLogin ? 'auth-screen__tab--active' : ''}`}
-              onClick={() => navigate('/login')}
+              onClick={() => handleAuthModeChange('/login')}
             >
               Login
             </button>
@@ -432,7 +431,7 @@ function AuthScreen() {
               role="tab"
               aria-selected={!isLogin}
               className={`auth-screen__tab ${!isLogin ? 'auth-screen__tab--active' : ''}`}
-              onClick={() => navigate('/register')}
+              onClick={() => handleAuthModeChange('/register')}
             >
               Register
             </button>

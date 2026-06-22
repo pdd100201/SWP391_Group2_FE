@@ -739,6 +739,9 @@ function InventoryScreen() {
   const [alertDismissed, setAlertDismissed] = useState(false)
   const searchTimeout = useRef(null)
 
+  const showToast = useCallback((message, type = 'success') => setToast({ message, type }), [])
+  const clearToast = useCallback(() => setToast(null), [])
+
   // ── Fetch items ────────────────────────────────────────────────────────────
   const fetchItems = useCallback(async (kw = keyword, cat = categoryFilter) => {
     setLoading(true)
@@ -753,9 +756,11 @@ function InventoryScreen() {
     } finally {
       setLoading(false)
     }
-  }, [keyword, categoryFilter])
+  }, [keyword, categoryFilter, showToast])
 
   useEffect(() => {
+    // Initial API synchronization for this management screen.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchItems()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -800,9 +805,6 @@ function InventoryScreen() {
   }
 
   // ── Toast ──────────────────────────────────────────────────────────────────
-  const showToast = (message, type = 'success') => setToast({ message, type })
-  const clearToast = () => setToast(null)
-
   // ── Handlers ───────────────────────────────────────────────────────────────
   const handleAddSuccess = (newItem) => {
     setItems((prev) => [newItem, ...prev])

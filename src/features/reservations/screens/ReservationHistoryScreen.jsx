@@ -30,6 +30,8 @@ function ReservationHistoryScreen() {
   }
 
   useEffect(() => {
+    // Initial API synchronization for reservation history.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadReservations()
   }, [])
 

@@ -22,7 +22,7 @@ function getStoredGuest() {
 }
 
 function CreateReservationScreen() {
-  const storedGuest = useMemo(getStoredGuest, [])
+  const storedGuest = useMemo(() => getStoredGuest(), [])
   const [formData, setFormData] = useState({
     ...initialForm,
     fullName: storedGuest.fullName,

@@ -37,6 +37,8 @@ function DashboardReservationsScreen() {
   }
 
   useEffect(() => {
+    // Initial API synchronization for reservation management.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadReservations()
   }, [])
 
