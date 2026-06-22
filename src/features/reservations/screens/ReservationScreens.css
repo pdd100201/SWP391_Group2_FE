@@ -1,0 +1,128 @@
+.reservation-page {
+  min-height: 100vh;
+}
+
+.reservation-page__main {
+  margin: 0 auto;
+}
+
+.reservation-page__main--public {
+}
+
+}
+
+.reservation-eyebrow {
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.reservation-form {
+}
+
+.reservation-form__grid {
+  display: grid;
+}
+
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+  width: 100%;
+  outline: none;
+}
+
+}
+
+}
+
+}
+
+  opacity: 1;
+}
+
+  border: 0;
+  cursor: pointer;
+}
+
+}
+
+}
+
+  cursor: not-allowed;
+}
+
+.reservation-alert {
+}
+
+.reservation-alert--success {
+}
+
+.reservation-alert--error {
+}
+
+.reservation-list {
+  display: grid;
+}
+
+.reservation-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+  margin: 0;
+}
+
+}
+
+}
+
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+}
+
+}
+
+}
+
+}
+
+}
+
+  width: 100%;
+}
+
+  border-radius: 8px;
+}
+
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+  color: #475569;
+}
+
+  display: block;
+  color: #64748b;
+}
+
+  .reservation-form__grid {
+    grid-template-columns: 1fr;
+  }
+
+  }
+
+    flex-direction: column;
+  }
+
+  }
+}
