@@ -13,6 +13,8 @@ import CustomerAccountPage from '../features/accounts/screens/CustomerAccountPag
 import CreateReservationScreen from '../features/reservations/screens/CreateReservationScreen'
 import ReservationHistoryScreen from '../features/reservations/screens/ReservationHistoryScreen'
 import DashboardReservationsScreen from '../features/reservations/screens/DashboardReservationsScreen'
+import OrdersServiceScreen from '../features/orders/screens/OrdersServiceScreen'
+import PublicOrderScreen from '../features/orders/screens/PublicOrderScreen'
 import MainLayout from '../shared/components/layout/MainLayout/MainLayout'
 import RequireAuth from '../shared/components/ui/RequireAuth'
 import RedirectByRole from '../shared/components/ui/RedirectByRole'
@@ -30,6 +32,7 @@ function AppRoutes() {
       <Route path="/forgot-password" element={<ForgotPasswordScreen />} />
       <Route path="/verify-otp" element={<VerifyOtpScreen />} />
       <Route path="/reset-password" element={<ResetPasswordScreen />} />
+      <Route path="/order-access/:token" element={<PublicOrderScreen />} />
       <Route
         path="/reservations"
         element={(
@@ -84,11 +87,11 @@ function AppRoutes() {
         <Route index element={<DashboardPage />} />
         <Route path="check-in-tables" element={<DashboardPage />} />
         <Route path="reservations" element={<DashboardReservationsScreen />} />
-        <Route path="orders-service" element={<DashboardPage />} />
+        <Route path="orders-service" element={<OrdersServiceScreen />} />
         <Route
           path="menu-management"
           element={(
-            <RequireAuth allowedRoles={['ADMIN', 'MANAGER']}>
+            <RequireAuth allowedRoles={['ADMIN', 'MANAGER', 'RECEPTIONIST', 'WAITER']}>
               <MenuManagementScreen />
             </RequireAuth>
           )}
@@ -97,7 +100,7 @@ function AppRoutes() {
         <Route
           path="inventory"
           element={(
-            <RequireAuth allowedRoles={['ADMIN', 'MANAGER']}>
+            <RequireAuth allowedRoles={['ADMIN', 'MANAGER', 'RECEPTIONIST', 'WAITER']}>
               <InventoryScreen />
             </RequireAuth>
           )}

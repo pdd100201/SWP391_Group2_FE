@@ -60,11 +60,6 @@ function DashboardReservationsScreen() {
     return list
   }, [filteredReservations, sortBy, sortOrder])
 
-  // Reset page when filter or sorting changes
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [statusFilter, sortBy, sortOrder])
-
   // Pagination pagination logic
   const totalPages = Math.ceil(sortedReservations.length / itemsPerPage)
   const paginatedReservations = useMemo(() => {
@@ -86,6 +81,8 @@ function DashboardReservationsScreen() {
   }
 
   useEffect(() => {
+    // Initial data synchronization with the API.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadReservations()
   }, [])
 
@@ -143,7 +140,10 @@ function DashboardReservationsScreen() {
               <select
                 id="statusFilter"
                 value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value)}
+                onChange={(event) => {
+                  setStatusFilter(event.target.value)
+                  setCurrentPage(1)
+                }}
                 className="dashboard-select"
                 style={{ minWidth: '130px' }}
               >
@@ -164,6 +164,7 @@ function DashboardReservationsScreen() {
                   const [field, order] = event.target.value.split('-')
                   setSortBy(field)
                   setSortOrder(order)
+                  setCurrentPage(1)
                 }}
                 className="dashboard-select"
                 style={{ minWidth: '180px' }}
@@ -196,6 +197,7 @@ function DashboardReservationsScreen() {
                     <th>Guests</th>
                     <th>Special Request</th>
                     <th>Status</th>
+                    <th>Order</th>
                     <th className="text-center">Actions</th>
                   </tr>
                 </thead>
@@ -227,6 +229,13 @@ function DashboardReservationsScreen() {
                         <span className={`reservation-status-badge reservation-status-badge--${reservation.status?.toLowerCase()}`}>
                           {displayValue(reservation.status)}
                         </span>
+                      </td>
+                      <td className="status-cell">
+                        {reservation.orderId ? (
+                          <span title={`Order status: ${reservation.orderStatus}`}>
+                            {reservation.orderCode || `#${reservation.orderId}`} · {reservation.orderStatus}
+                          </span>
+                        ) : <span className="dashboard-no-action">Not opened</span>}
                       </td>
                       <td className="actions-cell">
                         {canConfirmReservation(reservation.status) ? (

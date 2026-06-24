@@ -19,7 +19,7 @@ import { inventoryService } from '../../inventory/services/inventoryService'
 import { menuService } from '../services/menuService'
 import './MenuManagementScreen.css'
 
-const MENU_CATEGORIES = ['Appetizer', 'Main Course', 'Seafood', 'Dessert', 'Beverage', 'Other']
+const MENU_CATEGORIES = ['Appetizer', 'Main Course', 'Side Dish', 'Dessert', 'Beverage']
 
 const EMPTY_FORM = {
   name: '',
@@ -304,6 +304,8 @@ function DishModal({ item, inventory, onClose, onSaved }) {
 }
 
 function MenuManagementScreen() {
+  const role = sessionStorage.getItem('role')
+  const canManage = ['ADMIN', 'MANAGER'].includes(role)
   const [menuItems, setMenuItems] = useState([])
   const [inventory, setInventory] = useState([])
   const [loading, setLoading] = useState(true)
@@ -403,9 +405,11 @@ function MenuManagementScreen() {
           <button type="button" className="menu-button menu-button--secondary" onClick={handleRefresh}>
             <RefreshCw size={16} /> Refresh
           </button>
-          <button type="button" className="menu-button menu-button--primary" onClick={openCreate}>
-            <Plus size={17} /> Add menu item
-          </button>
+          {canManage && (
+            <button type="button" className="menu-button menu-button--primary" onClick={openCreate}>
+              <Plus size={17} /> Add menu item
+            </button>
+          )}
         </div>
       </header>
 
@@ -453,14 +457,16 @@ function MenuManagementScreen() {
               <div className="menu-card__body">
                 <div className="menu-card__title-row">
                   <div><span>{item.category}</span><h2>{item.name}</h2></div>
-                  <button
-                    type="button"
-                    className="menu-icon-button"
-                    onClick={() => { setEditingItem(item); setModalOpen(true) }}
-                    aria-label={`Edit ${item.name}`}
-                  >
-                    <Pencil size={17} />
-                  </button>
+                  {canManage && (
+                    <button
+                      type="button"
+                      className="menu-icon-button"
+                      onClick={() => { setEditingItem(item); setModalOpen(true) }}
+                      aria-label={`Edit ${item.name}`}
+                    >
+                      <Pencil size={17} />
+                    </button>
+                  )}
                 </div>
                 <p className="menu-card__description">{item.description || 'No description provided.'}</p>
 
@@ -495,21 +501,23 @@ function MenuManagementScreen() {
                   </div>
                 )}
 
-                <button
-                  type="button"
-                  className={`menu-button menu-button--wide ${item.isActive ? 'menu-button--danger-soft' : 'menu-button--primary'}`}
-                  onClick={() => toggleActive(item)}
-                  disabled={togglingId === item.id}
-                >
-                  {togglingId === item.id ? 'Updating...' : item.isActive ? 'Stop serving manually' : 'Activate dish'}
-                </button>
+                {canManage && (
+                  <button
+                    type="button"
+                    className={`menu-button menu-button--wide ${item.isActive ? 'menu-button--danger-soft' : 'menu-button--primary'}`}
+                    onClick={() => toggleActive(item)}
+                    disabled={togglingId === item.id}
+                  >
+                    {togglingId === item.id ? 'Updating...' : item.isActive ? 'Stop serving manually' : 'Activate dish'}
+                  </button>
+                )}
               </div>
             </article>
           ))}
         </section>
       )}
 
-      {modalOpen && (
+      {canManage && modalOpen && (
         <DishModal
           item={editingItem}
           inventory={inventory}

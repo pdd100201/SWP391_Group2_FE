@@ -1,0 +1,42 @@
+.public-order-screen { min-height: 100vh; padding: 30px clamp(16px, 4vw, 60px); color: #14211d; background: #f8faf9; }
+.public-order-header { max-width: 720px; margin: 0 auto 28px; text-align: center; }
+.public-order-header > span { display: inline-flex; align-items: center; gap: 7px; color: #075c46; font-weight: 850; text-transform: uppercase; letter-spacing: .08em; }
+.public-order-header h1 { margin: 12px 0 6px; color: #064e3b; font-size: clamp(1.8rem, 5vw, 3rem); }
+.public-order-header p { margin: 0; color: #64748b; }
+.public-order-alert, .public-order-closed { max-width: 800px; margin: 0 auto 18px; padding: 13px; border-radius: 10px; text-align: center; }
+.public-order-alert { color: #b42318; background: #fff1f0; border: 1px solid #fecaca; }
+.public-order-closed { color: #92400e; background: #fffbeb; border: 1px solid #fde68a; }
+.public-order-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; max-width: 1280px; margin: auto; align-items: start; }
+.public-order-categories { display: flex; gap: 7px; overflow-x: auto; padding-bottom: 12px; }
+.public-order-categories button { white-space: nowrap; border: 1px solid #cbd5e1; background: white; border-radius: 99px; padding: 8px 13px; cursor: pointer; }
+.public-order-categories button.is-active { color: white; background: #075c46; border-color: #075c46; }
+.public-menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; }
+.public-menu-grid article { display: flex; flex-direction: column; overflow: hidden; border: 1px solid #e2e8f0; border-radius: 16px; background: white; box-shadow: 0 8px 25px rgba(15, 23, 42, .04); }
+.public-menu-grid img { width: 100%; height: 150px; object-fit: cover; background: #f1f5f9; }
+.public-menu-grid article > div { flex: 1; padding: 14px; }
+.public-menu-grid small { color: #075c46; font-weight: 750; }
+.public-menu-grid h2 { margin: 5px 0; font-size: 1.05rem; }
+.public-menu-grid p { color: #64748b; font-size: .84rem; line-height: 1.4; }
+.public-menu-grid strong { color: #064e3b; }
+.public-menu-grid article > button, .public-submit { margin: 0 14px 14px; min-height: 40px; display: flex; align-items: center; justify-content: center; gap: 7px; border: 0; border-radius: 10px; background: #ecfdf5; color: #047857; font-weight: 850; cursor: pointer; }
+.public-cart { position: sticky; top: 20px; padding: 18px; border: 1px solid #e2e8f0; border-radius: 16px; background: white; box-shadow: 0 12px 35px rgba(15, 23, 42, .07); }
+.public-cart h2 { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; color: #064e3b; }
+.public-cart h2 span { margin-left: auto; min-width: 25px; padding: 2px 7px; border-radius: 99px; background: #ecfdf5; text-align: center; font-size: .8rem; }
+.public-cart > article { padding: 12px 0; border-top: 1px solid #e2e8f0; }
+.public-cart > article > div:first-child { display: flex; justify-content: space-between; gap: 10px; }
+.public-cart > article span { color: #075c46; font-weight: 800; }
+.public-cart-controls { display: flex; align-items: center; gap: 9px; margin: 10px 0; }
+.public-cart-controls button { width: 30px; height: 30px; display: grid; place-items: center; border: 1px solid #cbd5e1; border-radius: 7px; background: white; cursor: pointer; }
+.public-cart-controls .is-danger { margin-left: auto; color: #b42318; border-color: #fecaca; }
+.public-cart input { width: 100%; box-sizing: border-box; padding: 9px; border: 1px solid #cbd5e1; border-radius: 8px; }
+.public-cart-total { display: flex; justify-content: space-between; padding: 15px 0; border-top: 1px solid #e2e8f0; }
+.public-submit { width: 100%; margin: 0; color: white; background: linear-gradient(135deg, #064e3b, #08745a); }
+.public-submit:disabled, .public-menu-grid button:disabled { opacity: .5; cursor: not-allowed; }
+.public-cart-hint, .public-cart-empty { color: #64748b; font-size: .78rem; line-height: 1.45; }
+.public-order-message { padding: 100px 20px; text-align: center; color: #64748b; }
+.public-order-message--error { color: #b42318; }
+
+@media (max-width: 850px) {
+  .public-order-layout { grid-template-columns: 1fr; }
+  .public-cart { position: static; grid-row: 1; }
+}
