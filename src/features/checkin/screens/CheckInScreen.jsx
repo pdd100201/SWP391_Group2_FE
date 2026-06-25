@@ -12,52 +12,6 @@ const todayInputValue = () => {
   return offsetDate.toISOString().slice(0, 10)
 }
 
-const DEMO_RESERVATIONS = [
-  {
-    reservationId: 'R-1001',
-    fullName: 'Linh Tran',
-    phone: '0901234567',
-    reservationDate: todayInputValue(),
-    reservationTime: '18:30',
-    numberOfGuests: 4,
-    status: 'CONFIRMED',
-    note: 'Window seat preferred',
-  },
-  {
-    reservationId: 'R-1002',
-    fullName: 'Minh Nguyen',
-    phone: '0918887766',
-    reservationDate: todayInputValue(),
-    reservationTime: '19:00',
-    numberOfGuests: 2,
-    status: 'PENDING',
-    note: '',
-  },
-  {
-    reservationId: 'R-1003',
-    fullName: 'An Pham',
-    phone: '0987654321',
-    reservationDate: todayInputValue(),
-    reservationTime: '20:15',
-    numberOfGuests: 6,
-    status: 'CONFIRMED',
-    note: 'Birthday dinner',
-  },
-]
-
-const DEMO_TABLES = [
-  { id: 'T01', tableNumber: 'T01', tableName: 'Table 1', tableType: 'Main Hall', capacity: 2, status: 'AVAILABLE' },
-  { id: 'T02', tableNumber: 'T02', tableName: 'Table 2', tableType: 'Main Hall', capacity: 2, status: 'OCCUPIED' },
-  { id: 'T03', tableNumber: 'T03', tableName: 'Table 3', tableType: 'Main Hall', capacity: 4, status: 'AVAILABLE' },
-  { id: 'T04', tableNumber: 'T04', tableName: 'Table 4', tableType: 'Main Hall', capacity: 4, status: 'AVAILABLE' },
-  { id: 'T05', tableNumber: 'T05', tableName: 'Table 5', tableType: 'Main Hall', capacity: 6, status: 'OCCUPIED' },
-  { id: 'VIP-1', tableNumber: 'VIP-1', tableName: 'VIP Room 1', tableType: 'VIP Room', capacity: 8, status: 'AVAILABLE' },
-  { id: 'VIP-2', tableNumber: 'VIP-2', tableName: 'VIP Room 2', tableType: 'VIP Room', capacity: 10, status: 'OCCUPIED' },
-  { id: 'P01', tableNumber: 'P01', tableName: 'Patio Table 1', tableType: 'Patio', capacity: 4, status: 'AVAILABLE' },
-  { id: 'P02', tableNumber: 'P02', tableName: 'Patio Table 2', tableType: 'Patio', capacity: 4, status: 'AVAILABLE' },
-  { id: 'P03', tableNumber: 'P03', tableName: 'Patio Table 3', tableType: 'Patio', capacity: 6, status: 'OCCUPIED' },
-]
-
 const ACTIVE_RESERVATION_STATUSES = new Set(['PENDING', 'CONFIRMED'])
 
 const displayValue = (value) => {
@@ -86,8 +40,8 @@ const normalizeTable = (table) => ({
 })
 
 function CheckInScreen() {
-  const [reservations, setReservations] = useState(DEMO_RESERVATIONS)
-  const [tables, setTables] = useState(DEMO_TABLES)
+  const [reservations, setReservations] = useState([])
+  const [tables, setTables] = useState([])
   const [search, setSearch] = useState('')
   const [selectedDate, setSelectedDate] = useState(todayInputValue())
   const [selectedReservationId, setSelectedReservationId] = useState(null)
@@ -95,6 +49,11 @@ function CheckInScreen() {
   const [hint, setHint] = useState('Select a reservation first, then choose an available table.')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [occupiedTableDetails, setOccupiedTableDetails] = useState(null);
+
+  // State quản lý bộ lọc
+  const [selectedSection, setSelectedSection] = useState('All');
+  const [selectedStatus, setSelectedStatus] = useState('All');
 
   const loadCheckInData = useCallback(async () => {
     setLoading(true)
@@ -108,17 +67,21 @@ function CheckInScreen() {
       const nextReservations = Array.isArray(reservationResponse.data)
           ? reservationResponse.data.map(normalizeReservation)
           : []
+
+      // 🟢 CỤC NÀY ĐÃ SỬA: Lọc thẳng tay các bàn bị Deactive ra ngoài
       const nextTables = Array.isArray(tableResponse.data)
-          ? tableResponse.data.map(normalizeTable)
+          ? tableResponse.data
+              .filter(table => table.isActive === true) // Chỉ lấy bàn đang active
+              .map(normalizeTable)
           : []
 
-      setReservations(nextReservations.length ? nextReservations : DEMO_RESERVATIONS)
-      setTables(nextTables.length ? nextTables : DEMO_TABLES)
+      setReservations(nextReservations)
+      setTables(nextTables)
     } catch (err) {
       console.error("Lỗi khi load dữ liệu thật:", err);
-      setReservations(DEMO_RESERVATIONS)
-      setTables(DEMO_TABLES)
-      setError('Unable to load live check-in data, showing demo data instead.')
+      setReservations([])
+      setTables([])
+      setError('Unable to load live check-in data. Please check your backend connection.')
     } finally {
       setLoading(false)
     }
@@ -147,33 +110,69 @@ function CheckInScreen() {
       filteredReservations.find((reservation) => reservation.reservationId === selectedReservationId) ?? null
   ), [filteredReservations, selectedReservationId])
 
+  // 🌟 ĐÃ FIX ĐỘNG: Tự động gom danh sách Khu vực (Types) từ DB
+  const dynamicSections = useMemo(() => {
+    const sections = new Set(tables.map(t => t.tableType || 'Dining Room'))
+    return Array.from(sections)
+  }, [tables])
+
+  // 🌟 ĐÃ FIX ĐỘNG: Tự động gom danh sách Trạng thái (Statuses) thực tế tồn tại từ DB
+  const dynamicStatuses = useMemo(() => {
+    const statuses = new Set(tables.map(t => t.status))
+    return Array.from(statuses) // Sẽ trả về mảng dạng ['AVAILABLE', 'OCCUPIED'...] tùy dữ liệu dưới DB
+  }, [tables])
+
+  // Lọc dữ liệu bàn theo Khu vực & Trạng thái đã chọn ở Dropdown
   const tablesBySection = useMemo(() => {
     return tables.reduce((groups, table) => {
       const section = table.tableType || 'Dining Room'
+
+      if (selectedSection !== 'All' && section !== selectedSection) {
+        return groups
+      }
+
+      if (selectedStatus !== 'All' && table.status !== selectedStatus) {
+        return groups
+      }
+
       if (!groups[section]) groups[section] = []
       groups[section].push(table)
       return groups
     }, {})
-  }, [tables])
+  }, [tables, selectedSection, selectedStatus])
 
   const handleReservationSelect = (reservation) => {
     setSelectedReservationId(reservation.reservationId)
     setHint(`Ready to assign ${reservation.fullName}. Choose a green available table.`)
   }
 
-  const handleTableClick = (table) => {
+  const handleTableClick = async (table) => {
+    if (table.status === 'OCCUPIED') {
+      try {
+        const response = await checkinApi.getActiveGuestByTable(table.id);
+        setOccupiedTableDetails({
+          table,
+          guest: response.data
+        });
+      } catch (err) {
+        console.error("Lỗi khi lấy thông tin khách từ DB:", err);
+        alert("Could not fetch active guest details. Please try again.");
+      }
+      return;
+    }
+
     if (!selectedReservation) {
-      setHint('Pick a reservation from the queue before assigning a table.')
-      return
+      setHint('Pick a reservation from the queue before assigning a table.');
+      return;
     }
 
     if (table.status !== 'AVAILABLE') {
-      setHint(`${table.tableNumber} is not available for check-in.`)
-      return
+      setHint(`${table.tableNumber} is not available for check-in.`);
+      return;
     }
 
-    setPendingAssignment({ reservation: selectedReservation, table })
-  }
+    setPendingAssignment({ reservation: selectedReservation, table });
+  };
 
   const confirmAssignment = async () => {
     if (!pendingAssignment) return
@@ -212,6 +211,12 @@ function CheckInScreen() {
       alert("Không thể thực hiện check-in! Vui lòng kiểm tra lại kết nối hoặc trạng thái bàn.");
       setPendingAssignment(null);
     }
+  }
+
+  // Hàm phụ trợ để hiển thị chữ trên Dropdown cho đẹp (Ví dụ: AVAILABLE -> Available)
+  const formatStatusLabel = (statusString) => {
+    if (!statusString) return '';
+    return statusString.charAt(0).toUpperCase() + statusString.slice(1).toLowerCase();
   }
 
   return (
@@ -299,44 +304,102 @@ function CheckInScreen() {
                 <p>{hint}</p>
               </div>
               <div className="checkin-legend">
-                <span><i className="checkin-legend__dot checkin-legend__dot--available" /> Available</span>
-                <span><i className="checkin-legend__dot checkin-legend__dot--occupied" /> Occupied</span>
+                {dynamicStatuses.map((status) => (
+                    <span key={status} style={{ textTransform: 'capitalize' }}>
+      <i className={`checkin-legend__dot checkin-legend__dot--${status.toLowerCase()}`} />
+                      {formatStatusLabel(status)}
+    </span>
+                ))}
               </div>
             </div>
 
+            {/* BỘ LỌC DẠNG DROPDOWN - TẤT CẢ ĐỀU ĐỒNG BỘ ĐỘNG TỪ DB */}
+            <div style={{ display: 'flex', gap: '12px', padding: '12px 24px', background: '#ffffff', borderBottom: '1px solid #e2e8f0' }}>
+              {/* Dropdown 1: Khu vực bàn (All Types) */}
+              <select
+                  value={selectedSection}
+                  onChange={(e) => setSelectedSection(e.target.value)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    background: '#ffffff',
+                    color: '#1e293b',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    minWidth: '130px'
+                  }}
+              >
+                <option value="All">All Types</option>
+                {dynamicSections.map((section) => (
+                    <option key={section} value={section}>{section}</option>
+                ))}
+              </select>
+
+              {/* Dropdown 2: Trạng thái bàn (All Statuses) - ĐÃ ĐỔI THÀNH MAP ĐỘNG TỪ DB */}
+              <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    border: '1px solid #cbd5e1',
+                    background: '#ffffff',
+                    color: '#1e293b',
+                    fontSize: '14px',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    minWidth: '130px'
+                  }}
+              >
+                <option value="All">All Statuses</option>
+                {dynamicStatuses.map((status) => (
+                    <option key={status} value={status}>
+                      {formatStatusLabel(status)}
+                    </option>
+                ))}
+              </select>
+            </div>
+
             <div className={`checkin-floor ${!selectedReservation ? 'checkin-floor--waiting' : ''}`}>
-              {Object.entries(tablesBySection).map(([section, sectionTables]) => (
-                  <section key={section} className="checkin-section">
-                    <div className="checkin-section__title">
-                      <h3>{section}</h3>
-                      <span>{sectionTables.length} tables</span>
-                    </div>
-                    <div className="checkin-table-grid">
-                      {sectionTables.map((table) => {
-                        const isAvailable = table.status === 'AVAILABLE'
-                        const canAssign = Boolean(selectedReservation) && isAvailable
-                        return (
-                            <button
-                                key={table.id}
-                                type="button"
-                                className={`checkin-table checkin-table--${table.status.toLowerCase()} ${canAssign ? 'checkin-table--assignable' : ''}`}
-                                onClick={() => handleTableClick(table)}
-                                aria-disabled={!canAssign}
-                            >
-                              <span className="checkin-table__icon"><Table2 size={18} /></span>
-                              <strong>{table.tableNumber}</strong>
-                              <span>{table.tableName}</span>
-                              <small>{table.capacity} pax</small>
-                            </button>
-                        )
-                      })}
-                    </div>
-                  </section>
-              ))}
+              {Object.keys(tablesBySection).length === 0 ? (
+                  <div className="checkin-empty">No tables found matching the filters.</div>
+              ) : (
+                  Object.entries(tablesBySection).map(([section, sectionTables]) => (
+                      <section key={section} className="checkin-section">
+                        <div className="checkin-section__title">
+                          <h3>{section}</h3>
+                          <span>{sectionTables.length} tables</span>
+                        </div>
+                        <div className="checkin-table-grid">
+                          {sectionTables.map((table) => {
+                            const isAvailable = table.status === 'AVAILABLE'
+                            const canAssign = Boolean(selectedReservation) && isAvailable
+                            return (
+                                <button
+                                    key={table.id}
+                                    type="button"
+                                    className={`checkin-table checkin-table--${table.status.toLowerCase()} ${canAssign ? 'checkin-table--assignable' : ''}`}
+                                    onClick={() => handleTableClick(table)}
+                                    aria-disabled={!canAssign}
+                                >
+                                  <span className="checkin-table__icon"><Table2 size={18} /></span>
+                                  <strong>{table.tableNumber}</strong>
+                                  <span>{table.tableName}</span>
+                                  <small>{table.capacity} pax</small>
+                                </button>
+                            )
+                          })}
+                        </div>
+                      </section>
+                  ))
+              )}
             </div>
           </main>
         </div>
 
+        {/* POP-UP 1: XÁC NHẬN GÁN BÀN TRỐNG */}
         {pendingAssignment && (
             <div className="checkin-modal-backdrop" onClick={() => setPendingAssignment(null)}>
               <div className="checkin-modal" onClick={(event) => event.stopPropagation()}>
@@ -351,6 +414,33 @@ function CheckInScreen() {
                   </button>
                   <button type="button" className="checkin-modal__primary" onClick={confirmAssignment}>
                     Confirm Check-in
+                  </button>
+                </div>
+              </div>
+            </div>
+        )}
+
+        {/* POP-UP 2: HIỂN THỊ THÔNG TIN KHÁCH ĐANG NGỒI KHI CLICK BÀN ĐỎ */}
+        {occupiedTableDetails && (
+            <div className="checkin-modal-backdrop" onClick={() => setOccupiedTableDetails(null)}>
+              <div className="checkin-modal" onClick={(event) => event.stopPropagation()}>
+                <h2>Table {occupiedTableDetails.table.tableNumber} Details</h2>
+                <div style={{ margin: '15px 0', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '14px' }}>
+                  <p><strong>Guest Name:</strong> {displayValue(occupiedTableDetails.guest.fullName)}</p>
+                  <p><strong>Phone:</strong> {displayValue(occupiedTableDetails.guest.phone)}</p>
+                  <p><strong>Number of Guests:</strong> {displayValue(occupiedTableDetails.guest.numberOfGuests)} pax</p>
+                  <p><strong>Check-in Time:</strong> {displayValue(occupiedTableDetails.guest.checkInTime)}</p>
+                </div>
+                <div className="checkin-modal__actions">
+                  <button type="button" className="checkin-modal__secondary" onClick={() => setOccupiedTableDetails(null)}>
+                    Close
+                  </button>
+                  <button
+                      type="button"
+                      className="checkin-modal__primary"
+                      onClick={() => alert(`Redirecting to order: ${occupiedTableDetails.guest.orderId}`)}
+                  >
+                    Go to Orders & Service
                   </button>
                 </div>
               </div>
