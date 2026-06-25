@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { CalendarDays, Clock, Phone, Search, Table2, UsersRound } from 'lucide-react'
+import { CalendarDays, Clock, Search, UsersRound, CheckCircle2, HelpCircle } from 'lucide-react'
 import { checkinApi } from '../api/checkinApi'
-
+import { getAllReservations } from "../../reservations/api/reservationApi.js"
+import { tableApi } from "../../tables/api/tableApi.js"
 import './CheckInScreen.css'
-import {getAllReservations} from "../../reservations/api/reservationApi.js";
-import {tableApi} from "../../tables/api/tableApi.js";
 
 const todayInputValue = () => {
   const now = new Date()
@@ -49,11 +48,10 @@ function CheckInScreen() {
   const [hint, setHint] = useState('Select a reservation first, then choose an available table.')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [occupiedTableDetails, setOccupiedTableDetails] = useState(null);
+  const [occupiedTableDetails, setOccupiedTableDetails] = useState(null)
 
-  // State quản lý bộ lọc
-  const [selectedSection, setSelectedSection] = useState('All');
-  const [selectedStatus, setSelectedStatus] = useState('All');
+  const [selectedSection, setSelectedSection] = useState('All')
+  const [selectedStatus, setSelectedStatus] = useState('All')
 
   const loadCheckInData = useCallback(async () => {
     setLoading(true)
@@ -68,17 +66,16 @@ function CheckInScreen() {
           ? reservationResponse.data.map(normalizeReservation)
           : []
 
-      // 🟢 CỤC NÀY ĐÃ SỬA: Lọc thẳng tay các bàn bị Deactive ra ngoài
       const nextTables = Array.isArray(tableResponse.data)
           ? tableResponse.data
-              .filter(table => table.isActive === true) // Chỉ lấy bàn đang active
+              .filter(table => table.isActive === true)
               .map(normalizeTable)
           : []
 
       setReservations(nextReservations)
       setTables(nextTables)
     } catch (err) {
-      console.error("Lỗi khi load dữ liệu thật:", err);
+      console.error("Error loading data:", err)
       setReservations([])
       setTables([])
       setError('Unable to load live check-in data. Please check your backend connection.')
@@ -88,7 +85,6 @@ function CheckInScreen() {
   }, [])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadCheckInData()
   }, [loadCheckInData])
 
@@ -110,30 +106,22 @@ function CheckInScreen() {
       filteredReservations.find((reservation) => reservation.reservationId === selectedReservationId) ?? null
   ), [filteredReservations, selectedReservationId])
 
-  // 🌟 ĐÃ FIX ĐỘNG: Tự động gom danh sách Khu vực (Types) từ DB
   const dynamicSections = useMemo(() => {
     const sections = new Set(tables.map(t => t.tableType || 'Dining Room'))
     return Array.from(sections)
   }, [tables])
 
-  // 🌟 ĐÃ FIX ĐỘNG: Tự động gom danh sách Trạng thái (Statuses) thực tế tồn tại từ DB
   const dynamicStatuses = useMemo(() => {
     const statuses = new Set(tables.map(t => t.status))
-    return Array.from(statuses) // Sẽ trả về mảng dạng ['AVAILABLE', 'OCCUPIED'...] tùy dữ liệu dưới DB
+    return Array.from(statuses)
   }, [tables])
 
-  // Lọc dữ liệu bàn theo Khu vực & Trạng thái đã chọn ở Dropdown
   const tablesBySection = useMemo(() => {
     return tables.reduce((groups, table) => {
       const section = table.tableType || 'Dining Room'
 
-      if (selectedSection !== 'All' && section !== selectedSection) {
-        return groups
-      }
-
-      if (selectedStatus !== 'All' && table.status !== selectedStatus) {
-        return groups
-      }
+      if (selectedSection !== 'All' && section !== selectedSection) return groups
+      if (selectedStatus !== 'All' && table.status !== selectedStatus) return groups
 
       if (!groups[section]) groups[section] = []
       groups[section].push(table)
@@ -143,89 +131,75 @@ function CheckInScreen() {
 
   const handleReservationSelect = (reservation) => {
     setSelectedReservationId(reservation.reservationId)
-    setHint(`Ready to assign ${reservation.fullName}. Choose a green available table.`)
+    setHint(`Ready to assign ${reservation.fullName}. Choose an available table below.`)
   }
 
   const handleTableClick = async (table) => {
     if (table.status === 'OCCUPIED') {
       try {
-        const response = await checkinApi.getActiveGuestByTable(table.id);
-        setOccupiedTableDetails({
-          table,
-          guest: response.data
-        });
+        const response = await checkinApi.getActiveGuestByTable(table.id)
+        setOccupiedTableDetails({ table, guest: response.data })
       } catch (err) {
-        console.error("Lỗi khi lấy thông tin khách từ DB:", err);
-        alert("Could not fetch active guest details. Please try again.");
+        console.error("Error fetching active guest details:", err)
+        alert("Could not fetch active guest details. Please try again.")
       }
-      return;
+      return
     }
 
     if (!selectedReservation) {
-      setHint('Pick a reservation from the queue before assigning a table.');
-      return;
+      setHint('Select a reservation from the queue first before choosing a table.')
+      return
     }
 
     if (table.status !== 'AVAILABLE') {
-      setHint(`${table.tableNumber} is not available for check-in.`);
-      return;
+      setHint(`Table ${table.tableNumber} is currently not available.`)
+      return
     }
 
-    setPendingAssignment({ reservation: selectedReservation, table });
-  };
+    setPendingAssignment({ reservation: selectedReservation, table })
+  }
 
   const confirmAssignment = async () => {
     if (!pendingAssignment) return
     const { reservation, table } = pendingAssignment
 
-    const resId = reservation.reservationId || reservation.id;
-    const tblId = table.id;
-
-    if (!resId || !tblId) {
-      console.error("Lỗi: Không tìm thấy ID hợp lệ!", { resId, tblId });
-      alert("Dữ liệu ID của bàn hoặc lịch đặt không hợp lệ. Vui lòng F12 xem Console.");
-      return;
-    }
+    const resId = reservation.reservationId || reservation.id
+    const tblId = table.id
 
     try {
-      await checkinApi.assignTable({
-        reservationId: resId,
-        tableId: tblId
-      });
+      await checkinApi.assignTable({ reservationId: resId, tableId: tblId })
 
       setReservations((prev) => prev.map((item) => {
-        const currentId = item.reservationId || item.id;
-        return currentId === resId ? { ...item, status: 'ARRIVED' } : item;
-      }));
+        const currentId = item.reservationId || item.id
+        return currentId === resId ? { ...item, status: 'ARRIVED' } : item
+      }))
 
       setTables((prev) => prev.map((item) => (
           item.id === tblId ? { ...item, status: 'OCCUPIED' } : item
-      )));
+      )))
 
-      setSelectedReservationId(null);
-      setPendingAssignment(null);
-      setHint(`Checked in ${reservation.fullName} at table ${table.tableNumber}.`);
-
+      setSelectedReservationId(null)
+      setPendingAssignment(null)
+      setHint(`Successfully checked in ${reservation.fullName} at table ${table.tableNumber}.`)
     } catch (err) {
-      console.error("Chi tiết lỗi nhận từ Backend:", err.response ? err.response.data : err);
-      alert("Không thể thực hiện check-in! Vui lòng kiểm tra lại kết nối hoặc trạng thái bàn.");
-      setPendingAssignment(null);
+      console.error("Check-in error:", err)
+      alert("Failed to execute check-in! Please check connections or table status.")
+      setPendingAssignment(null)
     }
   }
 
-  // Hàm phụ trợ để hiển thị chữ trên Dropdown cho đẹp (Ví dụ: AVAILABLE -> Available)
   const formatStatusLabel = (statusString) => {
-    if (!statusString) return '';
-    return statusString.charAt(0).toUpperCase() + statusString.slice(1).toLowerCase();
+    if (!statusString) return ''
+    return statusString.charAt(0).toUpperCase() + statusString.slice(1).toLowerCase()
   }
 
   return (
-      <section className="checkin-screen">
+      <div className="checkin-screen">
         <header className="checkin-hero">
           <div>
             <p className="checkin-hero__eyebrow">Dashboard / Check-in</p>
             <h1>Check-in</h1>
-            <p>Assign today's active reservations to available dining tables.</p>
+            <p>Assign today's active reservations to available dining tables and manage guest arrival.</p>
           </div>
           <div className="checkin-hero__status">
             <span>{filteredReservations.length}</span>
@@ -236,12 +210,11 @@ function CheckInScreen() {
         {error && <div className="checkin-alert">{error}</div>}
 
         <div className="checkin-layout">
-          <aside className="checkin-panel checkin-panel--queue">
+          {/* CỘT TRÁI: DANH SÁCH HÀNG ĐỢI ĐẶT CHỖ */}
+          <aside className="checkin-panel">
             <div className="checkin-panel__header">
-              <div>
-                <h2>Reservations Queue</h2>
-                <p>{selectedDate}</p>
-              </div>
+              <h2>Reservations Queue</h2>
+              <p>{selectedDate}</p>
             </div>
 
             <div className="checkin-filterbar">
@@ -250,18 +223,28 @@ function CheckInScreen() {
                 <input
                     id="checkin-search"
                     value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Search by guest name or phone number..."
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search by guest name or phone..."
                 />
               </label>
 
-              <label className="checkin-date" htmlFor="checkin-date">
+              {/* Ô bộ chọn ngày tích hợp cơ chế click cưỡng chế showPicker */}
+              <label
+                  className="checkin-date"
+                  htmlFor="checkin-date"
+                  onClick={(e) => {
+                    const inputEl = e.currentTarget.querySelector('input');
+                    if (inputEl && typeof inputEl.showPicker === 'function') {
+                      inputEl.showPicker();
+                    }
+                  }}
+              >
                 <CalendarDays size={16} />
                 <input
                     id="checkin-date"
                     type="date"
                     value={selectedDate}
-                    onChange={(event) => setSelectedDate(event.target.value)}
+                    onChange={(e) => setSelectedDate(e.target.value)}
                 />
               </label>
             </div>
@@ -270,183 +253,151 @@ function CheckInScreen() {
               {loading ? (
                   <div className="checkin-empty">Loading reservations...</div>
               ) : filteredReservations.length === 0 ? (
-                  <div className="checkin-empty">No active reservations for this date.</div>
+                  <div className="checkin-empty">No active reservations for today.</div>
               ) : (
-                  filteredReservations.map((reservation) => (
-                      <button
+                  filteredReservations.map((reservation, index) => (
+                      <div
                           key={reservation.reservationId}
-                          type="button"
                           className={`checkin-reservation ${selectedReservationId === reservation.reservationId ? 'checkin-reservation--active' : ''}`}
                           onClick={() => handleReservationSelect(reservation)}
                       >
-                  <span className="checkin-reservation__topline">
-                    <strong>{displayValue(reservation.fullName)}</strong>
-                    <span>{reservation.status}</span>
-                  </span>
-                        <span className="checkin-reservation__meta">
-                    <span><Clock size={14} /> {displayValue(reservation.reservationTime)}</span>
-                    <span><UsersRound size={14} /> {displayValue(reservation.numberOfGuests)} pax</span>
-                  </span>
-                        <span className="checkin-reservation__phone">
-                    <Phone size={14} /> {displayValue(reservation.phone)}
-                  </span>
-                        {reservation.note && <span className="checkin-reservation__note">{reservation.note}</span>}
-                      </button>
+                        <span className="checkin-reservation__index">{index + 1}</span>
+                        <div className="checkin-reservation__content">
+                          <span className="checkin-reservation__name">{displayValue(reservation.fullName)}</span>
+                          <span className="checkin-reservation__details">
+                            <Clock size={13} /> {displayValue(reservation.reservationTime)}
+                            <span style={{color: '#cbd5e1'}}>|</span>
+                            <UsersRound size={13} /> {displayValue(reservation.numberOfGuests)} Pax
+                          </span>
+                        </div>
+                        <button type="button" className="checkin-reservation__btn-trigger">
+                          Assign {selectedReservationId === reservation.reservationId ? '...' : ''}
+                        </button>
+                      </div>
                   ))
               )}
             </div>
           </aside>
 
-          <main className="checkin-panel checkin-panel--floor">
-            <div className="checkin-panel__header checkin-panel__header--floor">
+          {/* CỘT PHẢI: SƠ ĐỒ MẶT BẰNG BÀN ĂN */}
+          <main className="checkin-panel">
+            <div className="checkin-panel__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h2>Table Floor Plan</h2>
-                <p>{hint}</p>
+                <p style={{color: selectedReservation ? '#0e5c47' : '#64748b', fontWeight: selectedReservation ? '600' : '400'}}>
+                  {hint}
+                </p>
               </div>
               <div className="checkin-legend">
                 {dynamicStatuses.map((status) => (
-                    <span key={status} style={{ textTransform: 'capitalize' }}>
-      <i className={`checkin-legend__dot checkin-legend__dot--${status.toLowerCase()}`} />
+                    <span key={status}>
+                      <i className={`checkin-legend__dot checkin-legend__dot--${status.toLowerCase()}`} />
                       {formatStatusLabel(status)}
-    </span>
+                    </span>
                 ))}
               </div>
             </div>
 
-            {/* BỘ LỌC DẠNG DROPDOWN - TẤT CẢ ĐỀU ĐỒNG BỘ ĐỘNG TỪ DB */}
-            <div style={{ display: 'flex', gap: '12px', padding: '12px 24px', background: '#ffffff', borderBottom: '1px solid #e2e8f0' }}>
-              {/* Dropdown 1: Khu vực bàn (All Types) */}
-              <select
-                  value={selectedSection}
-                  onChange={(e) => setSelectedSection(e.target.value)}
-                  style={{
-                    padding: '8px 16px',
-                    borderRadius: '6px',
-                    border: '1px solid #cbd5e1',
-                    background: '#ffffff',
-                    color: '#1e293b',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    outline: 'none',
-                    minWidth: '130px'
-                  }}
-              >
+            {/* THANH THAO TÁC LỌC BÀN THEO ĐIỀU KIỆN */}
+            <div className="checkin-toolbar-floor">
+              <select value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)}>
                 <option value="All">All Types</option>
-                {dynamicSections.map((section) => (
-                    <option key={section} value={section}>{section}</option>
-                ))}
+                {dynamicSections.map((section) => <option key={section} value={section}>{section}</option>)}
               </select>
 
-              {/* Dropdown 2: Trạng thái bàn (All Statuses) - ĐÃ ĐỔI THÀNH MAP ĐỘNG TỪ DB */}
-              <select
-                  value={selectedStatus}
-                  onChange={(e) => setSelectedStatus(e.target.value)}
-                  style={{
-                    padding: '8px 16px',
-                    borderRadius: '6px',
-                    border: '1px solid #cbd5e1',
-                    background: '#ffffff',
-                    color: '#1e293b',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    outline: 'none',
-                    minWidth: '130px'
-                  }}
-              >
+              <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)}>
                 <option value="All">All Statuses</option>
-                {dynamicStatuses.map((status) => (
-                    <option key={status} value={status}>
-                      {formatStatusLabel(status)}
-                    </option>
-                ))}
+                {dynamicStatuses.map((status) => <option key={status} value={status}>{formatStatusLabel(status)}</option>)}
               </select>
             </div>
 
-            <div className={`checkin-floor ${!selectedReservation ? 'checkin-floor--waiting' : ''}`}>
+            <div className="checkin-floor">
               {Object.keys(tablesBySection).length === 0 ? (
-                  <div className="checkin-empty">No tables found matching the filters.</div>
+                  <div className="checkin-empty">No dining tables match your filters.</div>
               ) : (
                   Object.entries(tablesBySection).map(([section, sectionTables]) => (
-                      <section key={section} className="checkin-section">
+                      <div key={section} className="checkin-section">
                         <div className="checkin-section__title">
-                          <h3>{section}</h3>
-                          <span>{sectionTables.length} tables</span>
+                          <h3>{section} <span>({sectionTables.length} tables)</span></h3>
                         </div>
                         <div className="checkin-table-grid">
                           {sectionTables.map((table) => {
                             const isAvailable = table.status === 'AVAILABLE'
                             const canAssign = Boolean(selectedReservation) && isAvailable
                             return (
-                                <button
+                                <div
                                     key={table.id}
-                                    type="button"
                                     className={`checkin-table checkin-table--${table.status.toLowerCase()} ${canAssign ? 'checkin-table--assignable' : ''}`}
                                     onClick={() => handleTableClick(table)}
-                                    aria-disabled={!canAssign}
                                 >
-                                  <span className="checkin-table__icon"><Table2 size={18} /></span>
-                                  <strong>{table.tableNumber}</strong>
-                                  <span>{table.tableName}</span>
-                                  <small>{table.capacity} pax</small>
-                                </button>
+                                  <div className="checkin-table__top">
+                                    {/* Đổi thành tableName để đồng nhất với trang Table Management */}
+                                    <strong>{table.tableName}</strong>
+                                    <i className="checkin-table__status-dot" />
+                                  </div>
+                                  <div className="checkin-table__desc">
+                                    {formatStatusLabel(table.status)}
+                                  </div>
+                                  <div className="checkin-table__capacity">{table.capacity} Pax</div>
+                                </div>
                             )
                           })}
                         </div>
-                      </section>
+                      </div>
                   ))
               )}
             </div>
           </main>
         </div>
 
-        {/* POP-UP 1: XÁC NHẬN GÁN BÀN TRỐNG */}
+        {/* MODAL 1: XÁC NHẬN CHECK-IN GÁN BÀN */}
         {pendingAssignment && (
-            <div className="checkin-modal-backdrop" onClick={() => setPendingAssignment(null)}>
-              <div className="checkin-modal" onClick={(event) => event.stopPropagation()}>
-                <h2>Confirm Check-in</h2>
-                <p>
-                  Assign Table <strong>{pendingAssignment.table.tableNumber}</strong> to Guest{' '}
-                  <strong>{pendingAssignment.reservation.fullName}</strong> ({pendingAssignment.reservation.numberOfGuests} pax)?
-                </p>
-                <div className="checkin-modal__actions">
-                  <button type="button" className="checkin-modal__secondary" onClick={() => setPendingAssignment(null)}>
-                    Cancel
-                  </button>
-                  <button type="button" className="checkin-modal__primary" onClick={confirmAssignment}>
-                    Confirm Check-in
-                  </button>
+            <div className="custom-modal-backdrop" onClick={() => setPendingAssignment(null)}>
+              <div className="custom-modal-card" onClick={(e) => e.stopPropagation()}>
+                <div className="custom-modal-icon-wrapper">
+                  <CheckCircle2 className="custom-modal-icon" size={28} />
+                </div>
+                <div className="custom-modal-title">Confirm Assigning Table</div>
+                <div className="custom-modal-text">
+                  Confirm Assigning Guest <strong>[{pendingAssignment.reservation.fullName}] ({pendingAssignment.reservation.numberOfGuests} Pax)</strong> to table <strong>[{pendingAssignment.table.tableNumber} - {pendingAssignment.table.tableType}]</strong>?
+                </div>
+                <div className="custom-modal-actions">
+                  <button type="button" className="custom-btn-cancel" onClick={() => setPendingAssignment(null)}>Cancel</button>
+                  <button type="button" className="custom-btn-confirm" onClick={confirmAssignment}>Confirm</button>
                 </div>
               </div>
             </div>
         )}
 
-        {/* POP-UP 2: HIỂN THỊ THÔNG TIN KHÁCH ĐANG NGỒI KHI CLICK BÀN ĐỎ */}
+        {/* MODAL 2: XEM NHANH KHÁCH ĐANG NGỒI TẠI BÀN ĐỎ */}
         {occupiedTableDetails && (
-            <div className="checkin-modal-backdrop" onClick={() => setOccupiedTableDetails(null)}>
-              <div className="checkin-modal" onClick={(event) => event.stopPropagation()}>
-                <h2>Table {occupiedTableDetails.table.tableNumber} Details</h2>
-                <div style={{ margin: '15px 0', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '14px' }}>
-                  <p><strong>Guest Name:</strong> {displayValue(occupiedTableDetails.guest.fullName)}</p>
-                  <p><strong>Phone:</strong> {displayValue(occupiedTableDetails.guest.phone)}</p>
-                  <p><strong>Number of Guests:</strong> {displayValue(occupiedTableDetails.guest.numberOfGuests)} pax</p>
-                  <p><strong>Check-in Time:</strong> {displayValue(occupiedTableDetails.guest.checkInTime)}</p>
+            <div className="custom-modal-backdrop" onClick={() => setOccupiedTableDetails(null)}>
+              <div className="custom-modal-card" onClick={(e) => e.stopPropagation()}>
+                <div className="custom-modal-icon-wrapper custom-modal-icon-wrapper--info">
+                  <HelpCircle className="custom-modal-icon" size={28} style={{ color: '#3b82f6' }} />
                 </div>
-                <div className="checkin-modal__actions">
-                  <button type="button" className="checkin-modal__secondary" onClick={() => setOccupiedTableDetails(null)}>
-                    Close
-                  </button>
+                <div className="custom-modal-title">Table {occupiedTableDetails.table.tableNumber} Details</div>
+                <div className="custom-modal-text" style={{ textAlign: 'left', background: '#f8fafc', padding: '16px', borderRadius: '12px', marginTop: '12px' }}>
+                  <div style={{ marginBottom: '6px' }}><strong>Guest Name:</strong> {displayValue(occupiedTableDetails.guest.fullName)}</div>
+                  <div style={{ marginBottom: '6px' }}><strong>Phone Number:</strong> {displayValue(occupiedTableDetails.guest.phone)}</div>
+                  <div style={{ marginBottom: '6px' }}><strong>Party Size:</strong> {displayValue(occupiedTableDetails.guest.numberOfGuests)} Pax</div>
+                  <div><strong>Checked-in At:</strong> {displayValue(occupiedTableDetails.guest.checkInTime)}</div>
+                </div>
+                <div className="custom-modal-actions" style={{ marginTop: '20px' }}>
+                  <button type="button" className="custom-btn-cancel" onClick={() => setOccupiedTableDetails(null)}>Close</button>
                   <button
                       type="button"
-                      className="checkin-modal__primary"
+                      className="custom-btn-confirm"
+                      style={{ background: '#3b82f6' }}
                       onClick={() => alert(`Redirecting to order: ${occupiedTableDetails.guest.orderId}`)}
                   >
-                    Go to Orders & Service
+                    Manage Orders
                   </button>
                 </div>
               </div>
             </div>
         )}
-      </section>
+      </div>
   )
 }
 

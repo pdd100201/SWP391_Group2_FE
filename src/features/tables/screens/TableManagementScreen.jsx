@@ -17,7 +17,7 @@ const STATUS_LABELS = {
   CLEANING: 'CLEANING',
 }
 
-const PAGE_SIZE = 5
+const PAGE_SIZE = 10
 
 const mapApiTableToUi = (table) => ({
   id: table.id,
