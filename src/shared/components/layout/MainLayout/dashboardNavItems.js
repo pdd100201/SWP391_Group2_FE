@@ -12,7 +12,15 @@ import {
 
 export const dashboardNavItems = [
   { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard },
-  { label: 'Check-in & Tables', to: '/dashboard/check-in-tables', icon: Table2 },
+  {
+    label: 'Check-in & Tables',
+    icon: Table2,
+    roles: ['ADMIN', 'MANAGER', 'RECEPTIONIST', 'WAITER'],
+    children: [
+      { label: 'Check-in', to: '/dashboard/check-in' },
+      { label: 'Tables', to: '/dashboard/tables' },
+    ],
+  },
   { label: 'Reservations', to: '/dashboard/reservations', icon: CalendarRange },
   { label: 'Orders & Service', to: '/dashboard/orders-service', icon: ShoppingBag },
   { label: 'Menu Management', to: '/dashboard/menu-management', icon: UtensilsCrossed },
