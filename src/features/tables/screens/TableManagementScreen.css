@@ -1,0 +1,651 @@
+.table-mgmt {
+  padding: 12px 0 32px;
+  color: #10251f;
+}
+
+.table-mgmt__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.table-mgmt__breadcrumb {
+  margin: 0 0 6px;
+  color: #8ca19b;
+  font-size: 0.9rem;
+}
+
+.table-mgmt__header h1 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.table-mgmt__header p {
+  margin: 8px 0 0;
+  color: #6f7f79;
+}
+
+.table-mgmt__add-btn {
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #0e5c47, #114d3f);
+  color: #fff;
+  padding: 12px 16px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 14px 30px rgba(14, 92, 71, 0.22);
+}
+
+.table-mgmt__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.table-mgmt__search {
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px 10px;
+}
+
+.table-mgmt__search input {
+  border: 0;
+  outline: none;
+  flex: 1;
+  min-height: 36px;
+  background: transparent;
+  font-size: 0.86rem;
+  color: var(--text);
+}
+
+.table-mgmt__search input::placeholder {
+  color: var(--muted);
+}
+
+.table-mgmt__search-btn {
+  border: 0;
+  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+  background: #0e5c47;
+  color: #fff;
+  display: grid;
+  place-items: center;
+}
+
+.table-mgmt__filters {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.table-mgmt__filters select,
+.table-mgmt__form input,
+.table-mgmt__form select {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0 12px;
+  font-size: 0.86rem;
+  color: var(--text);
+  background: var(--bg);
+  outline: none;
+  min-height: 36px;
+  min-width: 140px;
+}
+
+.table-mgmt__filter-chip {
+  display: none;
+}
+
+.table-mgmt__notice {
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  border: 1px solid #fde68a;
+  border-radius: 12px;
+  background: #fffbeb;
+  color: #92400e;
+  font-size: 0.85rem;
+}
+
+.table-mgmt__create-error {
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  border: 1px solid #fca5a5;
+  border-radius: 10px;
+  background: #fff1f2;
+  color: #be123c;
+  font-size: 0.84rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.table-mgmt__loading {
+  padding: 12px 16px;
+  border-bottom: 1px solid #eef2f0;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.table-mgmt__card {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #e6ece9;
+  box-shadow: 0 12px 30px rgba(12, 44, 36, 0.06);
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.table-mgmt__table-wrap {
+  overflow-x: auto;
+}
+
+.table-mgmt__table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 980px;
+  font-size: 0.82rem;
+}
+
+.table-mgmt__table th,
+.table-mgmt__table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #eef2f0;
+  text-align: left;
+  vertical-align: middle;
+  line-height: 1.15;
+}
+
+.table-mgmt__table th {
+  background: #f7faf9;
+  color: #56645f;
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.table-mgmt__status-badge {
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  font-size: 0.72rem;
+}
+
+.table-mgmt__status-badge--available { background: #d8f5e4; color: #1c8b54; }
+.table-mgmt__status-badge--occupied { background: #fde2e1; color: #c75b55; }
+.table-mgmt__status-badge--reserved { background: #fff0cc; color: #b88717; }
+.table-mgmt__status-badge--cleaning { background: #e8ecef; color: #55606a; }
+
+.table-mgmt__switch {
+  position: relative;
+  display: inline-flex;
+  width: 52px;
+  height: 28px;
+}
+
+.table-mgmt__switch input { display: none; }
+.table-mgmt__switch span {
+  position: absolute;
+  inset: 0;
+  background: #cfd8d4;
+  border-radius: 999px;
+  transition: 0.2s;
+}
+.table-mgmt__switch span::after {
+  content: '';
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  left: 3px;
+  top: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+}
+.table-mgmt__switch input:checked + span {
+  background: #0e5c47;
+}
+.table-mgmt__switch input:checked + span::after {
+  transform: translateX(24px);
+}
+
+.table-mgmt__qr-btn {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: #eef5f2;
+  color: #35524a;
+}
+
+.table-mgmt__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.table-mgmt__actions button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: #eef5f2;
+  color: #35524a;
+}
+
+/* Nút toggle - đang ACTIVE -> màu xanh lá */
+.table-mgmt__actions .table-mgmt__action-btn--active {
+  background: rgba(16, 185, 129, 0.14);
+  color: #10b981;
+  box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.12);
+}
+
+.table-mgmt__actions .table-mgmt__action-btn--active:hover {
+  background: rgba(16, 185, 129, 0.22);
+}
+
+/* Nút toggle - đang DEACTIVE -> màu vàng */
+.table-mgmt__actions .table-mgmt__action-btn--deactive {
+  background: rgba(245, 158, 11, 0.14);
+  color: #f59e0b;
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.12);
+}
+
+.table-mgmt__actions .table-mgmt__action-btn--deactive:hover {
+  background: rgba(245, 158, 11, 0.22);
+}
+
+.table-mgmt__actions .table-mgmt__action-btn--delete {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.table-mgmt__actions .table-mgmt__action-btn--delete:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.table-mgmt__footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 0 0;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.table-mgmt__pagination {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.table-mgmt__pagination button {
+  min-width: 36px;
+  height: 36px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: grid;
+  place-items: center;
+  box-shadow: none;
+}
+
+.table-mgmt__pagination button:hover:not(:disabled):not(.is-active) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+.table-mgmt__pagination .is-active {
+  background: #0f766e;
+  color: #fff;
+  border-color: #0f766e;
+  box-shadow: 0 8px 16px rgba(15, 118, 110, 0.18);
+}
+
+.table-mgmt__modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 20, 16, 0.55);
+  backdrop-filter: blur(10px);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  z-index: 300;
+}
+
+.table-mgmt__modal {
+  width: min(560px, 100%);
+  background: #fff;
+  border-radius: 20px;
+  padding: 22px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.25);
+}
+
+.table-mgmt__modal h2 {
+  margin: 0 0 16px;
+}
+
+.table-mgmt__modal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.table-mgmt__modal-grid span {
+  display: block;
+  font-size: 0.82rem;
+  color: #7b8a85;
+}
+
+.table-mgmt__modal-grid strong {
+  display: block;
+  margin-top: 4px;
+}
+
+.table-mgmt__form {
+  display: grid;
+  gap: 12px;
+}
+
+.table-mgmt__form--read-only {
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.table-mgmt__field {
+  display: grid;
+  gap: 6px;
+}
+
+.table-mgmt__field span {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #5f6f69;
+}
+
+.table-mgmt__read-value {
+  padding: 10px 12px;
+  border: 1px solid #dfe7e3;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #1f2937;
+  font-size: 0.9rem;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.table-mgmt__form button,
+.table-mgmt__close {
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 16px;
+  background: #0e5c47;
+  color: #fff;
+  font-weight: 700;
+}
+
+.table-mgmt__close {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .table-mgmt__header {
+    flex-direction: column;
+  }
+}
+
+/* =========================================================
+   🟢 MODAL XÁC NHẬN XÓA BÀN CHUẨN ĐẸP (CUSTOM DELETE MODAL)
+   ========================================================= */
+
+/* Nền tối phía sau và làm mờ (Blur) */
+.custom-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(15, 23, 42, 0.3);
+  backdrop-filter: blur(8px); /* Tạo hiệu ứng mờ nền như ảnh mẫu */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+/* Thẻ Modal trắng bo góc */
+.custom-modal-card {
+  background: #ffffff;
+  padding: 32px;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Icon cảnh báo hình tròn màu đỏ nhạt */
+.custom-modal-icon-wrapper {
+  width: 56px;
+  height: 56px;
+  background-color: #fef2f2;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto 16px auto;
+}
+
+.custom-modal-icon {
+  width: 28px;
+  height: 28px;
+  color: #ef4444; /* Màu đỏ cảnh báo */
+}
+
+/* Tiêu đề và chữ */
+.custom-modal-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.custom-modal-text {
+  font-size: 14px;
+  color: #64748b;
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+/* Cụm nút bấm hành động */
+.custom-modal-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.custom-modal-actions button {
+  flex: 1;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 12px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+/* Nút Cancel xám nhạt */
+.custom-btn-cancel {
+  background-color: #f1f5f9;
+  color: #334155;
+}
+
+.custom-btn-cancel:hover {
+  background-color: #e2e8f0;
+}
+
+/* Nút Delete đỏ rực nguy hiểm */
+.custom-btn-delete {
+  background-color: #dc2626;
+  color: #ffffff;
+}
+
+.custom-btn-delete:hover {
+  background-color: #b91c1c;
+}
+
+/* =========================================================
+   🟢 MODAL XÁC NHẬN CHUNG HỆ THỐNG (THEM, SUA, LOCK, XOA)
+   ========================================================= */
+
+.custom-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(15, 23, 42, 0.3);
+  backdrop-filter: blur(8px); /* Mờ nền ảo diệu như hình mẫu */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.custom-modal-card {
+  background: #ffffff;
+  padding: 32px;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  animation: modalScaleUp 0.2s ease-out;
+}
+
+@keyframes modalScaleUp {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.custom-modal-icon-wrapper {
+  width: 56px;
+  height: 56px;
+  background-color: #f0fdf4; /* Mặc định xanh lá nhạt */
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto 16px auto;
+}
+
+.custom-modal-icon {
+  width: 28px;
+  height: 28px;
+  color: #16a34a; /* Mặc định xanh lá */
+}
+
+.custom-modal-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.custom-modal-text {
+  font-size: 14px;
+  color: #64748b;
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+.custom-modal-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.custom-modal-actions button {
+  flex: 1;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 12px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.custom-btn-cancel {
+  background-color: #f1f5f9;
+  color: #334155;
+}
+
+.custom-btn-cancel:hover {
+  background-color: #e2e8f0;
+}
+
+/* NÚT CHỐT XÁC NHẬN MẶC ĐỊNH CHO CREATE / EDIT */
+.custom-btn-confirm {
+  background-color: #0e5c47;
+  color: #ffffff;
+}
+
+.custom-btn-confirm:hover {
+  background-color: #0a4636;
+}
+
+/* 🟥 THAY ĐỔI MÀU SẮC ĐẶC BIỆT KHI XÓA BÀN (DELETE) */
+.custom-modal-card--delete .custom-modal-icon-wrapper {
+  background-color: #fef2f2;
+}
+.custom-modal-card--delete .custom-modal-icon {
+  color: #ef4444;
+}
+.custom-modal-card--delete .custom-btn-confirm {
+  background-color: #dc2626;
+}
+.custom-modal-card--delete .custom-btn-confirm:hover {
+  background-color: #b91c1c;
+}
+
+/* 🟨 THAY ĐỔI MÀU SẮC ĐẶC BIỆT KHI KHÓA BÀN (TOGGLE ACTIVE) */
+.custom-modal-card--toggle_active .custom-modal-icon-wrapper {
+  background-color: #fef3c7;
+}
+.custom-modal-card--toggle_active .custom-modal-icon {
+  color: #d97706;
+}
+.custom-modal-card--toggle_active .custom-btn-confirm {
+  background-color: #d97706;
+}
+.custom-modal-card--toggle_active .custom-btn-confirm:hover {
+  background-color: #b45309;
+}

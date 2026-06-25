@@ -15,6 +15,8 @@ import ReservationHistoryScreen from '../features/reservations/screens/Reservati
 import DashboardReservationsScreen from '../features/reservations/screens/DashboardReservationsScreen'
 import OrdersServiceScreen from '../features/orders/screens/OrdersServiceScreen'
 import PublicOrderScreen from '../features/orders/screens/PublicOrderScreen'
+import TableManagementScreen from '../features/tables/screens/TableManagementScreen'
+import CheckInScreen from '../features/checkin/screens/CheckInScreen'
 import MainLayout from '../shared/components/layout/MainLayout/MainLayout'
 import RequireAuth from '../shared/components/ui/RequireAuth'
 import RedirectByRole from '../shared/components/ui/RedirectByRole'
@@ -85,7 +87,8 @@ function AppRoutes() {
         )}
       >
         <Route index element={<DashboardPage />} />
-        <Route path="check-in-tables" element={<DashboardPage />} />
+        <Route path="check-in" element={<CheckInScreen />} />
+        <Route path="tables" element={<TableManagementScreen />} />
         <Route path="reservations" element={<DashboardReservationsScreen />} />
         <Route path="orders-service" element={<OrdersServiceScreen />} />
         <Route

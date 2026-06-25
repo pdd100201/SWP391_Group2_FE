@@ -1,0 +1,561 @@
+.checkin-screen {
+  padding: 12px 0 32px;
+  color: #10251f;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* --- BANNER HERO PHONG CÁCH MỚI --- */
+.checkin-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  padding: 24px 32px;
+  background: linear-gradient(135deg, #0e5c47, #0a4636);
+  color: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 14px 30px rgba(14, 92, 71, 0.15);
+}
+
+.checkin-hero__eyebrow {
+  margin: 0 0 6px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.checkin-hero h1 {
+  margin: 0;
+  font-size: 2.2rem;
+  font-weight: 700;
+}
+
+.checkin-hero p {
+  margin: 6px 0 0;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.95rem;
+}
+
+.checkin-hero__status {
+  width: 96px;
+  height: 80px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(4px);
+  flex-shrink: 0;
+}
+
+.checkin-hero__status span {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.checkin-hero__status small {
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  margin-top: 4px;
+}
+
+.checkin-alert {
+  border: 1px solid #fca5a5;
+  background: #fff1f2;
+  color: #be123c;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* --- BỐ CỤC HAI CỘT --- */
+.checkin-layout {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.checkin-panel {
+  background: #ffffff;
+  border: 1px solid #e6ece9;
+  border-radius: 16px;
+  box-shadow: 0 12px 30px rgba(12, 44, 36, 0.04);
+  overflow: hidden;
+}
+
+.checkin-panel__header {
+  padding: 20px;
+  border-bottom: 1px solid #eef2f0;
+  background: #ffffff;
+}
+
+.checkin-panel__header h2 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.checkin-panel__header p {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 0.88rem;
+}
+
+/* --- THANH TÌM KIẾM & BỘ LỌC CHỌN NGÀY --- */
+.checkin-filterbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 20px;
+  background: #f8faf9;
+  border-bottom: 1px solid #eef2f0;
+}
+
+.checkin-search {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #cfd8d4;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #64748b;
+  padding: 0 12px;
+}
+
+.checkin-search input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  color: #0f172a;
+  background: transparent;
+  font-size: 0.88rem;
+}
+
+.checkin-date {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #cfd8d4;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #64748b;
+  padding: 0 12px;
+  cursor: pointer;
+  position: relative;
+}
+
+.checkin-date input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  color: #0f172a;
+  background: transparent;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+/* Ép vùng bấm indicator bao phủ toàn bộ ô lịch */
+.checkin-date input::-webkit-calendar-picker-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: auto;
+  height: auto;
+  color: transparent;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* --- HÀNG ĐỢI ĐẶT CHỖ (QUEUE CARDS) --- */
+.checkin-queue {
+  max-height: calc(100vh - 340px);
+  min-height: 460px;
+  overflow-y: auto;
+  overflow-x: hidden; /* Chặn hoàn toàn việc xuất hiện thanh cuộn ngang khó chịu */
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.checkin-reservation {
+  box-sizing: border-box; /* Đảm bảo padding không đẩy chiều rộng thẻ vượt quá 100% */
+  width: 100%;
+  border: 1px solid #e6ece9;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+  overflow: hidden; /* Bo góc gọn gàng các thành phần con */
+}
+
+.checkin-reservation:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.04);
+  transform: translateY(-1px);
+}
+
+.checkin-reservation--active {
+  background: #f0fdf4;
+  border-color: #a7f3d0;
+  box-shadow: 0 8px 20px rgba(14, 92, 71, 0.06);
+}
+
+.checkin-reservation__index {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #94a3b8;
+  min-width: 16px;
+  flex-shrink: 0; /* Không cho phép số thứ tự bị bóp nghẹt diện tích */
+}
+
+.checkin-reservation__content {
+  flex: 1;
+  min-width: 0; /* Cực kỳ quan trọng: Cho phép flex-child co lại nhỏ hơn text bên trong */
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+}
+
+.checkin-reservation__name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; /* Nếu tên quá dài, tự động chuyển thành dấu "..." thay vì đẩy tràn card */
+}
+
+.checkin-reservation__details {
+  font-size: 0.85rem;
+  color: #64748b;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap; /* Nếu màn hình hẹp, giờ giấc và số khách tự động xuống hàng thay vì đâm thủng vách */
+}
+
+.checkin-reservation__btn-trigger {
+  border: 0;
+  border-radius: 8px;
+  background: #0e5c47;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 6px 12px;
+  cursor: pointer;
+  flex-shrink: 0; /* Giữ nguyên nút bấm, không cho flex làm bóp méo nút */
+  opacity: 0;
+  transform: scale(0.9);
+  transition: all 0.2s ease;
+}
+
+.checkin-reservation:hover .checkin-reservation__btn-trigger,
+.checkin-reservation--active .checkin-reservation__btn-trigger {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.checkin-empty {
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border: 2px dashed #cbd5e1;
+  border-radius: 12px;
+  color: #64748b;
+  text-align: center;
+  padding: 24px;
+  font-size: 0.9rem;
+}
+
+/* --- CHÚ THÍCH TRẠNG THÁI (LEGEND) --- */
+.checkin-legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+}
+
+.checkin-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.checkin-legend__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.checkin-legend__dot--available { background-color: #10b981; }
+.checkin-legend__dot--occupied { background-color: #ef4444; }
+.checkin-legend__dot--reserved { background-color: #f59e0b; }
+.checkin-legend__dot--cleaning { background-color: #3b82f6; }
+
+/* --- KHU VỰC SƠ ĐỒ BÀN (FLOOR PLAN) --- */
+.checkin-toolbar-floor {
+  display: flex;
+  gap: 12px;
+  padding: 14px 20px;
+  background: #ffffff;
+  border-bottom: 1px solid #eef2f0;
+}
+
+.checkin-toolbar-floor select {
+  border: 1px solid #cfd8d4;
+  border-radius: 10px;
+  padding: 0 12px;
+  font-size: 0.86rem;
+  color: #1f2937;
+  background: #ffffff;
+  outline: none;
+  min-height: 38px;
+  min-width: 140px;
+}
+
+.checkin-floor {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  max-height: calc(100vh - 280px);
+  overflow-y: auto;
+}
+
+.checkin-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.checkin-section__title h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.checkin-section__title span {
+  color: #94a3b8;
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin-left: 8px;
+}
+
+/* --- THẺ BÀN UI PHẲNG TÁCH BIỆT --- */
+.checkin-table-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 16px;
+}
+
+.checkin-table {
+  min-height: 110px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.checkin-table__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.checkin-table strong {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.checkin-table__status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.checkin-table__desc {
+  font-size: 0.84rem;
+  color: #64748b;
+  margin-bottom: 12px;
+  font-weight: 500;
+}
+
+.checkin-table__capacity {
+  margin-top: auto;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 4px 8px;
+  border-radius: 6px;
+  align-self: flex-start;
+}
+
+/* Phân mảnh đường viền màu sắc theo mẫu thiết kế */
+.checkin-table--available { border-top: 4px solid #10b981; }
+.checkin-table--available .checkin-table__status-dot { background-color: #10b981; }
+
+.checkin-table--occupied { border-top: 4px solid #ef4444; background: #fff5f5; }
+.checkin-table--occupied .checkin-table__status-dot { background-color: #ef4444; }
+.checkin-table--occupied strong { color: #991b1b; }
+
+.checkin-table--reserved { border-top: 4px solid #f59e0b; background: #fffbeb; }
+.checkin-table--reserved .checkin-table__status-dot { background-color: #f59e0b; }
+.checkin-table--reserved strong { color: #92400e; }
+
+.checkin-table--cleaning { border-top: 4px solid #3b82f6; background: #f0f5ff; }
+.checkin-table--cleaning .checkin-table__status-dot { background-color: #3b82f6; }
+.checkin-table--cleaning strong { color: #1d4ed8; }
+
+/* Hiệu ứng di chuột phân phối bàn hợp lệ */
+.checkin-table--assignable:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 20px rgba(14, 92, 71, 0.08);
+  border-color: #0e5c47;
+}
+
+/* --- HỆ THỐNG CỬA SỔ BLUR HẬU CẢNH --- */
+.custom-modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(15, 23, 42, 0.3);
+  backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.custom-modal-card {
+  background: #ffffff;
+  padding: 32px;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 440px;
+  text-align: center;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  animation: checkinModalScale 0.2s ease-out;
+}
+
+@keyframes checkinModalScale {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.custom-modal-icon-wrapper {
+  width: 56px;
+  height: 56px;
+  background-color: #f0fdf4;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto 16px auto;
+}
+
+.custom-modal-icon-wrapper--info {
+  background-color: #eff6ff;
+}
+
+.custom-modal-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 8px;
+}
+
+.custom-modal-text {
+  font-size: 14px;
+  color: #64748b;
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+.custom-modal-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.custom-modal-actions button {
+  flex: 1;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 12px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.custom-btn-cancel {
+  background-color: #f1f5f9;
+  color: #334155;
+}
+
+.custom-btn-cancel:hover {
+  background-color: #e2e8f0;
+}
+
+.custom-btn-confirm {
+  background-color: #0e5c47;
+  color: #ffffff;
+}
+
+.custom-btn-confirm:hover {
+  background-color: #0a4636;
+}
+
+/* Responsive quy chuẩn di động */
+@media (max-width: 1180px) {
+  .checkin-layout { grid-template-columns: 1fr; }
+  .checkin-queue { max-height: 400px; min-height: 0; }
+  .checkin-floor { max-height: 500px; }
+}
+
+@media (max-width: 640px) {
+  .checkin-hero { flex-direction: column; align-items: flex-start; padding: 20px; }
+  .checkin-hero__status { width: 100%; height: 60px; }
+  .checkin-panel__header { flex-direction: column; gap: 10px; align-items: flex-start; }
+}
