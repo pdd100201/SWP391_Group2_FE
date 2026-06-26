@@ -21,6 +21,13 @@ import './OrdersServiceScreen.css'
 
 const money = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} ₫`
 const errorMessage = (error, fallback) => error.response?.data?.message || fallback
+const tableLabel = (value) => {
+  if (!value?.tableId) return 'No table assigned'
+  const label = value.tableName || value.tableNumber || `Table ${value.tableId}`
+  return value.tableNumber && value.tableName && value.tableName !== value.tableNumber
+    ? `${value.tableNumber} - ${value.tableName}`
+    : label
+}
 
 const statusLabels = {
   DRAFT: 'Draft',
@@ -57,7 +64,8 @@ function OrdersServiceScreen() {
     return allowed && matchesCategory && matchesSearch
   }), [menu, category, search])
   const unusedReservations = reservations.filter((reservation) =>
-    reservation.status === 'CONFIRMED'
+    ['ARRIVED', 'CONFIRMED'].includes(reservation.status)
+      && reservation.tableId
       && !reservation.orderId
   )
 
@@ -107,9 +115,12 @@ function OrdersServiceScreen() {
             orderId: next.id,
             orderCode: next.orderCode,
             orderStatus: next.status,
+            tableId: next.tableId ?? reservation.tableId,
+            tableNumber: next.tableNumber ?? reservation.tableNumber,
+            tableName: next.tableName ?? reservation.tableName,
             status: next.status === 'CLOSED'
               ? 'COMPLETED'
-              : next.status === 'CANCELLED' ? 'CANCELLED' : reservation.status,
+              : next.status === 'CANCELLED' ? 'CANCELLED' : next.reservationStatus ?? reservation.status,
           }
         : reservation
     )))
@@ -161,7 +172,7 @@ function OrdersServiceScreen() {
         <div>
           <span className="orders-eyebrow"><ChefHat size={15} /> Orders &amp; Service</span>
           <h1>Dining room orders</h1>
-          <p>Create an order from a confirmed reservation and follow every dish to the table.</p>
+          <p>Create an order from an assigned reservation and follow every dish to the table.</p>
         </div>
         <button type="button" className="orders-button orders-button--secondary" onClick={load} disabled={busy}>
           <RefreshCw size={17} /> Refresh
@@ -172,12 +183,12 @@ function OrdersServiceScreen() {
 
       <div className="orders-create-bar">
         <label className="orders-reservation-field">
-          <span>Confirmed reservation</span>
+          <span>Assigned reservation</span>
           <select value={reservationId} onChange={(event) => setReservationId(event.target.value)}>
-            <option value="">Choose a reservation to open its order</option>
+            <option value="">Choose a checked-in table to open its order</option>
             {unusedReservations.map((reservation) => (
               <option key={reservation.reservationId} value={reservation.reservationId}>
-                #{reservation.reservationId} · {reservation.fullName} · {reservation.reservationDate} {reservation.reservationTime}
+                #{reservation.reservationId} - {reservation.fullName} - {tableLabel(reservation)} - {reservation.reservationDate} {reservation.reservationTime}
               </option>
             ))}
           </select>
@@ -186,7 +197,7 @@ function OrdersServiceScreen() {
           <Plus size={17} /> Create order
         </button>
         {unusedReservations.length === 0 && (
-          <small className="orders-no-reservation">No confirmed reservation is waiting for an order.</small>
+          <small className="orders-no-reservation">No assigned reservation is waiting for an order.</small>
         )}
       </div>
 
@@ -200,7 +211,7 @@ function OrdersServiceScreen() {
               className={`orders-list-card ${selectedId === order.id ? 'is-active' : ''}`}
               onClick={() => setSelectedId(order.id)}
             >
-              <span><strong>{order.orderCode}</strong><small>{order.reservationGuestName}</small></span>
+              <span><strong>{order.orderCode}</strong><small>{order.reservationGuestName} - {tableLabel(order)}</small></span>
               <span className={`orders-service-badge orders-service-badge--${order.serviceStatus.toLowerCase()}`}>
                 {order.serviceStatus.replace('_', ' ')}
               </span>
@@ -215,7 +226,7 @@ function OrdersServiceScreen() {
               <div className="orders-detail-head">
                 <div>
                   <h2>{selected.orderCode}</h2>
-                  <p>Reservation #{selected.reservationId} · {selected.reservationGuestName} · Waiter {selected.waiterName}</p>
+                  <p>Reservation #{selected.reservationId} - {selected.reservationGuestName} - {tableLabel(selected)} - Waiter {selected.waiterName}</p>
                 </div>
                 <div className="orders-detail-actions">
                   <button type="button" className="orders-button orders-button--secondary" onClick={copyQrLink}>

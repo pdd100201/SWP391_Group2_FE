@@ -4,7 +4,11 @@ import { useParams } from 'react-router-dom'
 import { publicOrderApi } from '../api/orderApi'
 import './PublicOrderScreen.css'
 
-const money = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} ₫`
+const money = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} VND`
+const tableLabel = (order) => {
+  if (!order?.tableId) return ''
+  return order.tableName || order.tableNumber || `Table ${order.tableId}`
+}
 
 function PublicOrderScreen() {
   const { token } = useParams()
@@ -57,7 +61,7 @@ function PublicOrderScreen() {
       <header className="public-order-header">
         <span><UtensilsCrossed size={18} /> Golden Spoon</span>
         <h1>Order for {order.reservationGuestName}</h1>
-        <p>{order.orderCode} · Add dishes and submit them directly to the kitchen.</p>
+        <p>{order.orderCode}{tableLabel(order) ? ` - ${tableLabel(order)}` : ''} - Add dishes and submit them directly to the kitchen.</p>
       </header>
 
       {error && <div className="public-order-alert">{error}</div>}

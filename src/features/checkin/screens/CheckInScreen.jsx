@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CalendarDays, Clock, Search, UsersRound, CheckCircle2, HelpCircle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { checkinApi } from '../api/checkinApi'
 import { getAllReservations } from "../../reservations/api/reservationApi.js"
 import { tableApi } from "../../tables/api/tableApi.js"
@@ -39,6 +40,7 @@ const normalizeTable = (table) => ({
 })
 
 function CheckInScreen() {
+  const navigate = useNavigate()
   const [reservations, setReservations] = useState([])
   const [tables, setTables] = useState([])
   const [search, setSearch] = useState('')
@@ -381,7 +383,8 @@ function CheckInScreen() {
                   <div style={{ marginBottom: '6px' }}><strong>Guest Name:</strong> {displayValue(occupiedTableDetails.guest.fullName)}</div>
                   <div style={{ marginBottom: '6px' }}><strong>Phone Number:</strong> {displayValue(occupiedTableDetails.guest.phone)}</div>
                   <div style={{ marginBottom: '6px' }}><strong>Party Size:</strong> {displayValue(occupiedTableDetails.guest.numberOfGuests)} Pax</div>
-                  <div><strong>Checked-in At:</strong> {displayValue(occupiedTableDetails.guest.checkInTime)}</div>
+                  <div style={{ marginBottom: '6px' }}><strong>Checked-in At:</strong> {displayValue(occupiedTableDetails.guest.checkInTime)}</div>
+                  <div><strong>Order:</strong> {displayValue(occupiedTableDetails.guest.orderCode || occupiedTableDetails.guest.orderId)}</div>
                 </div>
                 <div className="custom-modal-actions" style={{ marginTop: '20px' }}>
                   <button type="button" className="custom-btn-cancel" onClick={() => setOccupiedTableDetails(null)}>Close</button>
@@ -389,9 +392,9 @@ function CheckInScreen() {
                       type="button"
                       className="custom-btn-confirm"
                       style={{ background: '#3b82f6' }}
-                      onClick={() => alert(`Redirecting to order: ${occupiedTableDetails.guest.orderId}`)}
+                      onClick={() => navigate('/dashboard/orders-service')}
                   >
-                    Manage Orders
+                    {occupiedTableDetails.guest.orderId ? 'Manage Order' : 'Create Order'}
                   </button>
                 </div>
               </div>
