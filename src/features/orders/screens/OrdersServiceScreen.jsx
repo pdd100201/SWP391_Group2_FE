@@ -21,6 +21,14 @@ import './OrdersServiceScreen.css'
 
 const money = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} ₫`
 const errorMessage = (error, fallback) => error.response?.data?.message || fallback
+const loadErrorMessage = (error) => {
+  const status = error.response?.status
+  const url = error.config?.url || error.request?.responseURL || 'unknown API'
+  if (status === 403) return `You do not have permission to load ${url}.`
+  if (status === 401) return 'Your session has expired. Please log in again.'
+  if (status) return `Could not load ${url} (HTTP ${status}).`
+  return 'Unable to connect to the server.'
+}
 const tableLabel = (value) => {
   if (!value?.tableId) return 'No table assigned'
   const label = value.tableName || value.tableNumber || `Table ${value.tableId}`
@@ -86,7 +94,7 @@ function OrdersServiceScreen() {
         ? current
         : nextOrders[0]?.id || null)
     } catch (loadError) {
-      setError(errorMessage(loadError, 'Unable to load orders.'))
+      setError(loadError.response?.data?.message || loadErrorMessage(loadError))
     } finally {
       setLoading(false)
     }
