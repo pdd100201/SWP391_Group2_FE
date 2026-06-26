@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CalendarDays, Clock, Search, UsersRound, CheckCircle2, HelpCircle } from 'lucide-react'
-import { checkinApi } from '../api/checkinApi'
+import { checkinApi } from '../api/checkinApi' // Lát nữa ta sẽ sửa cái api này một chút
 import { getAllReservations } from "../../reservations/api/reservationApi.js"
 import { tableApi } from "../../tables/api/tableApi.js"
 import './CheckInScreen.css'
@@ -44,8 +44,12 @@ function CheckInScreen() {
   const [search, setSearch] = useState('')
   const [selectedDate, setSelectedDate] = useState(todayInputValue())
   const [selectedReservationId, setSelectedReservationId] = useState(null)
-  const [pendingAssignment, setPendingAssignment] = useState(null)
-  const [hint, setHint] = useState('Select a reservation first, then choose an available table.')
+
+  // THAY ĐỔI 1: State lưu DANH SÁCH bàn được chọn thay vì 1 bàn
+  const [selectedTables, setSelectedTables] = useState([])
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+
+  const [hint, setHint] = useState('Select a reservation first, then choose available tables.')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [occupiedTableDetails, setOccupiedTableDetails] = useState(null)
@@ -106,6 +110,11 @@ function CheckInScreen() {
       filteredReservations.find((reservation) => reservation.reservationId === selectedReservationId) ?? null
   ), [filteredReservations, selectedReservationId])
 
+  // Tính tổng sức chứa của các bàn đang chọn
+  const totalSelectedCapacity = useMemo(() => {
+    return selectedTables.reduce((sum, t) => sum + t.capacity, 0)
+  }, [selectedTables])
+
   const dynamicSections = useMemo(() => {
     const sections = new Set(tables.map(t => t.tableType || 'Dining Room'))
     return Array.from(sections)
@@ -131,7 +140,8 @@ function CheckInScreen() {
 
   const handleReservationSelect = (reservation) => {
     setSelectedReservationId(reservation.reservationId)
-    setHint(`Ready to assign ${reservation.fullName}. Choose an available table below.`)
+    setSelectedTables([]) // Reset lại bàn khi chọn khách khác
+    setHint(`Ready to assign ${reservation.fullName}. You can select multiple available tables.`)
   }
 
   const handleTableClick = async (table) => {
@@ -156,18 +166,27 @@ function CheckInScreen() {
       return
     }
 
-    setPendingAssignment({ reservation: selectedReservation, table })
+    // THAY ĐỔI 2: Logic chọn nhiều bàn (Toggle)
+    setSelectedTables((prev) => {
+      const isAlreadySelected = prev.some(t => t.id === table.id)
+      if (isAlreadySelected) {
+        // Bỏ chọn nếu đã có trong mảng
+        return prev.filter(t => t.id !== table.id)
+      } else {
+        // Thêm vào mảng nếu chưa có
+        return [...prev, table]
+      }
+    })
   }
 
   const confirmAssignment = async () => {
-    if (!pendingAssignment) return
-    const { reservation, table } = pendingAssignment
-
-    const resId = reservation.reservationId || reservation.id
-    const tblId = table.id
+    if (!selectedReservation || selectedTables.length === 0) return
+    const resId = selectedReservation.reservationId || selectedReservation.id
+    const tableIds = selectedTables.map(t => t.id) // Lấy ra mảng các ID
 
     try {
-      await checkinApi.assignTable({ reservationId: resId, tableId: tblId })
+      // Bắn mảng ID xuống API (Nhớ phải cập nhật file checkinApi.js)
+      await checkinApi.assignTables(resId, { tableIds })
 
       setReservations((prev) => prev.map((item) => {
         const currentId = item.reservationId || item.id
@@ -175,16 +194,17 @@ function CheckInScreen() {
       }))
 
       setTables((prev) => prev.map((item) => (
-          item.id === tblId ? { ...item, status: 'OCCUPIED' } : item
+          tableIds.includes(item.id) ? { ...item, status: 'OCCUPIED' } : item
       )))
 
       setSelectedReservationId(null)
-      setPendingAssignment(null)
-      setHint(`Successfully checked in ${reservation.fullName} at table ${table.tableNumber}.`)
+      setSelectedTables([])
+      setShowConfirmModal(false)
+      setHint(`Successfully checked in ${selectedReservation.fullName} at ${tableIds.length} tables.`)
     } catch (err) {
       console.error("Check-in error:", err)
-      alert("Failed to execute check-in! Please check connections or table status.")
-      setPendingAssignment(null)
+      alert(err.response?.data?.message || "Failed to execute check-in! Ensure capacity is sufficient.")
+      setShowConfirmModal(false)
     }
   }
 
@@ -194,7 +214,8 @@ function CheckInScreen() {
   }
 
   return (
-      <div className="checkin-screen">
+      <div className="checkin-screen" style={{ position: 'relative' }}>
+        {/* ... (Giữ nguyên header) ... */}
         <header className="checkin-hero">
           <div>
             <p className="checkin-hero__eyebrow">Dashboard / Check-in</p>
@@ -210,7 +231,7 @@ function CheckInScreen() {
         {error && <div className="checkin-alert">{error}</div>}
 
         <div className="checkin-layout">
-          {/* CỘT TRÁI: DANH SÁCH HÀNG ĐỢI ĐẶT CHỖ */}
+          {/* CỘT TRÁI: (Giữ nguyên không đổi) */}
           <aside className="checkin-panel">
             <div className="checkin-panel__header">
               <h2>Reservations Queue</h2>
@@ -228,7 +249,6 @@ function CheckInScreen() {
                 />
               </label>
 
-              {/* Ô bộ chọn ngày tích hợp cơ chế click cưỡng chế showPicker */}
               <label
                   className="checkin-date"
                   htmlFor="checkin-date"
@@ -279,8 +299,8 @@ function CheckInScreen() {
             </div>
           </aside>
 
-          {/* CỘT PHẢI: SƠ ĐỒ MẶT BẰNG BÀN ĂN */}
-          <main className="checkin-panel">
+          {/* CỘT PHẢI: SƠ ĐỒ BÀN */}
+          <main className="checkin-panel" style={{ paddingBottom: selectedTables.length > 0 ? '80px' : '24px' }}>
             <div className="checkin-panel__header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h2>Table Floor Plan</h2>
@@ -298,7 +318,6 @@ function CheckInScreen() {
               </div>
             </div>
 
-            {/* THANH THAO TÁC LỌC BÀN THEO ĐIỀU KIỆN */}
             <div className="checkin-toolbar-floor">
               <select value={selectedSection} onChange={(e) => setSelectedSection(e.target.value)}>
                 <option value="All">All Types</option>
@@ -324,19 +343,23 @@ function CheckInScreen() {
                           {sectionTables.map((table) => {
                             const isAvailable = table.status === 'AVAILABLE'
                             const canAssign = Boolean(selectedReservation) && isAvailable
+                            // Kiểm tra xem bàn này có nằm trong danh sách đang chọn không
+                            const isSelected = selectedTables.some(t => t.id === table.id)
+
                             return (
                                 <div
                                     key={table.id}
+                                    // Thêm style inline để đổi màu viền ngay lập tức mà không cần sửa CSS
+                                    style={isSelected ? { border: '2px solid #0e5c47', backgroundColor: '#eefcf5', transform: 'scale(1.02)' } : {}}
                                     className={`checkin-table checkin-table--${table.status.toLowerCase()} ${canAssign ? 'checkin-table--assignable' : ''}`}
                                     onClick={() => handleTableClick(table)}
                                 >
                                   <div className="checkin-table__top">
-                                    {/* Đổi thành tableName để đồng nhất với trang Table Management */}
                                     <strong>{table.tableName}</strong>
                                     <i className="checkin-table__status-dot" />
                                   </div>
                                   <div className="checkin-table__desc">
-                                    {formatStatusLabel(table.status)}
+                                    {isSelected ? 'Selected' : formatStatusLabel(table.status)}
                                   </div>
                                   <div className="checkin-table__capacity">{table.capacity} Pax</div>
                                 </div>
@@ -350,26 +373,51 @@ function CheckInScreen() {
           </main>
         </div>
 
-        {/* MODAL 1: XÁC NHẬN CHECK-IN GÁN BÀN */}
-        {pendingAssignment && (
-            <div className="custom-modal-backdrop" onClick={() => setPendingAssignment(null)}>
+        {/* THAY ĐỔI 3: THANH CÔNG CỤ FLOATING KHI CÓ BÀN ĐƯỢC CHỌN */}
+        {selectedTables.length > 0 && selectedReservation && (
+            <div style={{
+              position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)',
+              background: '#0e5c47', color: 'white', padding: '16px 24px', borderRadius: '12px',
+              display: 'flex', alignItems: 'center', gap: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', zIndex: 100
+            }}>
+              <div>
+                <strong style={{ fontSize: '1.1rem', display: 'block' }}>{selectedTables.length} Tables Selected</strong>
+                <span style={{ fontSize: '0.9rem', opacity: 0.9 }}>
+                  Total Capacity: {totalSelectedCapacity} / {selectedReservation.numberOfGuests} Pax
+                </span>
+              </div>
+              <button
+                  onClick={() => setShowConfirmModal(true)}
+                  style={{ background: 'white', color: '#0e5c47', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
+                Confirm Assignment
+              </button>
+            </div>
+        )}
+
+        {/* MODAL 1: XÁC NHẬN GÁN NHIỀU BÀN */}
+        {showConfirmModal && selectedReservation && (
+            <div className="custom-modal-backdrop" onClick={() => setShowConfirmModal(false)}>
               <div className="custom-modal-card" onClick={(e) => e.stopPropagation()}>
                 <div className="custom-modal-icon-wrapper">
                   <CheckCircle2 className="custom-modal-icon" size={28} />
                 </div>
-                <div className="custom-modal-title">Confirm Assigning Table</div>
+                <div className="custom-modal-title">Confirm Multiple Tables</div>
                 <div className="custom-modal-text">
-                  Confirm Assigning Guest <strong>[{pendingAssignment.reservation.fullName}] ({pendingAssignment.reservation.numberOfGuests} Pax)</strong> to table <strong>[{pendingAssignment.table.tableNumber} - {pendingAssignment.table.tableType}]</strong>?
+                  Confirm Assigning Guest <strong>[{selectedReservation.fullName}] ({selectedReservation.numberOfGuests} Pax)</strong>
+                  to <strong>{selectedTables.length} tables</strong>: <br/>
+                  <span style={{color: '#0e5c47', fontWeight: 'bold'}}>
+                    {selectedTables.map(t => t.tableName).join(', ')}
+                  </span> ?
                 </div>
                 <div className="custom-modal-actions">
-                  <button type="button" className="custom-btn-cancel" onClick={() => setPendingAssignment(null)}>Cancel</button>
+                  <button type="button" className="custom-btn-cancel" onClick={() => setShowConfirmModal(false)}>Cancel</button>
                   <button type="button" className="custom-btn-confirm" onClick={confirmAssignment}>Confirm</button>
                 </div>
               </div>
             </div>
         )}
 
-        {/* MODAL 2: XEM NHANH KHÁCH ĐANG NGỒI TẠI BÀN ĐỎ */}
+        {/* MODAL 2: XEM NHANH KHÁCH (Giữ nguyên) */}
         {occupiedTableDetails && (
             <div className="custom-modal-backdrop" onClick={() => setOccupiedTableDetails(null)}>
               <div className="custom-modal-card" onClick={(e) => e.stopPropagation()}>
@@ -378,21 +426,32 @@ function CheckInScreen() {
                 </div>
                 <div className="custom-modal-title">Table {occupiedTableDetails.table.tableNumber} Details</div>
                 <div className="custom-modal-text" style={{ textAlign: 'left', background: '#f8fafc', padding: '16px', borderRadius: '12px', marginTop: '12px' }}>
-                  <div style={{ marginBottom: '6px' }}><strong>Guest Name:</strong> {displayValue(occupiedTableDetails.guest.fullName)}</div>
-                  <div style={{ marginBottom: '6px' }}><strong>Phone Number:</strong> {displayValue(occupiedTableDetails.guest.phone)}</div>
-                  <div style={{ marginBottom: '6px' }}><strong>Party Size:</strong> {displayValue(occupiedTableDetails.guest.numberOfGuests)} Pax</div>
-                  <div><strong>Checked-in At:</strong> {displayValue(occupiedTableDetails.guest.checkInTime)}</div>
+                  {/* MODAL 2: XEM NHANH KHÁCH (ĐÃ BỔ SUNG ĐẦY ĐỦ THÔNG TIN THẬT TỪ BACKEND) */}
+                  {occupiedTableDetails && (
+                      <div className="custom-modal-backdrop" onClick={() => setOccupiedTableDetails(null)}>
+                        <div className="custom-modal-card" onClick={(e) => e.stopPropagation()}>
+                          <div className="custom-modal-icon-wrapper custom-modal-icon-wrapper--info">
+                            <HelpCircle className="custom-modal-icon" size={28} style={{ color: '#3b82f6' }} />
+                          </div>
+                          <div className="custom-modal-title">Table {occupiedTableDetails.table.tableNumber} Details</div>
+                          <div className="custom-modal-text" style={{ textAlign: 'left', background: '#f8fafc', padding: '16px', borderRadius: '12px', marginTop: '12px' }}>
+
+                            <div style={{ marginBottom: '8px' }}><strong>Guest Name:</strong> {displayValue(occupiedTableDetails.guest?.fullName)}</div>
+                            <div style={{ marginBottom: '8px' }}><strong>Phone Number:</strong> {displayValue(occupiedTableDetails.guest?.phone)}</div>
+                            <div style={{ marginBottom: '8px' }}><strong>Party Size:</strong> {displayValue(occupiedTableDetails.guest?.numberOfGuests)} Pax</div>
+                            <div style={{ marginBottom: '8px' }}><strong>Check-in Time:</strong> {displayValue(occupiedTableDetails.guest?.checkInTime)}</div>
+                            <div style={{ marginBottom: '8px' }}><strong>Order Reference:</strong> {displayValue(occupiedTableDetails.guest?.orderId)}</div>
+
+                          </div>
+                          <div className="custom-modal-actions" style={{ marginTop: '20px' }}>
+                            <button type="button" className="custom-btn-cancel" onClick={() => setOccupiedTableDetails(null)}>Close</button>
+                          </div>
+                        </div>
+                      </div>
+                  )}
                 </div>
                 <div className="custom-modal-actions" style={{ marginTop: '20px' }}>
                   <button type="button" className="custom-btn-cancel" onClick={() => setOccupiedTableDetails(null)}>Close</button>
-                  <button
-                      type="button"
-                      className="custom-btn-confirm"
-                      style={{ background: '#3b82f6' }}
-                      onClick={() => alert(`Redirecting to order: ${occupiedTableDetails.guest.orderId}`)}
-                  >
-                    Manage Orders
-                  </button>
                 </div>
               </div>
             </div>

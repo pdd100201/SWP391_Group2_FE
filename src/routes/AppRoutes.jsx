@@ -18,6 +18,7 @@ import CheckInScreen from '../features/checkin/screens/CheckInScreen'
 import MainLayout from '../shared/components/layout/MainLayout/MainLayout'
 import RequireAuth from '../shared/components/ui/RequireAuth'
 import RedirectByRole from '../shared/components/ui/RedirectByRole'
+import PromotionsScreen from '../features/promotions/screens/PromotionsScreen'
 
 function DashboardPage() {
   return <div className="dashboard-placeholder">Dashboard content goes here</div>
@@ -96,7 +97,14 @@ function AppRoutes() {
             </RequireAuth>
           )}
         />
-        <Route path="promotions" element={<DashboardPage />} />
+          <Route
+              path="promotions"
+              element={(
+                  <RequireAuth allowedRoles={['ADMIN', 'MANAGER']}>
+                      <PromotionsScreen />
+                  </RequireAuth>
+              )}
+          />
         <Route
           path="inventory"
           element={(
