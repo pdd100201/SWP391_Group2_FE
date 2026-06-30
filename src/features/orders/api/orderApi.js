@@ -1,0 +1,28 @@
+import axios from 'axios'
+import axiosClient from '../../../shared/services/axiosClient'
+
+const PUBLIC_API = 'http://localhost:8080/api/order-access'
+
+export const orderApi = {
+  getAll: (active = true) => axiosClient.get('/orders', { params: { active } }),
+  getById: (orderId) => axiosClient.get(`/orders/${orderId}`),
+  getByReservation: (reservationId) => axiosClient.get(`/orders/by-reservation/${reservationId}`),
+  create: (payload) => axiosClient.post('/orders', payload),
+  addItem: (orderId, payload) => axiosClient.post(`/orders/${orderId}/items`, payload),
+  updateItem: (orderId, itemId, payload) => axiosClient.patch(`/orders/${orderId}/items/${itemId}`, payload),
+  removeItem: (orderId, itemId) => axiosClient.delete(`/orders/${orderId}/items/${itemId}`),
+  submit: (orderId) => axiosClient.post(`/orders/${orderId}/submit`),
+  updateItemStatus: (orderId, itemId, status) =>
+    axiosClient.patch(`/orders/${orderId}/items/${itemId}/status`, { status }),
+  close: (orderId) => axiosClient.patch(`/orders/${orderId}/close`),
+  cancel: (orderId) => axiosClient.patch(`/orders/${orderId}/cancel`),
+}
+
+export const publicOrderApi = {
+  getOrder: (token) => axios.get(`${PUBLIC_API}/${token}`),
+  getMenu: (token) => axios.get(`${PUBLIC_API}/${token}/menu`),
+  addItem: (token, payload) => axios.post(`${PUBLIC_API}/${token}/items`, payload),
+  updateItem: (token, itemId, payload) => axios.patch(`${PUBLIC_API}/${token}/items/${itemId}`, payload),
+  removeItem: (token, itemId) => axios.delete(`${PUBLIC_API}/${token}/items/${itemId}`),
+  submit: (token) => axios.post(`${PUBLIC_API}/${token}/submit`),
+}

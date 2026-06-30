@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CalendarDays, Clock, Search, UsersRound, CheckCircle2, HelpCircle } from 'lucide-react'
-import { checkinApi } from '../api/checkinApi' // Lát nữa ta sẽ sửa cái api này một chút
+import { useNavigate } from 'react-router-dom'
+import { checkinApi } from '../api/checkinApi'
 import { getAllReservations } from "../../reservations/api/reservationApi.js"
 import { tableApi } from "../../tables/api/tableApi.js"
 import './CheckInScreen.css'
@@ -39,6 +40,7 @@ const normalizeTable = (table) => ({
 })
 
 function CheckInScreen() {
+  const navigate = useNavigate()
   const [reservations, setReservations] = useState([])
   const [tables, setTables] = useState([])
   const [search, setSearch] = useState('')
@@ -438,36 +440,27 @@ function CheckInScreen() {
                 </div>
                 <div className="custom-modal-title">Table {occupiedTableDetails.table.tableNumber} Details</div>
                 <div className="custom-modal-text" style={{ textAlign: 'left', background: '#f8fafc', padding: '16px', borderRadius: '12px', marginTop: '12px' }}>
-                  {/* MODAL 2: XEM NHANH KHÁCH (ĐÃ BỔ SUNG ĐẦY ĐỦ THÔNG TIN THẬT TỪ BACKEND) */}
-                  {occupiedTableDetails && (
-                      <div className="custom-modal-backdrop" onClick={() => setOccupiedTableDetails(null)}>
-                        <div className="custom-modal-card" onClick={(e) => e.stopPropagation()}>
-                          <div className="custom-modal-icon-wrapper custom-modal-icon-wrapper--info">
-                            <HelpCircle className="custom-modal-icon" size={28} style={{ color: '#3b82f6' }} />
-                          </div>
-                          <div className="custom-modal-title">Table {occupiedTableDetails.table.tableNumber} Details</div>
-                          <div className="custom-modal-text" style={{ textAlign: 'left', background: '#f8fafc', padding: '16px', borderRadius: '12px', marginTop: '12px' }}>
-
-                            <div style={{ marginBottom: '8px' }}><strong>Guest Name:</strong> {displayValue(occupiedTableDetails.guest?.fullName)}</div>
-                            <div style={{ marginBottom: '8px' }}><strong>Phone Number:</strong> {displayValue(occupiedTableDetails.guest?.phone)}</div>
-                            <div style={{ marginBottom: '8px' }}><strong>Party Size:</strong> {displayValue(occupiedTableDetails.guest?.numberOfGuests)} Pax</div>
-                            <div style={{ marginBottom: '8px' }}><strong>Check-in Time:</strong> {displayValue(occupiedTableDetails.guest?.checkInTime)}</div>
-                            <div style={{ marginBottom: '8px' }}><strong>Order Reference:</strong> {displayValue(occupiedTableDetails.guest?.orderId)}</div>
-
-                          </div>
-                          <div className="custom-modal-actions" style={{ marginTop: '20px' }}>
-                            <button type="button" className="custom-btn-cancel" onClick={() => setOccupiedTableDetails(null)}>Close</button>
-                          </div>
-                        </div>
-                      </div>
-                  )}
+                  <div style={{ marginBottom: '8px' }}><strong>Guest Name:</strong> {displayValue(occupiedTableDetails.guest?.fullName)}</div>
+                  <div style={{ marginBottom: '8px' }}><strong>Phone Number:</strong> {displayValue(occupiedTableDetails.guest?.phone)}</div>
+                  <div style={{ marginBottom: '8px' }}><strong>Party Size:</strong> {displayValue(occupiedTableDetails.guest?.numberOfGuests)} Pax</div>
+                  <div style={{ marginBottom: '8px' }}><strong>Check-in Time:</strong> {displayValue(occupiedTableDetails.guest?.checkInTime)}</div>
+                  <div><strong>Order:</strong> {displayValue(occupiedTableDetails.guest?.orderCode || occupiedTableDetails.guest?.orderId)}</div>
                 </div>
                 <div className="custom-modal-actions" style={{ marginTop: '20px' }}>
                   <button type="button" className="custom-btn-cancel" onClick={() => setOccupiedTableDetails(null)}>Close</button>
+                  <button
+                      type="button"
+                      className="custom-btn-confirm"
+                      style={{ background: '#3b82f6' }}
+                      onClick={() => navigate('/dashboard/orders-service')}
+                  >
+                    {occupiedTableDetails.guest?.orderId ? 'Manage Order' : 'Create Order'}
+                  </button>
                 </div>
               </div>
             </div>
         )}
+
 
         {reservedTableDetails && (
             <div className="custom-modal-backdrop" onClick={() => setReservedTableDetails(null)}>

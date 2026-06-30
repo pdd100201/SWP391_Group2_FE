@@ -39,13 +39,21 @@ const INITIAL_FORM = {
 const ITEMS_PER_PAGE = 12
 
 // ─── Status Badge (clickable) ─────────────────────────────────────────────────
-function StatusBadge({ status, isOverridden, onEdit }) {
+function StatusBadge({ status, isOverridden, onEdit, readOnly = false }) {
   const map = {
     IN_STOCK:    { label: 'In Stock',     cls: 'inv-badge--green'  },
     LOW_STOCK:   { label: 'Low Stock',    cls: 'inv-badge--yellow' },
     OUT_OF_STOCK:{ label: 'Out of Stock', cls: 'inv-badge--red'    },
   }
   const { label, cls } = map[status] || { label: status, cls: '' }
+  if (readOnly) {
+    return (
+      <span className={`inv-badge ${cls}`} title={isOverridden ? 'Status manually set' : 'Status auto-calculated'}>
+        {label}
+        {isOverridden && <span className="inv-badge__manual-dot" aria-label="manually set" />}
+      </span>
+    )
+  }
   return (
     <button
       type="button"
@@ -723,6 +731,8 @@ function EditStatusModal({ item, onClose, onSuccess }) {
 
 
 function InventoryScreen() {
+  const role = sessionStorage.getItem('role')
+  const canManage = ['ADMIN', 'MANAGER'].includes(role)
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [keyword, setKeyword] = useState('')
@@ -928,15 +938,17 @@ function InventoryScreen() {
             <RefreshCw size={16} />
             Refresh
           </button>
-          <button
-            type="button"
-            id="btn-add-inventory"
-            className="inv-btn inv-btn--primary"
-            onClick={() => setShowAddModal(true)}
-          >
-            <Plus size={18} />
-            Add New Item
-          </button>
+          {canManage && (
+            <button
+              type="button"
+              id="btn-add-inventory"
+              className="inv-btn inv-btn--primary"
+              onClick={() => setShowAddModal(true)}
+            >
+              <Plus size={18} />
+              Add New Item
+            </button>
+          )}
         </div>
       </div>
 
@@ -1023,6 +1035,7 @@ function InventoryScreen() {
                     <button
                       type="button"
                       className="inv-restock-banner__action-link"
+                      style={{ display: canManage ? undefined : 'none' }}
                       onClick={() => setUpdateTarget(it)}
                     >
                       Cập nhật ngay →
@@ -1108,14 +1121,16 @@ function InventoryScreen() {
           <div className="inv-table__empty">
             <Boxes size={48} aria-hidden="true" />
             <p>No inventory items found</p>
-            <button
-              type="button"
-              className="inv-btn inv-btn--primary"
-              id="btn-add-inventory-empty"
-              onClick={() => setShowAddModal(true)}
-            >
-              <Plus size={16} /> Add First Item
-            </button>
+            {canManage && (
+              <button
+                type="button"
+                className="inv-btn inv-btn--primary"
+                id="btn-add-inventory-empty"
+                onClick={() => setShowAddModal(true)}
+              >
+                <Plus size={16} /> Add First Item
+              </button>
+            )}
           </div>
         ) : (
           <table className="inv-table" aria-label="Inventory items">
@@ -1147,7 +1162,7 @@ function InventoryScreen() {
                 <th>Supplier</th>
                 <th>Status</th>
                 <th>Active</th>
-                <th>Actions</th>
+                {canManage && <th>Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -1200,25 +1215,32 @@ function InventoryScreen() {
                       status={item.status}
                       isOverridden={item.isStatusOverridden}
                       onEdit={() => setStatusTarget(item)}
+                      readOnly={!canManage}
                     />
                   </td>
                   <td>
-                    <ToggleSwitch
-                      id={`toggle-${item.id}`}
-                      checked={item.isActive}
-                      onChange={() => requestToggle(item)}
-                    />
+                    {canManage ? (
+                      <ToggleSwitch
+                        id={`toggle-${item.id}`}
+                        checked={item.isActive}
+                        onChange={() => requestToggle(item)}
+                      />
+                    ) : (
+                      <span>{item.isActive ? 'Active' : 'Inactive'}</span>
+                    )}
                   </td>
-                  <td>
-                    <button
-                      type="button"
-                      className="inv-btn inv-btn--action"
-                      onClick={() => setUpdateTarget(item)}
-                      aria-label={`Edit ${item.itemName}`}
-                    >
-                      Edit Item
-                    </button>
-                  </td>
+                  {canManage && (
+                    <td>
+                      <button
+                        type="button"
+                        className="inv-btn inv-btn--action"
+                        onClick={() => setUpdateTarget(item)}
+                        aria-label={`Edit ${item.itemName}`}
+                      >
+                        Edit Item
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -1270,17 +1292,17 @@ function InventoryScreen() {
       </div>
 
       {/* Modals */}
-      {showAddModal && (
+      {canManage && showAddModal && (
         <AddItemModal onClose={() => setShowAddModal(false)} onSuccess={handleAddSuccess} />
       )}
-      {updateTarget && (
+      {canManage && updateTarget && (
         <UpdateItemModal
           item={updateTarget}
           onClose={() => setUpdateTarget(null)}
           onSuccess={handleUpdateSuccess}
         />
       )}
-      {confirmToggle && (
+      {canManage && confirmToggle && (
         <ConfirmToggleModal
           item={confirmToggle}
           onClose={() => !toggling && setConfirmToggle(null)}
@@ -1288,7 +1310,7 @@ function InventoryScreen() {
           confirming={toggling}
         />
       )}
-      {statusTarget && (
+      {canManage && statusTarget && (
         <EditStatusModal
           item={statusTarget}
           onClose={() => setStatusTarget(null)}
