@@ -53,6 +53,7 @@ function CheckInScreen() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [occupiedTableDetails, setOccupiedTableDetails] = useState(null)
+  const [reservedTableDetails, setReservedTableDetails] = useState(null)
 
   const [selectedSection, setSelectedSection] = useState('All')
   const [selectedStatus, setSelectedStatus] = useState('All')
@@ -152,6 +153,17 @@ function CheckInScreen() {
       } catch (err) {
         console.error("Error fetching active guest details:", err)
         alert("Could not fetch active guest details. Please try again.")
+      }
+      return
+    }
+
+    if (table.status === 'RESERVED') {
+      try {
+        const response = await checkinApi.getReservedGuestByTable(table.id)
+        setReservedTableDetails({ table, guest: response.data })
+      } catch (err) {
+        console.error("Error fetching reserved guest details:", err)
+        alert("Could not fetch reserved guest details. Please try again.")
       }
       return
     }
@@ -452,6 +464,27 @@ function CheckInScreen() {
                 </div>
                 <div className="custom-modal-actions" style={{ marginTop: '20px' }}>
                   <button type="button" className="custom-btn-cancel" onClick={() => setOccupiedTableDetails(null)}>Close</button>
+                </div>
+              </div>
+            </div>
+        )}
+
+        {reservedTableDetails && (
+            <div className="custom-modal-backdrop" onClick={() => setReservedTableDetails(null)}>
+              <div className="custom-modal-card" onClick={(e) => e.stopPropagation()}>
+                <div className="custom-modal-icon-wrapper" style={{ backgroundColor: '#fffbeb' }}>
+                  <HelpCircle className="custom-modal-icon" size={28} style={{ color: '#f59e0b' }} />
+                </div>
+                <div className="custom-modal-title">Table {reservedTableDetails.table.tableNumber} Reservation</div>
+                <div className="custom-modal-text" style={{ textAlign: 'left', background: '#fffbeb', padding: '16px', borderRadius: '12px', marginTop: '12px' }}>
+                  <div style={{ marginBottom: '8px' }}><strong>Guest Name:</strong> {displayValue(reservedTableDetails.guest?.fullName)}</div>
+                  <div style={{ marginBottom: '8px' }}><strong>Phone Number:</strong> {displayValue(reservedTableDetails.guest?.phone)}</div>
+                  <div style={{ marginBottom: '8px' }}><strong>Party Size:</strong> {displayValue(reservedTableDetails.guest?.numberOfGuests)} Pax</div>
+                  <div style={{ marginBottom: '8px' }}><strong>Reservation Time:</strong> {displayValue(reservedTableDetails.guest?.checkInTime)}</div>
+                  <div style={{ marginBottom: '8px' }}><strong>Reservation Reference:</strong> {displayValue(reservedTableDetails.guest?.orderId)}</div>
+                </div>
+                <div className="custom-modal-actions" style={{ marginTop: '20px' }}>
+                  <button type="button" className="custom-btn-cancel" onClick={() => setReservedTableDetails(null)}>Close</button>
                 </div>
               </div>
             </div>

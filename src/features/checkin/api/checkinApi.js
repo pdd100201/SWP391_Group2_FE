@@ -10,5 +10,9 @@ export const checkinApi = {
 
     getActiveGuestByTable: async (tableId) => {
         return axiosClient.get(`/check-in/table/${tableId}/active-guest`);
+    },
+
+    getReservedGuestByTable: async (tableId) => {
+        return axiosClient.get(`/check-in/table/${tableId}/reserved-guest`);
     }
 };

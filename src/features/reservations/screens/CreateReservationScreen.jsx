@@ -58,11 +58,12 @@ function CreateReservationScreen() {
       return
     }
 
-    // 2. Validate future date and time
+    // 2. Validate minimum advance booking time
     const selectedDateTime = new Date(`${formData.reservationDate}T${formData.reservationTime}`)
     const currentDateTime = new Date()
-    if (isNaN(selectedDateTime.getTime()) || selectedDateTime <= currentDateTime) {
-      setError('Reservation date and time must be in the future.')
+    const minimumReservationTime = new Date(currentDateTime.getTime() + 2 * 60 * 60 * 1000)
+    if (isNaN(selectedDateTime.getTime()) || selectedDateTime < minimumReservationTime) {
+      setError('Reservations must be made at least 2 hours in advance.')
       return
     }
 
