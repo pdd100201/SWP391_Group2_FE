@@ -63,7 +63,7 @@ function CheckInScreen() {
     try {
       const [reservationResponse, tableResponse] = await Promise.all([
         getAllReservations(),
-        tableApi.getAll(),
+        tableApi.getStatusNow(),
       ])
 
       const nextReservations = Array.isArray(reservationResponse.data)
