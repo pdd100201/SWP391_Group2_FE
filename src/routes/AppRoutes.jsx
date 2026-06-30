@@ -1,5 +1,9 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import HomeScreen from '../features/home/screens/HomeScreen'
+import QrMenuScreen from '../features/qr/screens/QrMenuScreen'
+import QrCartScreen from '../features/qr/screens/QrCartScreen'
+import QrOrderStatusScreen from '../features/qr/screens/QrOrderStatusScreen'
+import QrOrderRedirect from '../features/qr/screens/QrOrderRedirect'
 import AuthScreen from '../features/auth/screens/AuthScreen'
 import ForgotPasswordScreen from '../features/auth/screens/ForgotPasswordScreen'
 import VerifyOtpScreen from '../features/auth/screens/VerifyOtpScreen'
@@ -111,6 +115,10 @@ function AppRoutes() {
         <Route path="accounts/customer" element={<CustomerAccountPage />} />
         <Route path="profile" element={<DashboardProfileScreen />} />
       </Route>
+      <Route path="/order" element={<QrOrderRedirect />} />
+      <Route path="/qr/table/:tableId" element={<QrMenuScreen />} />
+      <Route path="/qr/table/:tableId/cart" element={<QrCartScreen />} />
+      <Route path="/qr/order/:orderId/status" element={<QrOrderStatusScreen />} />
       <Route path="*" element={<Navigate to="/home" replace />} />
     </Routes>
   )

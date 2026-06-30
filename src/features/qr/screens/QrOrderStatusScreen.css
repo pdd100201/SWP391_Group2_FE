@@ -1,0 +1,386 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.qr-status {
+  width: 100%;
+  min-height: 100vh;
+  background: #f9fafb;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  padding-bottom: 32px;
+}
+
+/* Header */
+.qr-status__header {
+  background: #10b981;
+  color: #fff;
+  padding: 20px 16px 16px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.qr-status__header h1 {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.qr-status__order-id {
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+/* Loading & Error */
+.qr-status__loading,
+.qr-status__error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: 12px;
+  color: #6b7280;
+  font-size: 15px;
+}
+
+.qr-status__spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #10b981;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.qr-status__error {
+  color: #ef4444;
+}
+
+/* Body */
+.qr-status__body {
+  padding: 16px;
+}
+
+/* Status card */
+.qr-status__status-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px 16px;
+  text-align: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  margin-bottom: 16px;
+}
+
+.qr-status__icon {
+  font-size: 52px;
+  margin-bottom: 12px;
+}
+
+.qr-status__label {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.qr-status__badge {
+  display: inline-block;
+  border-radius: 20px;
+  padding: 6px 20px;
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.qr-status__badge--PENDING {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.qr-status__badge--PREPARING {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.qr-status__badge--SERVED {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.qr-status__badge--default {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+/* Stepper */
+.qr-status__stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin-top: 8px;
+}
+
+.qr-status__step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.qr-status__step-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2.5px solid #d1d5db;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #9ca3af;
+  transition: all 0.2s;
+}
+
+.qr-status__step-dot--active {
+  border-color: #10b981;
+  background: #10b981;
+  color: #fff;
+}
+
+.qr-status__step-dot--done {
+  border-color: #10b981;
+  background: #d1fae5;
+  color: #10b981;
+}
+
+.qr-status__step-label {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.qr-status__step-label--active {
+  color: #10b981;
+  font-weight: 700;
+}
+
+.qr-status__step-line {
+  width: 36px;
+  height: 2px;
+  background: #e5e7eb;
+  margin-bottom: 22px;
+  flex-shrink: 0;
+}
+
+.qr-status__step-line--done {
+  background: #10b981;
+}
+
+/* Items section */
+.qr-status__section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 10px;
+}
+
+.qr-status__items-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 4px 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
+  margin-bottom: 16px;
+}
+
+.qr-status__order-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.qr-status__order-item:last-child {
+  border-bottom: none;
+}
+
+.qr-status__order-item-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.qr-status__order-item-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.qr-status__order-item-qty {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.qr-status__order-item-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.qr-status__order-item-subtotal {
+  font-size: 14px;
+  font-weight: 700;
+  color: #10b981;
+}
+
+/* Item-level status badge */
+.qr-status__item-badge {
+  display: inline-block;
+  border-radius: 12px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.qr-status__item-badge--pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.qr-status__item-badge--preparing {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.qr-status__item-badge--served {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.qr-status__item-badge--default {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+/* Total */
+.qr-status__total-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.qr-status__total-label {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.qr-status__total-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #10b981;
+}
+
+/* Payment button */
+.qr-status__pay-btn {
+  width: 100%;
+  background: #10b981;
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  padding: 17px;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-bottom: 12px;
+}
+
+.qr-status__pay-btn:active {
+  background: #059669;
+}
+
+/* Refresh note */
+.qr-status__refresh-note {
+  text-align: center;
+  font-size: 12px;
+  color: #9ca3af;
+  margin-top: 8px;
+}
+
+/* ── Tablet (768px – 1024px) ── */
+@media (min-width: 768px) {
+  .qr-status__header h1 {
+    font-size: 22px;
+  }
+
+  .qr-status__order-id {
+    font-size: 14px;
+  }
+
+  .qr-status__icon {
+    font-size: 60px;
+  }
+
+  .qr-status__badge {
+    font-size: 17px;
+    padding: 7px 24px;
+  }
+
+  .qr-status__order-item-name {
+    font-size: 15px;
+  }
+
+  .qr-status__total-label {
+    font-size: 17px;
+  }
+
+  .qr-status__total-value {
+    font-size: 19px;
+  }
+}
+
+/* ── Desktop (> 1024px) ── */
+@media (min-width: 1025px) {
+  .qr-status__header {
+    padding: 24px 32px 18px;
+  }
+
+  .qr-status__header h1 {
+    font-size: 24px;
+  }
+
+  .qr-status__body {
+    padding: 24px 32px;
+  }
+
+  .qr-status__section-title {
+    font-size: 16px;
+  }
+
+  .qr-status__refresh-note {
+    font-size: 13px;
+  }
+}
