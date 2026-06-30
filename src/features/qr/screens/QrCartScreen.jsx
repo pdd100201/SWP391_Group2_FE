@@ -1,0 +1,163 @@
+import { useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { createOrder } from '../api/qrApi'
+import './QrCartScreen.css'
+
+const CART_KEY = 'qr_cart'
+
+function loadCart() {
+  try {
+    return JSON.parse(sessionStorage.getItem(CART_KEY) || '[]')
+  } catch {
+    return []
+  }
+}
+
+function saveCart(cart) {
+  sessionStorage.setItem(CART_KEY, JSON.stringify(cart))
+}
+
+function formatPrice(price) {
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price)
+}
+
+export default function QrCartScreen() {
+  const { tableId } = useParams()
+  const navigate = useNavigate()
+
+  const [cart, setCart] = useState(loadCart)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState(null)
+
+  function updateQuantity(itemId, delta) {
+    setCart((prev) => {
+      const next = prev
+        .map((c) => (c.itemId === itemId ? { ...c, quantity: c.quantity + delta } : c))
+        .filter((c) => c.quantity > 0)
+      saveCart(next)
+      return next
+    })
+  }
+
+  function removeItem(itemId) {
+    setCart((prev) => {
+      const next = prev.filter((c) => c.itemId !== itemId)
+      saveCart(next)
+      return next
+    })
+  }
+
+  const totalAmount = cart.reduce((sum, c) => sum + c.price * c.quantity, 0)
+  const totalItems = cart.reduce((sum, c) => sum + c.quantity, 0)
+
+  async function handleOrder() {
+    setError(null)
+    const sessionToken = sessionStorage.getItem('qr_session_token')
+    if (!sessionToken) {
+      setError('Phiên làm việc hết hạn. Vui lòng quét lại mã QR.')
+      return
+    }
+    setSubmitting(true)
+    try {
+      const payload = cart.map((c) => ({ itemId: c.itemId, quantity: c.quantity }))
+      const result = await createOrder(sessionToken, payload)
+      sessionStorage.removeItem(CART_KEY)
+      navigate(`/qr/order/${result.orderId}/status`)
+    } catch {
+      setError('Đặt món thất bại. Vui lòng thử lại.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (cart.length === 0) {
+    return (
+      <div className="qr-cart">
+        <div className="qr-cart__header">
+          <button className="qr-cart__back-btn" onClick={() => navigate(-1)}>←</button>
+          <h1>Giỏ hàng</h1>
+        </div>
+        <div className="qr-cart__empty">
+          <div className="qr-cart__empty-icon">🛒</div>
+          <p>Giỏ hàng trống</p>
+          <button
+            className="qr-cart__empty-back-btn"
+            onClick={() => navigate(`/qr/table/${tableId}`)}
+          >
+            Xem thực đơn
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="qr-cart">
+      <div className="qr-cart__header">
+        <button className="qr-cart__back-btn" onClick={() => navigate(-1)}>←</button>
+        <h1>Giỏ hàng ({totalItems} món)</h1>
+      </div>
+
+      <div className="qr-cart__body">
+        {error && <div className="qr-cart__toast">{error}</div>}
+
+        {cart.map((item) => (
+          <div key={item.itemId} className="qr-cart__item">
+            <div className="qr-cart__item-top">
+              <span className="qr-cart__item-name">{item.itemName}</span>
+              <button
+                className="qr-cart__delete-btn"
+                onClick={() => removeItem(item.itemId)}
+                aria-label="Xóa"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="qr-cart__item-bottom">
+              <span className="qr-cart__item-subtotal">
+                {formatPrice(item.price * item.quantity)}
+              </span>
+              <div className="qr-cart__qty">
+                <button
+                  className="qr-cart__qty-btn"
+                  onClick={() => updateQuantity(item.itemId, -1)}
+                >
+                  −
+                </button>
+                <span className="qr-cart__qty-value">{item.quantity}</span>
+                <button
+                  className="qr-cart__qty-btn"
+                  onClick={() => updateQuantity(item.itemId, 1)}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        <div className="qr-cart__summary">
+          <div className="qr-cart__summary-row">
+            <span className="qr-cart__summary-label">Số món</span>
+            <span className="qr-cart__summary-value">{totalItems}</span>
+          </div>
+          <hr className="qr-cart__summary-divider" />
+          <div className="qr-cart__summary-row">
+            <span className="qr-cart__summary-total-label">Tổng cộng</span>
+            <span className="qr-cart__summary-total-value">{formatPrice(totalAmount)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="qr-cart__footer">
+        <button
+          className="qr-cart__order-btn"
+          onClick={handleOrder}
+          disabled={submitting}
+        >
+          {submitting ? 'Đang đặt món...' : 'Đặt món ngay'}
+        </button>
+      </div>
+    </div>
+  )
+}
