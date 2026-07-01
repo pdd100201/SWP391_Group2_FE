@@ -3,6 +3,7 @@ import axiosClient from '../../../shared/services/axiosClient'
 
 export const tableApi = {
   getAll: () => axiosClient.get('/tables'),
+  getStatusNow: () => axiosClient.get('/tables/status-now'),
   getById: (id) => axiosClient.get(`/tables/${id}`),
   create: (data) => axiosClient.post('/tables', data),
   update: (id, data) => axiosClient.put(`/tables/${id}`, data),

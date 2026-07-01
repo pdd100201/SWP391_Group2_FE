@@ -17,11 +17,14 @@ import CustomerAccountPage from '../features/accounts/screens/CustomerAccountPag
 import CreateReservationScreen from '../features/reservations/screens/CreateReservationScreen'
 import ReservationHistoryScreen from '../features/reservations/screens/ReservationHistoryScreen'
 import DashboardReservationsScreen from '../features/reservations/screens/DashboardReservationsScreen'
+import OrdersServiceScreen from '../features/orders/screens/OrdersServiceScreen'
+import PublicOrderScreen from '../features/orders/screens/PublicOrderScreen'
 import TableManagementScreen from '../features/tables/screens/TableManagementScreen'
 import CheckInScreen from '../features/checkin/screens/CheckInScreen'
 import MainLayout from '../shared/components/layout/MainLayout/MainLayout'
 import RequireAuth from '../shared/components/ui/RequireAuth'
 import RedirectByRole from '../shared/components/ui/RedirectByRole'
+import PromotionsScreen from '../features/promotions/screens/PromotionsScreen'
 
 function DashboardPage() {
   return <div className="dashboard-placeholder">Dashboard content goes here</div>
@@ -36,6 +39,7 @@ function AppRoutes() {
       <Route path="/forgot-password" element={<ForgotPasswordScreen />} />
       <Route path="/verify-otp" element={<VerifyOtpScreen />} />
       <Route path="/reset-password" element={<ResetPasswordScreen />} />
+      <Route path="/order-access/:token" element={<PublicOrderScreen />} />
       <Route
         path="/reservations"
         element={(
@@ -91,20 +95,27 @@ function AppRoutes() {
         <Route path="check-in" element={<CheckInScreen />} />
         <Route path="tables" element={<TableManagementScreen />} />
         <Route path="reservations" element={<DashboardReservationsScreen />} />
-        <Route path="orders-service" element={<DashboardPage />} />
+        <Route path="orders-service" element={<OrdersServiceScreen />} />
         <Route
           path="menu-management"
           element={(
-            <RequireAuth allowedRoles={['ADMIN', 'MANAGER']}>
+            <RequireAuth allowedRoles={['ADMIN', 'MANAGER', 'RECEPTIONIST', 'WAITER']}>
               <MenuManagementScreen />
             </RequireAuth>
           )}
         />
-        <Route path="promotions" element={<DashboardPage />} />
+          <Route
+              path="promotions"
+              element={(
+                  <RequireAuth allowedRoles={['ADMIN', 'MANAGER']}>
+                      <PromotionsScreen />
+                  </RequireAuth>
+              )}
+          />
         <Route
           path="inventory"
           element={(
-            <RequireAuth allowedRoles={['ADMIN', 'MANAGER']}>
+            <RequireAuth allowedRoles={['ADMIN', 'MANAGER', 'RECEPTIONIST', 'WAITER']}>
               <InventoryScreen />
             </RequireAuth>
           )}
