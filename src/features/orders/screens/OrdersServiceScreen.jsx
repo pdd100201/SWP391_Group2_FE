@@ -61,6 +61,10 @@ function OrdersServiceScreen() {
 
   const selected = orders.find((order) => order.id === selectedId) || null
   const role = sessionStorage.getItem('role')
+  const selectedTableQrLink = useMemo(() => {
+    if (!selected?.tableId) return ''
+    return `${window.location.origin}/order?tableId=${selected.tableId}`
+  }, [selected?.tableId])
   const categories = useMemo(
     () => ['All', ...new Set(menu.map((item) => item.category).filter(Boolean))],
     [menu]
@@ -107,13 +111,14 @@ function OrdersServiceScreen() {
   }, [])
 
   useEffect(() => {
-    if (!selected?.qrPath) {
+    if (!selectedTableQrLink) {
+      setQrDataUrl('')
       return
     }
-    QRCode.toDataURL(`${window.location.origin}${selected.qrPath}`, { width: 180, margin: 1 })
+    QRCode.toDataURL(selectedTableQrLink, { width: 180, margin: 1 })
       .then(setQrDataUrl)
       .catch(() => setQrDataUrl(''))
-  }, [selected?.qrPath])
+  }, [selectedTableQrLink])
 
   const applyOrder = (next) => {
     setReservations((current) => current.map((reservation) => (
@@ -168,8 +173,8 @@ function OrdersServiceScreen() {
   }
 
   const copyQrLink = async () => {
-    if (!selected) return
-    await navigator.clipboard.writeText(`${window.location.origin}${selected.qrPath}`)
+    if (!selectedTableQrLink) return
+    await navigator.clipboard.writeText(selectedTableQrLink)
   }
 
   if (loading) return <div className="orders-loading">Loading order workspace...</div>
@@ -237,7 +242,7 @@ function OrdersServiceScreen() {
                   <p>Reservation #{selected.reservationId} - {selected.reservationGuestName} - {tableLabel(selected)} - Waiter {selected.waiterName}</p>
                 </div>
                 <div className="orders-detail-actions">
-                  <button type="button" className="orders-button orders-button--secondary" onClick={copyQrLink}>
+                  <button type="button" className="orders-button orders-button--secondary" onClick={copyQrLink} disabled={!selectedTableQrLink}>
                     <Copy size={16} /> Copy QR link
                   </button>
                   <button type="button" className="orders-button orders-button--danger" disabled={busy} onClick={() => run(
@@ -333,9 +338,9 @@ function OrdersServiceScreen() {
                 </div>
 
                 <aside className="orders-qr-card">
-                  <span><QrCode size={17} /> Guest ordering QR</span>
+                  <span><QrCode size={17} /> Table ordering QR</span>
                   {qrDataUrl && <img src={qrDataUrl} alt="Guest order QR code" />}
-                  <p>Guests can scan this code to add and submit more dishes while the order is open.</p>
+                  <p>Guests scan the table QR to open the menu and place orders for this table.</p>
                 </aside>
               </div>
             </>
