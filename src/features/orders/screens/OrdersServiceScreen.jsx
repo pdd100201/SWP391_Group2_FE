@@ -1,25 +1,35 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  Check,
+  BadgePercent,
+  Banknote,
   ChefHat,
   ClipboardList,
   Copy,
+  CreditCard,
+  ExternalLink,
   Minus,
   Plus,
   QrCode,
   RefreshCw,
+  Printer,
+  ReceiptText,
   Search,
   Send,
   Trash2,
+  Wallet,
   XCircle,
 } from 'lucide-react'
 import QRCode from 'qrcode'
+import { useSearchParams } from 'react-router-dom'
 import { menuService } from '../../menu/services/menuService'
 import { getAllReservations } from '../../reservations/api/reservationApi'
 import { orderApi } from '../api/orderApi'
 import './OrdersServiceScreen.css'
 
 const money = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} ₫`
+const formatDateTime = (value) => value
+  ? new Date(value).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })
+  : '-'
 const errorMessage = (error, fallback) => error.response?.data?.message || fallback
 const loadErrorMessage = (error) => {
   const status = error.response?.status
@@ -46,21 +56,37 @@ const statusLabels = {
   CANCELLED: 'Cancelled',
 }
 
+const paymentOptions = [
+  { value: 'CASH', label: 'Cash', icon: Banknote },
+  { value: 'CARD', label: 'Card', icon: CreditCard },
+  { value: 'E_WALLET', label: 'E-wallet', icon: Wallet },
+  { value: 'VNPAY', label: 'VNPAY', icon: ExternalLink },
+]
+
 function OrdersServiceScreen() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [orders, setOrders] = useState([])
   const [selectedId, setSelectedId] = useState(null)
   const [menu, setMenu] = useState([])
   const [reservations, setReservations] = useState([])
   const [reservationId, setReservationId] = useState('')
+  const [invoice, setInvoice] = useState(null)
+  const [promotionCode, setPromotionCode] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState('CASH')
   const [category, setCategory] = useState('All')
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+  const [paymentBusy, setPaymentBusy] = useState(false)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
   const [qrDataUrl, setQrDataUrl] = useState('')
 
   const selected = orders.find((order) => order.id === selectedId) || null
   const role = sessionStorage.getItem('role')
+  const invoiceReady = selected && ['SERVED', 'CLOSED'].includes(selected.serviceStatus)
+  const invoiceLocked = ['PAID', 'PENDING'].includes(invoice?.paymentStatus)
+  const invoicePaid = invoice?.paymentStatus === 'PAID'
   const categories = useMemo(
     () => ['All', ...new Set(menu.map((item) => item.category).filter(Boolean))],
     [menu]
@@ -82,7 +108,7 @@ function OrdersServiceScreen() {
     setError('')
     try {
       const [ordersResponse, menuResponse, reservationsResponse] = await Promise.all([
-        orderApi.getAll(true),
+        orderApi.getAll(false),
         menuService.getAll(),
         getAllReservations(),
       ])
@@ -92,7 +118,7 @@ function OrdersServiceScreen() {
       setReservations(reservationsResponse.data || [])
       setSelectedId((current) => nextOrders.some((order) => order.id === current)
         ? current
-        : nextOrders[0]?.id || null)
+        : (nextOrders.find((order) => order.status === 'OPEN') || nextOrders[0])?.id || null)
     } catch (loadError) {
       setError(loadError.response?.data?.message || loadErrorMessage(loadError))
     } finally {
@@ -105,6 +131,46 @@ function OrdersServiceScreen() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load()
   }, [])
+
+  useEffect(() => {
+    const status = searchParams.get('vnpayStatus')
+    if (!status) return
+    const message = searchParams.get('message') || ''
+    const returnedOrderId = Number(searchParams.get('orderId'))
+    const returnedInvoiceId = Number(searchParams.get('invoiceId'))
+    if (returnedOrderId) setSelectedId(returnedOrderId)
+    if (status === 'success') {
+      setNotice(message || 'VNPAY payment completed.')
+      setError('')
+    } else {
+      setError(message || 'VNPAY payment was not successful.')
+      setNotice('')
+    }
+    if (returnedInvoiceId) {
+      orderApi.getInvoiceById(returnedInvoiceId)
+        .then((response) => setInvoice(response.data))
+        .catch(() => {})
+    }
+    setSearchParams({}, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (!selected?.id) {
+      setInvoice(null)
+      setPromotionCode('')
+      return
+    }
+    orderApi.getInvoice(selected.id)
+      .then((response) => {
+        setInvoice(response.data)
+        setPromotionCode(response.data?.promotionCode || '')
+      })
+      .catch(() => {
+        setInvoice(null)
+        setPromotionCode('')
+      })
+  }, [selected?.id])
 
   useEffect(() => {
     if (!selected?.qrPath) {
@@ -133,12 +199,11 @@ function OrdersServiceScreen() {
         : reservation
     )))
     setOrders((current) => {
-      if (next.status !== 'OPEN') return current.filter((order) => order.id !== next.id)
+      if (next.status === 'CANCELLED') return current.filter((order) => order.id !== next.id)
       const exists = current.some((order) => order.id === next.id)
       return exists ? current.map((order) => order.id === next.id ? next : order) : [next, ...current]
     })
-    if (next.status === 'OPEN') setSelectedId(next.id)
-    else setSelectedId(null)
+    setSelectedId(next.id)
   }
 
   const run = async (action, fallback) => {
@@ -172,6 +237,87 @@ function OrdersServiceScreen() {
     await navigator.clipboard.writeText(`${window.location.origin}${selected.qrPath}`)
   }
 
+  const issueInvoice = async () => {
+    if (!selected) return
+    setPaymentBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      const response = await orderApi.issueInvoice(selected.id)
+      setInvoice(response.data)
+      setPromotionCode(response.data?.promotionCode || '')
+      setNotice('Invoice is ready for payment.')
+    } catch (invoiceError) {
+      setError(errorMessage(invoiceError, 'Unable to issue invoice.'))
+    } finally {
+      setPaymentBusy(false)
+    }
+  }
+
+  const applyPromotion = async (event) => {
+    event.preventDefault()
+    if (!invoice || !promotionCode.trim()) return
+    setPaymentBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      const response = await orderApi.applyPromotion(invoice.id, promotionCode.trim())
+      setInvoice(response.data)
+      setPromotionCode(response.data?.promotionCode || '')
+      setNotice('Promotion applied to invoice.')
+    } catch (promotionError) {
+      setError(errorMessage(promotionError, 'Unable to apply promotion.'))
+    } finally {
+      setPaymentBusy(false)
+    }
+  }
+
+  const removePromotion = async () => {
+    if (!invoice) return
+    setPaymentBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      const response = await orderApi.removePromotion(invoice.id)
+      setInvoice(response.data)
+      setPromotionCode('')
+      setNotice('Promotion removed from invoice.')
+    } catch (promotionError) {
+      setError(errorMessage(promotionError, 'Unable to remove promotion.'))
+    } finally {
+      setPaymentBusy(false)
+    }
+  }
+
+  const payInvoice = async () => {
+    if (!invoice) return
+    setPaymentBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      const payload = {
+        paymentMethod,
+        bankCode: paymentMethod === 'VNPAY' ? 'NCB' : undefined,
+      }
+      const response = await orderApi.payInvoice(invoice.id, payload)
+      if (response.data?.paymentUrl) {
+        window.location.href = response.data.paymentUrl
+        return
+      }
+      setInvoice(response.data.invoice)
+      setNotice(response.data?.message || 'Payment completed.')
+    } catch (paymentError) {
+      setError(errorMessage(paymentError, 'Unable to process payment.'))
+    } finally {
+      setPaymentBusy(false)
+    }
+  }
+
+  const printInvoice = () => {
+    if (!invoice) return
+    window.print()
+  }
+
   if (loading) return <div className="orders-loading">Loading order workspace...</div>
 
   return (
@@ -188,6 +334,7 @@ function OrdersServiceScreen() {
       </header>
 
       {error && <div className="orders-alert">{error}</div>}
+      {notice && <div className="orders-alert orders-alert--success">{notice}</div>}
 
       <div className="orders-create-bar">
         <label className="orders-reservation-field">
@@ -240,7 +387,7 @@ function OrdersServiceScreen() {
                   <button type="button" className="orders-button orders-button--secondary" onClick={copyQrLink}>
                     <Copy size={16} /> Copy QR link
                   </button>
-                  <button type="button" className="orders-button orders-button--danger" disabled={busy} onClick={() => run(
+                  <button type="button" className="orders-button orders-button--danger" disabled={busy || selected.status !== 'OPEN'} onClick={() => run(
                     () => orderApi.cancel(selected.id), 'Unable to cancel order.')}>
                     <XCircle size={16} /> Cancel
                   </button>
@@ -253,13 +400,13 @@ function OrdersServiceScreen() {
                   <div className="orders-items">
                     {selected.items.length === 0 && <p className="orders-empty">Add dishes from the menu below.</p>}
                     {selected.items.map((item) => {
-                      const target = nextStatus(item)
+                      const target = selected.status === 'OPEN' ? nextStatus(item) : null
                       return (
                         <article className={`orders-item orders-item--${item.status.toLowerCase()}`} key={item.id}>
                           <img src={item.menuItemImageUrl || '/favicon.svg'} alt="" />
                           <div className="orders-item-main">
                             <strong>{item.menuItemName}</strong>
-                            {['DRAFT', 'CONFIRMED'].includes(item.status) ? (
+                            {selected.status === 'OPEN' && ['DRAFT', 'CONFIRMED'].includes(item.status) ? (
                               <input
                                 className="orders-item-note"
                                 defaultValue={item.note || ''}
@@ -275,12 +422,12 @@ function OrdersServiceScreen() {
                             <span className="orders-item-status">{statusLabels[item.status]}</span>
                           </div>
                           <div className="orders-quantity">
-                            <button type="button" disabled={busy || !['DRAFT', 'CONFIRMED'].includes(item.status) || item.quantity <= 1}
+                            <button type="button" disabled={busy || selected.status !== 'OPEN' || !['DRAFT', 'CONFIRMED'].includes(item.status) || item.quantity <= 1}
                               onClick={() => run(() => orderApi.updateItem(selected.id, item.id, { quantity: item.quantity - 1, note: item.note }), 'Unable to update quantity.')}>
                               <Minus size={14} />
                             </button>
                             <b>{item.quantity}</b>
-                            <button type="button" disabled={busy || !['DRAFT', 'CONFIRMED'].includes(item.status)}
+                            <button type="button" disabled={busy || selected.status !== 'OPEN' || !['DRAFT', 'CONFIRMED'].includes(item.status)}
                               onClick={() => run(() => orderApi.updateItem(selected.id, item.id, { quantity: item.quantity + 1, note: item.note }), 'Unable to update quantity.')}>
                               <Plus size={14} />
                             </button>
@@ -292,7 +439,7 @@ function OrdersServiceScreen() {
                               {target.replace('_', ' ')}
                             </button>
                           ) : (
-                            <button type="button" className="orders-trash-button" disabled={busy || !['DRAFT', 'CONFIRMED'].includes(item.status)}
+                            <button type="button" className="orders-trash-button" disabled={busy || selected.status !== 'OPEN' || !['DRAFT', 'CONFIRMED'].includes(item.status)}
                               onClick={() => run(() => orderApi.removeItem(selected.id, item.id), 'Unable to remove item.')}>
                               <Trash2 size={16} />
                             </button>
@@ -303,13 +450,13 @@ function OrdersServiceScreen() {
                   </div>
 
                   <div className="orders-primary-actions">
-                    <button type="button" className="orders-button orders-button--primary" disabled={busy || !selected.items.some((item) => item.status === 'DRAFT')}
+                    <button type="button" className="orders-button orders-button--primary" disabled={busy || selected.status !== 'OPEN' || !selected.items.some((item) => item.status === 'DRAFT')}
                       onClick={() => run(() => orderApi.submit(selected.id), 'Unable to submit order.')}>
                       <Send size={17} /> Submit draft items
                     </button>
-                    <button type="button" className="orders-button orders-button--success" disabled={busy || selected.serviceStatus !== 'SERVED'}
-                      onClick={() => run(() => orderApi.close(selected.id), 'Unable to close order.')}>
-                      <Check size={17} /> Close order
+                    <button type="button" className="orders-button orders-button--success" disabled={paymentBusy || !invoiceReady}
+                      onClick={issueInvoice}>
+                      <ReceiptText size={17} /> Issue invoice
                     </button>
                   </div>
 
@@ -324,7 +471,7 @@ function OrdersServiceScreen() {
                       <article key={item.id}>
                         <img src={item.imageUrl || '/favicon.svg'} alt="" />
                         <div><small>{item.category}</small><strong>{item.name}</strong><span>{money(item.suggestedPrice)}</span></div>
-                        <button type="button" disabled={busy} onClick={() => run(
+                        <button type="button" disabled={busy || selected.status !== 'OPEN'} onClick={() => run(
                           () => orderApi.addItem(selected.id, { menuItemId: item.id, quantity: 1, note: null }),
                           'Unable to add dish.')}><Plus size={16} /> Add</button>
                       </article>
@@ -332,16 +479,149 @@ function OrdersServiceScreen() {
                   </div>
                 </div>
 
-                <aside className="orders-qr-card">
-                  <span><QrCode size={17} /> Guest ordering QR</span>
-                  {qrDataUrl && <img src={qrDataUrl} alt="Guest order QR code" />}
-                  <p>Guests can scan this code to add and submit more dishes while the order is open.</p>
+                <aside className="orders-side-panel">
+                  <section className="orders-qr-card">
+                    <span><QrCode size={17} /> Guest ordering QR</span>
+                    {qrDataUrl && <img src={qrDataUrl} alt="Guest order QR code" />}
+                    <p>Guests can scan this code to add and submit more dishes while the order is open.</p>
+                  </section>
+
+                  <section className="orders-payment-card">
+                    <div className="orders-payment-head">
+                      <span><ReceiptText size={17} /> Invoice &amp; payment</span>
+                      {invoice?.paymentStatus && <b className={`orders-payment-status orders-payment-status--${invoice.paymentStatus.toLowerCase()}`}>{invoice.paymentStatus}</b>}
+                    </div>
+
+                    {!invoice ? (
+                      <button type="button" className="orders-button orders-button--success orders-payment-full" disabled={paymentBusy || !invoiceReady} onClick={issueInvoice}>
+                        <ReceiptText size={17} /> Issue invoice
+                      </button>
+                    ) : (
+                      <>
+                        <div className="orders-invoice-meta">
+                          <strong>{invoice.invoiceNumber}</strong>
+                          <small>{formatDateTime(invoice.issuedAt)}</small>
+                        </div>
+
+                        <div className="orders-invoice-lines">
+                          <span>Subtotal <b>{money(invoice.subtotal)}</b></span>
+                          <span>Discount <b>-{money(invoice.discountAmount)}</b></span>
+                          <strong>Total <b>{money(invoice.totalAmount)}</b></strong>
+                        </div>
+
+                        <form className="orders-promo-form" onSubmit={applyPromotion}>
+                          <label>
+                            <span><BadgePercent size={15} /> Promotion</span>
+                            <input
+                              value={promotionCode}
+                              onChange={(event) => setPromotionCode(event.target.value.toUpperCase())}
+                              placeholder="WELCOME10"
+                              disabled={paymentBusy || invoiceLocked}
+                            />
+                          </label>
+                          <div>
+                            <button type="submit" className="orders-button orders-button--secondary" disabled={paymentBusy || invoiceLocked || !promotionCode.trim()}>
+                              Apply
+                            </button>
+                            <button type="button" className="orders-button orders-button--secondary" disabled={paymentBusy || invoiceLocked || !invoice.promotionCode} onClick={removePromotion}>
+                              Remove
+                            </button>
+                          </div>
+                        </form>
+
+                        <div className="orders-payment-methods">
+                          {paymentOptions.map(({ value, label, icon: Icon }) => (
+                            <button
+                              type="button"
+                              key={value}
+                              className={paymentMethod === value ? 'is-active' : ''}
+                              disabled={paymentBusy || invoicePaid}
+                              onClick={() => setPaymentMethod(value)}
+                            >
+                              <Icon size={16} /> {label}
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="orders-payment-actions">
+                          <button
+                            type="button"
+                            className="orders-button orders-button--primary"
+                            disabled={paymentBusy || !invoiceReady || invoicePaid || invoice.paymentStatus === 'PENDING'}
+                            onClick={payInvoice}
+                          >
+                            <Banknote size={17} /> Process payment
+                          </button>
+                          <button type="button" className="orders-button orders-button--secondary" disabled={!invoice} onClick={printInvoice}>
+                            <Printer size={17} /> Print
+                          </button>
+                        </div>
+
+                        {invoice.paymentMethod && (
+                          <div className="orders-payment-reference">
+                            <span>{invoice.paymentMethod}</span>
+                            <strong>{invoice.paymentReference || invoice.vnpTransactionNo || invoice.vnpTxnRef || '-'}</strong>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </section>
                 </aside>
               </div>
             </>
           )}
         </main>
       </div>
+      {invoice && (
+        <article className="invoice-print-sheet">
+          <header>
+            <div>
+              <h1>Golden Spoon</h1>
+              <p>Restaurant invoice</p>
+            </div>
+            <div>
+              <strong>{invoice.invoiceNumber}</strong>
+              <span>{formatDateTime(invoice.paidAt || invoice.issuedAt)}</span>
+            </div>
+          </header>
+
+          <section className="invoice-print-info">
+            <span>Order <b>{invoice.orderCode}</b></span>
+            <span>Guest <b>{invoice.guestName}</b></span>
+            <span>Table <b>{invoice.tableNumber || invoice.tableName || '-'}</b></span>
+            <span>Status <b>{invoice.paymentStatus}</b></span>
+          </section>
+
+          <table>
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Qty</th>
+                <th>Unit price</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {invoice.items.map((item) => (
+                <tr key={item.id}>
+                  <td>{item.menuItemName}</td>
+                  <td>{item.quantity}</td>
+                  <td>{money(item.unitPrice)}</td>
+                  <td>{money(item.lineTotal)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          <section className="invoice-print-total">
+            <span>Subtotal <b>{money(invoice.subtotal)}</b></span>
+            <span>Discount {invoice.promotionCode ? `(${invoice.promotionCode})` : ''} <b>-{money(invoice.discountAmount)}</b></span>
+            <strong>Total paid <b>{money(invoice.totalAmount)}</b></strong>
+            <span>Payment <b>{invoice.paymentMethod || '-'}</b></span>
+            <span>Reference <b>{invoice.paymentReference || invoice.vnpTransactionNo || invoice.vnpTxnRef || '-'}</b></span>
+          </section>
+        </article>
+      )}
     </section>
   )
 }
