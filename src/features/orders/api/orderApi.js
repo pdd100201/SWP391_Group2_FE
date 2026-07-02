@@ -16,6 +16,12 @@ export const orderApi = {
     axiosClient.patch(`/orders/${orderId}/items/${itemId}/status`, { status }),
   close: (orderId) => axiosClient.patch(`/orders/${orderId}/close`),
   cancel: (orderId) => axiosClient.patch(`/orders/${orderId}/cancel`),
+  getInvoice: (orderId) => axiosClient.get(`/payments/orders/${orderId}/invoice`),
+  issueInvoice: (orderId) => axiosClient.post(`/payments/orders/${orderId}/invoice`),
+  getInvoiceById: (invoiceId) => axiosClient.get(`/payments/invoices/${invoiceId}`),
+  applyPromotion: (invoiceId, code) => axiosClient.post(`/payments/invoices/${invoiceId}/promotion`, { code }),
+  removePromotion: (invoiceId) => axiosClient.delete(`/payments/invoices/${invoiceId}/promotion`),
+  payInvoice: (invoiceId, payload) => axiosClient.post(`/payments/invoices/${invoiceId}/pay`, payload),
 }
 
 export const publicOrderApi = {
