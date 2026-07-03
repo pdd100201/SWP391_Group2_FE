@@ -5,12 +5,14 @@ import { publicOrderApi } from '../api/orderApi'
 import './PublicOrderScreen.css'
 
 const money = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} VND`
+// Public order page labels the table from the order response returned by token.
 const tableLabel = (order) => {
   if (!order?.tableId) return ''
   return order.tableName || order.tableNumber || `Table ${order.tableId}`
 }
 
 function PublicOrderScreen() {
+  // Guest-facing order page opened from /order-access/:token.
   const { token } = useParams()
   const [order, setOrder] = useState(null)
   const [menu, setMenu] = useState([])
@@ -23,6 +25,7 @@ function PublicOrderScreen() {
   const drafts = order?.items.filter((item) => item.status === 'DRAFT') || []
 
   useEffect(() => {
+    // Load both current order and its public menu before showing the guest page.
     const load = async () => {
       try {
         const orderResponse = await publicOrderApi.getOrder(token)
@@ -41,6 +44,7 @@ function PublicOrderScreen() {
   }, [token])
 
   const run = async (action, fallback) => {
+    // Applies public order mutations and replaces local order with BE response.
     setBusy(true)
     setError('')
     try {

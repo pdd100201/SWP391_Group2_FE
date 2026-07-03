@@ -32,6 +32,7 @@ const EMPTY_FORM = {
 
 const money = (value) => `${Math.round(value || 0).toLocaleString('vi-VN')} ₫`
 
+// Converts backend validation/API failures into readable form and page messages.
 function getErrorMessage(error, fallback) {
   const errors = error.response?.data?.errors
   if (errors) return Object.values(errors).join('. ')
@@ -39,6 +40,7 @@ function getErrorMessage(error, fallback) {
 }
 
 function AvailabilityBadge({ status }) {
+  // Availability is computed by BE from active flag, recipe completeness, and stock.
   const config = {
     AVAILABLE: { label: 'Available', className: 'menu-badge--available', icon: CheckCircle2 },
     LIMITED: { label: 'Limited', className: 'menu-badge--limited', icon: Clock3 },
@@ -57,6 +59,7 @@ function AvailabilityBadge({ status }) {
 }
 
 function DishModal({ item, inventory, onClose, onSaved }) {
+  // The modal owns the full editable dish form, including dynamic recipe rows.
   const [form, setForm] = useState(() => item
     ? {
         name: item.name,
@@ -74,11 +77,13 @@ function DishModal({ item, inventory, onClose, onSaved }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
+  // Map inventory by id so recipe cost previews do not repeatedly scan the array.
   const inventoryById = useMemo(
     () => new Map(inventory.map((ingredient) => [ingredient.id, ingredient])),
     [inventory]
   )
 
+  // FE previews food cost; BE recalculates authoritative cost after save.
   const foodCost = form.ingredients.reduce((total, row) => {
     const ingredient = inventoryById.get(Number(row.inventoryItemId))
     const quantity = Number(row.requiredQuantity)
@@ -98,6 +103,7 @@ function DishModal({ item, inventory, onClose, onSaved }) {
   }
 
   const updateIngredient = (index, field, value) => {
+    // Keep recipe rows immutable so React re-renders the changed row predictably.
     setForm((current) => ({
       ...current,
       ingredients: current.ingredients.map((row, rowIndex) =>
@@ -121,6 +127,7 @@ function DishModal({ item, inventory, onClose, onSaved }) {
   }
 
   const handleSubmit = async (event) => {
+    // Normalize form values to match MenuItemRequest before calling the API.
     event.preventDefault()
     setError('')
 
@@ -304,6 +311,7 @@ function DishModal({ item, inventory, onClose, onSaved }) {
 }
 
 function MenuManagementScreen() {
+  // Staff screen for browsing, filtering, creating, editing, and activating dishes.
   const role = sessionStorage.getItem('role')
   const canManage = ['ADMIN', 'MANAGER'].includes(role)
   const [menuItems, setMenuItems] = useState([])
@@ -318,6 +326,7 @@ function MenuManagementScreen() {
   const [togglingId, setTogglingId] = useState(null)
 
   const loadData = async () => {
+    // Load menu and inventory together because recipe forms need both datasets.
     setLoading(true)
     setError('')
     try {
@@ -341,6 +350,7 @@ function MenuManagementScreen() {
   }, [])
 
   const filteredItems = menuItems.filter((item) => {
+    // Client-side filters keep the table responsive after the initial fetch.
     const matchesKeyword = item.name.toLowerCase().includes(keyword.trim().toLowerCase())
     const matchesCategory = !category || item.category === category
     const matchesAvailability = !availability || item.availability === availability
@@ -349,6 +359,7 @@ function MenuManagementScreen() {
 
   const categories = [...new Set(menuItems.map((item) => item.category))].sort()
   const stats = {
+    // Counters mirror the same availability states shown in each dish row.
     total: menuItems.length,
     available: menuItems.filter((item) => item.availability === 'AVAILABLE').length,
     limited: menuItems.filter((item) => item.availability === 'LIMITED').length,
@@ -368,6 +379,7 @@ function MenuManagementScreen() {
   }
 
   const handleSaved = (savedItem) => {
+    // Merge saved dish into local state without forcing a full reload.
     setMenuItems((current) => {
       const exists = current.some((item) => item.id === savedItem.id)
       return exists
@@ -379,6 +391,7 @@ function MenuManagementScreen() {
   }
 
   const toggleActive = async (item) => {
+    // Wait for BE before changing local state so UI matches persisted data.
     setTogglingId(item.id)
     setError('')
     try {

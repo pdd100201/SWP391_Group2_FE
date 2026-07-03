@@ -20,6 +20,7 @@ import { orderApi } from '../api/orderApi'
 import './OrdersServiceScreen.css'
 
 const money = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} ₫`
+// Staff-facing error helpers keep API failure messages close to the order UI.
 const errorMessage = (error, fallback) => error.response?.data?.message || fallback
 const loadErrorMessage = (error) => {
   const status = error.response?.status
@@ -47,6 +48,7 @@ const statusLabels = {
 }
 
 function OrdersServiceScreen() {
+  // Staff workspace for opening orders, editing items, and moving dishes through service.
   const [orders, setOrders] = useState([])
   const [selectedId, setSelectedId] = useState(null)
   const [menu, setMenu] = useState([])
@@ -66,6 +68,7 @@ function OrdersServiceScreen() {
     [menu]
   )
   const availableMenu = useMemo(() => menu.filter((item) => {
+    // Staff can add only active dishes that have complete cost and available stock.
     const allowed = item.isActive && ['AVAILABLE', 'LIMITED'].includes(item.availability) && item.costComplete
     const matchesCategory = category === 'All' || item.category === category
     const matchesSearch = item.name.toLowerCase().includes(search.trim().toLowerCase())
@@ -78,6 +81,7 @@ function OrdersServiceScreen() {
   )
 
   const load = async () => {
+    // Fetch orders, menu, and reservations together so the workspace stays in sync.
     setLoading(true)
     setError('')
     try {
@@ -107,6 +111,7 @@ function OrdersServiceScreen() {
   }, [])
 
   useEffect(() => {
+    // Generate the QR image for the selected order's guest access link.
     if (!selected?.qrPath) {
       return
     }
@@ -116,6 +121,7 @@ function OrdersServiceScreen() {
   }, [selected?.qrPath])
 
   const applyOrder = (next) => {
+    // Reconcile a returned OrderResponse into both reservation and order-list state.
     setReservations((current) => current.map((reservation) => (
       reservation.reservationId === next.reservationId
         ? {
@@ -142,6 +148,7 @@ function OrdersServiceScreen() {
   }
 
   const run = async (action, fallback) => {
+    // Shared mutation wrapper controls busy/error state for all order operations.
     setBusy(true)
     setError('')
     try {
@@ -161,6 +168,7 @@ function OrdersServiceScreen() {
   }
 
   const nextStatus = (item) => {
+    // Determine the next allowed action button from role and item status.
     if (['ADMIN', 'MANAGER'].includes(role) && item.status === 'CONFIRMED') return 'PREPARING'
     if (['ADMIN', 'MANAGER'].includes(role) && item.status === 'PREPARING') return 'READY'
     if (['ADMIN', 'MANAGER', 'WAITER'].includes(role) && item.status === 'READY') return 'SERVED'
