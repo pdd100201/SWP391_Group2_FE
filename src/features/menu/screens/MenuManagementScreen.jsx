@@ -1,50 +1,87 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   AlertTriangle,
-  Calculator,
+  ChevronFirst,
+  ChevronLast,
+  ChevronLeft,
+  ChevronRight,
   CheckCircle2,
   ChefHat,
   CircleDollarSign,
-  Clock3,
   PackageX,
   Pencil,
   Plus,
   RefreshCw,
   Search,
-  Trash2,
   UtensilsCrossed,
   X,
 } from 'lucide-react'
-import { inventoryService } from '../../inventory/services/inventoryService'
+import { usePagination } from '../../../shared/hooks/usePagination'
 import { menuService } from '../services/menuService'
 import './MenuManagementScreen.css'
 
 const MENU_CATEGORIES = ['Appetizer', 'Main Course', 'Side Dish', 'Dessert', 'Beverage']
+const PAGE_SIZE = 6
+const MAX_DISH_NAME_LENGTH = 80
+const MAX_DESCRIPTION_LENGTH = 500
+const MAX_IMAGE_URL_LENGTH = 500
+const MAX_PRICE = 999999999
 
 const EMPTY_FORM = {
   name: '',
   category: '',
   description: '',
   imageUrl: '',
-  profitMarginPercent: '100',
-  ingredients: [{ inventoryItemId: '', requiredQuantity: '' }],
+  price: '',
 }
 
-const money = (value) => `${Math.round(value || 0).toLocaleString('vi-VN')} ₫`
+const money = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} ₫`
 
-// Converts backend validation/API failures into readable form and page messages.
 function getErrorMessage(error, fallback) {
   const errors = error.response?.data?.errors
   if (errors) return Object.values(errors).join('. ')
   return error.response?.data?.message || fallback
 }
 
+function isValidUrl(value) {
+  if (!value.trim()) return true
+  try {
+    const url = new URL(value)
+    return ['http:', 'https:'].includes(url.protocol)
+  } catch {
+    return false
+  }
+}
+
+function validateMenuForm(form) {
+  const errors = {}
+  const name = form.name.trim()
+  const imageUrl = form.imageUrl.trim()
+  const description = form.description.trim()
+  const price = Number(form.price)
+
+  if (!name) errors.name = 'Dish name is required'
+  else if (name.length < 2) errors.name = 'Dish name must be at least 2 characters'
+  else if (name.length > MAX_DISH_NAME_LENGTH) errors.name = `Dish name must not exceed ${MAX_DISH_NAME_LENGTH} characters`
+
+  if (!form.category) errors.category = 'Category is required'
+  else if (!MENU_CATEGORIES.includes(form.category)) errors.category = 'Choose a valid category'
+
+  if (form.price === '') errors.price = 'Dish price is required'
+  else if (!Number.isFinite(price) || price <= 0) errors.price = 'Dish price must be greater than 0'
+  else if (price > MAX_PRICE) errors.price = 'Dish price is too large'
+
+  if (imageUrl.length > MAX_IMAGE_URL_LENGTH) errors.imageUrl = `Image URL must not exceed ${MAX_IMAGE_URL_LENGTH} characters`
+  else if (!isValidUrl(imageUrl)) errors.imageUrl = 'Image URL must start with http:// or https://'
+
+  if (description.length > MAX_DESCRIPTION_LENGTH) errors.description = `Description must not exceed ${MAX_DESCRIPTION_LENGTH} characters`
+
+  return errors
+}
+
 function AvailabilityBadge({ status }) {
-  // Availability is computed by BE from active flag, recipe completeness, and stock.
   const config = {
     AVAILABLE: { label: 'Available', className: 'menu-badge--available', icon: CheckCircle2 },
-    LIMITED: { label: 'Limited', className: 'menu-badge--limited', icon: Clock3 },
-    OUT_OF_STOCK: { label: 'Out of stock', className: 'menu-badge--out', icon: PackageX },
     INACTIVE: { label: 'Inactive', className: 'menu-badge--inactive', icon: AlertTriangle },
   }
   const current = config[status] || config.INACTIVE
@@ -58,106 +95,45 @@ function AvailabilityBadge({ status }) {
   )
 }
 
-function DishModal({ item, inventory, onClose, onSaved }) {
-  // The modal owns the full editable dish form, including dynamic recipe rows.
+function DishModal({ item, onClose, onSaved }) {
   const [form, setForm] = useState(() => item
     ? {
         name: item.name,
         category: item.category,
         description: item.description || '',
         imageUrl: item.imageUrl || '',
-        profitMarginPercent: item.profitMarginPercent.toString(),
-        ingredients: item.ingredients.map((ingredient) => ({
-          inventoryItemId: ingredient.inventoryItemId.toString(),
-          requiredQuantity: ingredient.requiredQuantity.toString(),
-        })),
+        price: item.price?.toString() || '',
       }
     : EMPTY_FORM
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-
-  // Map inventory by id so recipe cost previews do not repeatedly scan the array.
-  const inventoryById = useMemo(
-    () => new Map(inventory.map((ingredient) => [ingredient.id, ingredient])),
-    [inventory]
-  )
-
-  // FE previews food cost; BE recalculates authoritative cost after save.
-  const foodCost = form.ingredients.reduce((total, row) => {
-    const ingredient = inventoryById.get(Number(row.inventoryItemId))
-    const quantity = Number(row.requiredQuantity)
-    if (!ingredient || !Number.isFinite(quantity) || quantity <= 0) return total
-    return total + (ingredient.pricePerUnit || 0) * quantity
-  }, 0)
-  const margin = Number(form.profitMarginPercent) || 0
-  const suggestedPrice = Math.ceil((foodCost * (1 + margin / 100)) / 1000) * 1000
-  const missingPrice = form.ingredients.some((row) => {
-    const ingredient = inventoryById.get(Number(row.inventoryItemId))
-    return ingredient && ingredient.pricePerUnit == null
-  })
+  const [fieldErrors, setFieldErrors] = useState({})
 
   const updateField = (event) => {
     const { name, value } = event.target
     setForm((current) => ({ ...current, [name]: value }))
-  }
-
-  const updateIngredient = (index, field, value) => {
-    // Keep recipe rows immutable so React re-renders the changed row predictably.
-    setForm((current) => ({
-      ...current,
-      ingredients: current.ingredients.map((row, rowIndex) =>
-        rowIndex === index ? { ...row, [field]: value } : row
-      ),
-    }))
-  }
-
-  const addIngredient = () => {
-    setForm((current) => ({
-      ...current,
-      ingredients: [...current.ingredients, { inventoryItemId: '', requiredQuantity: '' }],
-    }))
-  }
-
-  const removeIngredient = (index) => {
-    setForm((current) => ({
-      ...current,
-      ingredients: current.ingredients.filter((_, rowIndex) => rowIndex !== index),
-    }))
+    setFieldErrors((current) => ({ ...current, [name]: '' }))
   }
 
   const handleSubmit = async (event) => {
-    // Normalize form values to match MenuItemRequest before calling the API.
     event.preventDefault()
     setError('')
 
-    const ingredients = form.ingredients
-      .filter((row) => row.inventoryItemId && row.requiredQuantity)
-      .map((row) => ({
-        inventoryItemId: Number(row.inventoryItemId),
-        requiredQuantity: Number(row.requiredQuantity),
-      }))
-
-    if (!form.name.trim() || !form.category || ingredients.length === 0) {
-      setError('Dish name, category and at least one recipe ingredient are required')
+    const nextFieldErrors = validateMenuForm(form)
+    setFieldErrors(nextFieldErrors)
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setError('Please fix the highlighted fields before saving')
       return
     }
-    if (new Set(ingredients.map((ingredient) => ingredient.inventoryItemId)).size !== ingredients.length) {
-      setError('Each inventory ingredient can only appear once in a recipe')
-      return
-    }
-    if (ingredients.some((ingredient) => ingredient.requiredQuantity <= 0)) {
-      setError('Ingredient quantity must be greater than 0')
-      return
-    }
+    const price = Number(form.price)
 
     const payload = {
       name: form.name.trim(),
       category: form.category,
       description: form.description.trim() || null,
       imageUrl: form.imageUrl.trim() || null,
-      profitMarginPercent: Number(form.profitMarginPercent),
-      ingredients,
+      price,
     }
 
     setSaving(true)
@@ -178,7 +154,7 @@ function DishModal({ item, inventory, onClose, onSaved }) {
       <div className="menu-modal" onClick={(event) => event.stopPropagation()}>
         <header className="menu-modal__header">
           <div>
-            <span className="menu-modal__eyebrow">Single-size recipe</span>
+            <span className="menu-modal__eyebrow">Menu item</span>
             <h2>{item ? 'Edit menu item' : 'Create menu item'}</h2>
           </div>
           <button type="button" className="menu-icon-button" onClick={onClose} aria-label="Close">
@@ -192,110 +168,68 @@ function DishModal({ item, inventory, onClose, onSaved }) {
           <div className="menu-form-grid">
             <label className="menu-field">
               <span>Dish name *</span>
-              <input name="name" value={form.name} onChange={updateField} placeholder="e.g. Garlic Butter Salmon" />
+              <input
+                name="name"
+                value={form.name}
+                onChange={updateField}
+                maxLength={MAX_DISH_NAME_LENGTH}
+                className={fieldErrors.name ? 'is-invalid' : ''}
+                placeholder="e.g. Garlic Butter Salmon"
+              />
+              {fieldErrors.name && <small className="menu-field-error">{fieldErrors.name}</small>}
             </label>
             <label className="menu-field">
               <span>Category *</span>
-              <select name="category" value={form.category} onChange={updateField}>
+              <select name="category" value={form.category} onChange={updateField} className={fieldErrors.category ? 'is-invalid' : ''}>
                 <option value="">Select category</option>
-                {item?.category && !MENU_CATEGORIES.includes(item.category) && (
-                  <option value={item.category}>{item.category}</option>
-                )}
                 {MENU_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
               </select>
+              {fieldErrors.category && <small className="menu-field-error">{fieldErrors.category}</small>}
             </label>
             <label className="menu-field">
-              <span>Profit margin (%) *</span>
+              <span>Price (VND) *</span>
               <input
-                name="profitMarginPercent"
+                name="price"
                 type="number"
                 min="0"
-                step="1"
-                value={form.profitMarginPercent}
+                step="1000"
+                value={form.price}
                 onChange={updateField}
+                className={fieldErrors.price ? 'is-invalid' : ''}
+                placeholder="54000"
               />
+              {fieldErrors.price && <small className="menu-field-error">{fieldErrors.price}</small>}
             </label>
             <label className="menu-field">
               <span>Image URL</span>
-              <input name="imageUrl" value={form.imageUrl} onChange={updateField} placeholder="https://..." />
+              <input
+                name="imageUrl"
+                value={form.imageUrl}
+                onChange={updateField}
+                maxLength={MAX_IMAGE_URL_LENGTH}
+                className={fieldErrors.imageUrl ? 'is-invalid' : ''}
+                placeholder="https://..."
+              />
+              {fieldErrors.imageUrl && <small className="menu-field-error">{fieldErrors.imageUrl}</small>}
             </label>
             <label className="menu-field menu-field--full">
               <span>Description</span>
-              <textarea name="description" value={form.description} onChange={updateField} rows="3" />
+              <textarea
+                name="description"
+                value={form.description}
+                onChange={updateField}
+                maxLength={MAX_DESCRIPTION_LENGTH}
+                className={fieldErrors.description ? 'is-invalid' : ''}
+                rows="3"
+              />
+              {fieldErrors.description && <small className="menu-field-error">{fieldErrors.description}</small>}
             </label>
           </div>
 
-          <section className="menu-recipe-editor">
-            <div className="menu-recipe-editor__header">
-              <div>
-                <h3>Recipe ingredients</h3>
-                <p>Quantities use the same unit configured in Inventory.</p>
-              </div>
-              <button type="button" className="menu-button menu-button--secondary" onClick={addIngredient}>
-                <Plus size={15} /> Add ingredient
-              </button>
-            </div>
-
-            <div className="menu-recipe-editor__rows">
-              {form.ingredients.map((row, index) => {
-                const selected = inventoryById.get(Number(row.inventoryItemId))
-                return (
-                  <div className="menu-recipe-row" key={`${index}-${row.inventoryItemId}`}>
-                    <label className="menu-field">
-                      <span>Inventory item</span>
-                      <select
-                        value={row.inventoryItemId}
-                        onChange={(event) => updateIngredient(index, 'inventoryItemId', event.target.value)}
-                      >
-                        <option value="">Select ingredient</option>
-                        {inventory.map((ingredient) => (
-                          <option key={ingredient.id} value={ingredient.id}>
-                            {ingredient.itemName} ({ingredient.availableQuantity ?? ingredient.quantity} {ingredient.unit} available)
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="menu-field">
-                      <span>Quantity per serving</span>
-                      <div className="menu-quantity-input">
-                        <input
-                          type="number"
-                          min="0.0001"
-                          step="0.0001"
-                          value={row.requiredQuantity}
-                          onChange={(event) => updateIngredient(index, 'requiredQuantity', event.target.value)}
-                        />
-                        <b>{selected?.unit || 'unit'}</b>
-                      </div>
-                    </label>
-                    <div className="menu-recipe-row__cost">
-                      <span>Ingredient cost</span>
-                      <strong>
-                        {selected && row.requiredQuantity
-                          ? money((selected.pricePerUnit || 0) * Number(row.requiredQuantity))
-                          : '—'}
-                      </strong>
-                    </div>
-                    <button
-                      type="button"
-                      className="menu-icon-button menu-icon-button--danger"
-                      onClick={() => removeIngredient(index)}
-                      disabled={form.ingredients.length === 1}
-                      aria-label="Remove ingredient"
-                    >
-                      <Trash2 size={17} />
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-          </section>
-
-          <div className="menu-cost-preview">
-            <div><Calculator size={18} /><span>Food cost</span><strong>{money(foodCost)}</strong></div>
-            <div><CircleDollarSign size={18} /><span>Suggested price</span><strong>{money(suggestedPrice)}</strong></div>
-            <div><span>Margin</span><strong>{margin}%</strong></div>
-            {missingPrice && <small>Some ingredients have no price, so the cost is incomplete.</small>}
+          <div className="menu-price-preview">
+            <CircleDollarSign size={18} />
+            <span>Menu price</span>
+            <strong>{money(form.price)}</strong>
           </div>
 
           <footer className="menu-modal__actions">
@@ -311,11 +245,9 @@ function DishModal({ item, inventory, onClose, onSaved }) {
 }
 
 function MenuManagementScreen() {
-  // Staff screen for browsing, filtering, creating, editing, and activating dishes.
   const role = sessionStorage.getItem('role')
   const canManage = ['ADMIN', 'MANAGER'].includes(role)
   const [menuItems, setMenuItems] = useState([])
-  const [inventory, setInventory] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [keyword, setKeyword] = useState('')
@@ -326,16 +258,11 @@ function MenuManagementScreen() {
   const [togglingId, setTogglingId] = useState(null)
 
   const loadData = async () => {
-    // Load menu and inventory together because recipe forms need both datasets.
     setLoading(true)
     setError('')
     try {
-      const [menuResponse, inventoryResponse] = await Promise.all([
-        menuService.getAll(),
-        inventoryService.getAll(),
-      ])
+      const menuResponse = await menuService.getAll()
       setMenuItems(menuResponse.data)
-      setInventory(inventoryResponse.data.filter((item) => item.isActive))
     } catch (loadError) {
       setError(getErrorMessage(loadError, 'Unable to load menu management data'))
     } finally {
@@ -344,26 +271,33 @@ function MenuManagementScreen() {
   }
 
   useEffect(() => {
-    // Initial API synchronization for this management screen.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData()
   }, [])
 
-  const filteredItems = menuItems.filter((item) => {
-    // Client-side filters keep the table responsive after the initial fetch.
+  const filteredItems = useMemo(() => menuItems.filter((item) => {
     const matchesKeyword = item.name.toLowerCase().includes(keyword.trim().toLowerCase())
     const matchesCategory = !category || item.category === category
     const matchesAvailability = !availability || item.availability === availability
     return matchesKeyword && matchesCategory && matchesAvailability
-  })
+  }), [menuItems, keyword, category, availability])
+
+  const pagination = usePagination(filteredItems, PAGE_SIZE)
+
+  useEffect(() => {
+    pagination.reset()
+  }, [keyword, category, availability])
+
+  useEffect(() => {
+    if (pagination.page > 0 && pagination.page >= pagination.totalPages) {
+      pagination.setPage(Math.max(0, pagination.totalPages - 1))
+    }
+  }, [pagination.page, pagination.totalPages])
 
   const categories = [...new Set(menuItems.map((item) => item.category))].sort()
   const stats = {
-    // Counters mirror the same availability states shown in each dish row.
     total: menuItems.length,
     available: menuItems.filter((item) => item.availability === 'AVAILABLE').length,
-    limited: menuItems.filter((item) => item.availability === 'LIMITED').length,
-    unavailable: menuItems.filter((item) => ['OUT_OF_STOCK', 'INACTIVE'].includes(item.availability)).length,
+    inactive: menuItems.filter((item) => item.availability === 'INACTIVE').length,
   }
 
   const handleRefresh = () => {
@@ -379,7 +313,6 @@ function MenuManagementScreen() {
   }
 
   const handleSaved = (savedItem) => {
-    // Merge saved dish into local state without forcing a full reload.
     setMenuItems((current) => {
       const exists = current.some((item) => item.id === savedItem.id)
       return exists
@@ -391,7 +324,6 @@ function MenuManagementScreen() {
   }
 
   const toggleActive = async (item) => {
-    // Wait for BE before changing local state so UI matches persisted data.
     setTogglingId(item.id)
     setError('')
     try {
@@ -410,9 +342,9 @@ function MenuManagementScreen() {
     <div className="menu-screen">
       <header className="menu-screen__header">
         <div>
-          <span className="menu-screen__eyebrow"><ChefHat size={16} /> Inventory-linked recipes</span>
+          <span className="menu-screen__eyebrow"><ChefHat size={16} /> Menu pricing</span>
           <h1>Menu Management</h1>
-          <p>Build exact recipes, track serving capacity and price dishes from live inventory costs.</p>
+          <p>Create dishes with a direct selling price.</p>
         </div>
         <div className="menu-screen__actions">
           <button type="button" className="menu-button menu-button--secondary" onClick={handleRefresh}>
@@ -429,8 +361,7 @@ function MenuManagementScreen() {
       <section className="menu-stats">
         <article><UtensilsCrossed /><div><strong>{stats.total}</strong><span>Total dishes</span></div></article>
         <article><CheckCircle2 /><div><strong>{stats.available}</strong><span>Available</span></div></article>
-        <article><Clock3 /><div><strong>{stats.limited}</strong><span>Limited</span></div></article>
-        <article><PackageX /><div><strong>{stats.unavailable}</strong><span>Unavailable</span></div></article>
+        <article><PackageX /><div><strong>{stats.inactive}</strong><span>Inactive</span></div></article>
       </section>
 
       <section className="menu-filters">
@@ -445,8 +376,6 @@ function MenuManagementScreen() {
         <select value={availability} onChange={(event) => setAvailability(event.target.value)}>
           <option value="">All availability</option>
           <option value="AVAILABLE">Available</option>
-          <option value="LIMITED">Limited</option>
-          <option value="OUT_OF_STOCK">Out of stock</option>
           <option value="INACTIVE">Inactive</option>
         </select>
       </section>
@@ -454,12 +383,12 @@ function MenuManagementScreen() {
       {error && <div className="menu-page-error"><AlertTriangle size={18} />{error}</div>}
 
       {loading ? (
-        <div className="menu-loading"><RefreshCw className="menu-spin" /><span>Loading menu and inventory...</span></div>
+        <div className="menu-loading"><RefreshCw className="menu-spin" /><span>Loading menu...</span></div>
       ) : filteredItems.length === 0 ? (
         <div className="menu-empty"><ChefHat size={44} /><h2>No menu items found</h2><p>Create a dish or clear the current filters.</p></div>
       ) : (
         <section className="menu-grid">
-          {filteredItems.map((item) => (
+          {pagination.currentItems.map((item) => (
             <article className="menu-card" key={item.id}>
               <div className="menu-card__image">
                 {item.imageUrl
@@ -483,36 +412,10 @@ function MenuManagementScreen() {
                 </div>
                 <p className="menu-card__description">{item.description || 'No description provided.'}</p>
 
-                <div className="menu-card__metrics">
-                  <div><span>Food cost</span><strong>{money(item.foodCost)}</strong></div>
-                  <div><span>Suggested price</span><strong>{money(item.suggestedPrice)}</strong></div>
-                  <div><span>Margin</span><strong>{item.profitMarginPercent}%</strong></div>
-                  <div><span>Can serve</span><strong>{item.availableServings} portions</strong></div>
+                <div className="menu-card__price">
+                  <span>Price</span>
+                  <strong>{money(item.price)}</strong>
                 </div>
-
-                <div className="menu-card__recipe">
-                  <strong>Recipe per serving</strong>
-                  <div>
-                    {item.ingredients.map((ingredient) => (
-                      <span key={ingredient.inventoryItemId}>
-                        {ingredient.inventoryItemName}: {ingredient.requiredQuantity} {ingredient.unit}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {item.blockingIngredients.length > 0 && (
-                  <div className="menu-card__warning">
-                    <AlertTriangle size={15} />
-                    Blocked by: {item.blockingIngredients.join(', ')}
-                  </div>
-                )}
-                {!item.costComplete && (
-                  <div className="menu-card__warning">
-                    <CircleDollarSign size={15} />
-                    Cost is incomplete because an ingredient has no price.
-                  </div>
-                )}
 
                 {canManage && (
                   <button
@@ -530,10 +433,31 @@ function MenuManagementScreen() {
         </section>
       )}
 
+      {!loading && filteredItems.length > 0 && (
+        <div className="menu-pagination-bar">
+          <span>Showing {pagination.startIdx}-{pagination.endIdx} of {pagination.totalElements}</span>
+          <div className="menu-pagination">
+            <button type="button" aria-label="First page" disabled={pagination.isFirst} onClick={() => pagination.setPage(0)}><ChevronFirst size={16} /></button>
+            <button type="button" aria-label="Previous page" disabled={pagination.isFirst} onClick={() => pagination.setPage(pagination.page - 1)}><ChevronLeft size={16} /></button>
+            {pagination.getPageNumbers().map((pageNumber) => (
+              <button
+                key={pageNumber}
+                type="button"
+                className={pageNumber === pagination.page ? 'is-active' : ''}
+                onClick={() => pagination.setPage(pageNumber)}
+              >
+                {pageNumber + 1}
+              </button>
+            ))}
+            <button type="button" aria-label="Next page" disabled={pagination.isLast} onClick={() => pagination.setPage(pagination.page + 1)}><ChevronRight size={16} /></button>
+            <button type="button" aria-label="Last page" disabled={pagination.isLast} onClick={() => pagination.setPage(Math.max(0, pagination.totalPages - 1))}><ChevronLast size={16} /></button>
+          </div>
+        </div>
+      )}
+
       {canManage && modalOpen && (
         <DishModal
           item={editingItem}
-          inventory={inventory}
           onClose={() => { setModalOpen(false); setEditingItem(null) }}
           onSaved={handleSaved}
         />

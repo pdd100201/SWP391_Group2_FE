@@ -1,18 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { Minus, Plus, Send, ShoppingBag, Trash2, UtensilsCrossed } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 import { publicOrderApi } from '../api/orderApi'
 import './PublicOrderScreen.css'
 
 const money = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} VND`
-// Public order page labels the table from the order response returned by token.
+// Trang gọi món công khai hiển thị tên bàn từ dữ liệu order lấy bằng token.
 const tableLabel = (order) => {
   if (!order?.tableId) return ''
   return order.tableName || order.tableNumber || `Table ${order.tableId}`
 }
 
 function PublicOrderScreen() {
-  // Guest-facing order page opened from /order-access/:token.
+  // Trang gọi món dành cho khách, mở từ /order-access/:token.
   const { token } = useParams()
   const [order, setOrder] = useState(null)
   const [menu, setMenu] = useState([])
@@ -25,7 +25,7 @@ function PublicOrderScreen() {
   const drafts = order?.items.filter((item) => item.status === 'DRAFT') || []
 
   useEffect(() => {
-    // Load both current order and its public menu before showing the guest page.
+    // Tải cả order hiện tại và menu công khai trước khi hiển thị trang cho khách.
     const load = async () => {
       try {
         const orderResponse = await publicOrderApi.getOrder(token)
@@ -44,7 +44,7 @@ function PublicOrderScreen() {
   }, [token])
 
   const run = async (action, fallback) => {
-    // Applies public order mutations and replaces local order with BE response.
+    // Thực hiện thao tác order công khai rồi thay order trên màn hình bằng dữ liệu máy chủ trả về.
     setBusy(true)
     setError('')
     try {
@@ -81,7 +81,7 @@ function PublicOrderScreen() {
               {shownMenu.map((item) => (
                 <article key={item.id}>
                   <img src={item.imageUrl || '/favicon.svg'} alt="" />
-                  <div><small>{item.category}</small><h2>{item.name}</h2><p>{item.description}</p><strong>{money(item.suggestedPrice)}</strong></div>
+                  <div><small>{item.category}</small><h2>{item.name}</h2><p>{item.description}</p><strong>{money(item.price)}</strong></div>
                   <button type="button" disabled={busy} onClick={() => run(
                     () => publicOrderApi.addItem(token, { menuItemId: item.id, quantity: 1, note: null }),
                     'Could not add this dish.')}><Plus size={17} /> Add to order</button>
@@ -128,3 +128,4 @@ function PublicOrderScreen() {
 }
 
 export default PublicOrderScreen
+
