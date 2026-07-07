@@ -1,26 +1,32 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import {
   Check,
+  ChevronFirst,
+  ChevronLast,
+  ChevronLeft,
+  ChevronRight,
   ChefHat,
   ClipboardList,
-  Copy,
   Minus,
   Plus,
-  QrCode,
   RefreshCw,
   Search,
   Send,
   Trash2,
   XCircle,
 } from 'lucide-react'
-import QRCode from 'qrcode'
+import { usePagination } from '../../../shared/hooks/usePagination'
 import { menuService } from '../../menu/services/menuService'
 import { getAllReservations } from '../../reservations/api/reservationApi'
 import { orderApi } from '../api/orderApi'
 import './OrdersServiceScreen.css'
 
 const money = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} ₫`
-// Staff-facing error helpers keep API failure messages close to the order UI.
+const ACTIVE_ORDER_PAGE_SIZE = 6
+const ORDER_MENU_PAGE_SIZE = 8
+const MAX_ORDER_QUANTITY = 99
+const MAX_ITEM_NOTE_LENGTH = 500
+// Hàm hỗ trợ lỗi cho màn nhân viên, giữ thông báo API gần với UI order.
 const errorMessage = (error, fallback) => error.response?.data?.message || fallback
 const loadErrorMessage = (error) => {
   const status = error.response?.status
@@ -47,8 +53,34 @@ const statusLabels = {
   CANCELLED: 'Cancelled',
 }
 
-function OrdersServiceScreen() {
-  // Staff workspace for opening orders, editing items, and moving dishes through service.
+function PaginationBar({ pagination, className = 'orders-pagination-bar' }) {
+  if (pagination.totalPages <= 0) return null
+  return (
+    <div className={className}>
+      <span>Showing {pagination.startIdx}-{pagination.endIdx} of {pagination.totalElements}</span>
+      <div className="orders-pagination">
+        <button type="button" aria-label="First page" disabled={pagination.isFirst} onClick={() => pagination.setPage(0)}><ChevronFirst size={15} /></button>
+        <button type="button" aria-label="Previous page" disabled={pagination.isFirst} onClick={() => pagination.setPage(pagination.page - 1)}><ChevronLeft size={15} /></button>
+        {pagination.getPageNumbers().map((pageNumber) => (
+          <button
+            key={pageNumber}
+            type="button"
+            className={pageNumber === pagination.page ? 'is-active' : ''}
+            onClick={() => pagination.setPage(pageNumber)}
+          >
+            {pageNumber + 1}
+          </button>
+        ))}
+        <button type="button" aria-label="Next page" disabled={pagination.isLast} onClick={() => pagination.setPage(pagination.page + 1)}><ChevronRight size={15} /></button>
+        <button type="button" aria-label="Last page" disabled={pagination.isLast} onClick={() => pagination.setPage(Math.max(0, pagination.totalPages - 1))}><ChevronLast size={15} /></button>
+      </div>
+    </div>
+  )
+}
+
+function OrdersServiceScreen({ mode = 'management' }) {
+  // Màn làm việc của nhân viên để mở order, chỉnh món và chuyển trạng thái phục vụ.
+  const isActiveOrdersMode = mode === 'active'
   const [orders, setOrders] = useState([])
   const [selectedId, setSelectedId] = useState(null)
   const [menu, setMenu] = useState([])
@@ -59,7 +91,6 @@ function OrdersServiceScreen() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [qrDataUrl, setQrDataUrl] = useState('')
 
   const selected = orders.find((order) => order.id === selectedId) || null
   const role = sessionStorage.getItem('role')
@@ -68,12 +99,13 @@ function OrdersServiceScreen() {
     [menu]
   )
   const availableMenu = useMemo(() => menu.filter((item) => {
-    // Staff can add only active dishes that have complete cost and available stock.
-    const allowed = item.isActive && ['AVAILABLE', 'LIMITED'].includes(item.availability) && item.costComplete
+    const allowed = item.isActive && ['AVAILABLE', 'LIMITED'].includes(item.availability)
     const matchesCategory = category === 'All' || item.category === category
     const matchesSearch = item.name.toLowerCase().includes(search.trim().toLowerCase())
     return allowed && matchesCategory && matchesSearch
   }), [menu, category, search])
+  const orderPagination = usePagination(orders, ACTIVE_ORDER_PAGE_SIZE)
+  const menuPagination = usePagination(availableMenu, ORDER_MENU_PAGE_SIZE)
   const unusedReservations = reservations.filter((reservation) =>
     ['ARRIVED', 'CONFIRMED'].includes(reservation.status)
       && reservation.tableId
@@ -81,7 +113,7 @@ function OrdersServiceScreen() {
   )
 
   const load = async () => {
-    // Fetch orders, menu, and reservations together so the workspace stays in sync.
+    // Tải đồng thời order, menu và reservation để màn làm việc luôn đồng bộ.
     setLoading(true)
     setError('')
     try {
@@ -94,9 +126,10 @@ function OrdersServiceScreen() {
       setOrders(nextOrders)
       setMenu(menuResponse.data || [])
       setReservations(reservationsResponse.data || [])
-      setSelectedId((current) => nextOrders.some((order) => order.id === current)
-        ? current
-        : nextOrders[0]?.id || null)
+      setSelectedId((current) => {
+        if (nextOrders.some((order) => order.id === current)) return current
+        return isActiveOrdersMode ? nextOrders[0]?.id || null : null
+      })
     } catch (loadError) {
       setError(loadError.response?.data?.message || loadErrorMessage(loadError))
     } finally {
@@ -105,23 +138,29 @@ function OrdersServiceScreen() {
   }
 
   useEffect(() => {
-    // Initial data synchronization with the API.
+    // Đồng bộ dữ liệu lần đầu với API.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load()
-  }, [])
+  }, [isActiveOrdersMode])
 
   useEffect(() => {
-    // Generate the QR image for the selected order's guest access link.
-    if (!selected?.qrPath) {
-      return
+    menuPagination.reset()
+  }, [search, category])
+
+  useEffect(() => {
+    if (menuPagination.page > 0 && menuPagination.page >= menuPagination.totalPages) {
+      menuPagination.setPage(Math.max(0, menuPagination.totalPages - 1))
     }
-    QRCode.toDataURL(`${window.location.origin}${selected.qrPath}`, { width: 180, margin: 1 })
-      .then(setQrDataUrl)
-      .catch(() => setQrDataUrl(''))
-  }, [selected?.qrPath])
+  }, [menuPagination.page, menuPagination.totalPages])
+
+  useEffect(() => {
+    if (orderPagination.page > 0 && orderPagination.page >= orderPagination.totalPages) {
+      orderPagination.setPage(Math.max(0, orderPagination.totalPages - 1))
+    }
+  }, [orderPagination.page, orderPagination.totalPages])
 
   const applyOrder = (next) => {
-    // Reconcile a returned OrderResponse into both reservation and order-list state.
+    // Cập nhật OrderResponse trả về vào cả state reservation và danh sách order.
     setReservations((current) => current.map((reservation) => (
       reservation.reservationId === next.reservationId
         ? {
@@ -148,7 +187,7 @@ function OrdersServiceScreen() {
   }
 
   const run = async (action, fallback) => {
-    // Shared mutation wrapper controls busy/error state for all order operations.
+    // Hàm bọc dùng chung để quản lý trạng thái bận/lỗi cho mọi thao tác order.
     setBusy(true)
     setError('')
     try {
@@ -162,22 +201,62 @@ function OrdersServiceScreen() {
   }
 
   const createOrder = () => {
-    if (!reservationId) return
+    if (!reservationId) {
+      setError('Please choose an assigned reservation before creating an order.')
+      return
+    }
+    if (!unusedReservations.some((reservation) => reservation.reservationId === Number(reservationId))) {
+      setError('Selected reservation is no longer available for opening an order.')
+      return
+    }
     run(() => orderApi.create({ reservationId: Number(reservationId) }), 'Unable to create order.')
       .then(() => setReservationId(''))
   }
 
+  const validateQuantity = (quantity) => {
+    if (!Number.isInteger(quantity)) return 'Quantity must be a whole number.'
+    if (quantity < 1) return 'Quantity must be at least 1.'
+    if (quantity > MAX_ORDER_QUANTITY) return `Quantity must not exceed ${MAX_ORDER_QUANTITY}.`
+    return ''
+  }
+
+  const validateNote = (note) => {
+    return (note || '').length > MAX_ITEM_NOTE_LENGTH
+      ? `Special request must not exceed ${MAX_ITEM_NOTE_LENGTH} characters.`
+      : ''
+  }
+
+  const updateItemSafely = (item, quantity, note, fallback) => {
+    const quantityError = validateQuantity(quantity)
+    const noteError = validateNote(note)
+    if (quantityError || noteError) {
+      setError(quantityError || noteError)
+      return
+    }
+    run(() => orderApi.updateItem(selected.id, item.id, { quantity, note }), fallback)
+  }
+
+  const addMenuItemSafely = (item) => {
+    if (!selected) {
+      setError('Select or create an order before adding dishes.')
+      return
+    }
+    if (!item?.id) {
+      setError('Selected dish is invalid.')
+      return
+    }
+    run(
+      () => orderApi.addItem(selected.id, { menuItemId: item.id, quantity: 1, note: null }),
+      'Unable to add dish.'
+    )
+  }
+
   const nextStatus = (item) => {
-    // Determine the next allowed action button from role and item status.
+    // Xác định nút hành động tiếp theo dựa trên vai trò và trạng thái món.
     if (['ADMIN', 'MANAGER'].includes(role) && item.status === 'CONFIRMED') return 'PREPARING'
     if (['ADMIN', 'MANAGER'].includes(role) && item.status === 'PREPARING') return 'READY'
     if (['ADMIN', 'MANAGER', 'WAITER'].includes(role) && item.status === 'READY') return 'SERVED'
     return null
-  }
-
-  const copyQrLink = async () => {
-    if (!selected) return
-    await navigator.clipboard.writeText(`${window.location.origin}${selected.qrPath}`)
   }
 
   if (loading) return <div className="orders-loading">Loading order workspace...</div>
@@ -187,8 +266,8 @@ function OrdersServiceScreen() {
       <header className="orders-header">
         <div>
           <span className="orders-eyebrow"><ChefHat size={15} /> Orders &amp; Service</span>
-          <h1>Dining room orders</h1>
-          <p>Create an order from an assigned reservation and follow every dish to the table.</p>
+          <h1>{isActiveOrdersMode ? 'Active orders' : 'Order management'}</h1>
+          <p>{isActiveOrdersMode ? 'Select an open order and follow every dish to the table.' : 'Create an order from an assigned reservation.'}</p>
         </div>
         <button type="button" className="orders-button orders-button--secondary" onClick={load} disabled={busy}>
           <RefreshCw size={17} /> Refresh
@@ -197,47 +276,56 @@ function OrdersServiceScreen() {
 
       {error && <div className="orders-alert">{error}</div>}
 
-      <div className="orders-create-bar">
-        <label className="orders-reservation-field">
-          <span>Assigned reservation</span>
-          <select value={reservationId} onChange={(event) => setReservationId(event.target.value)}>
-            <option value="">Choose a checked-in table to open its order</option>
-            {unusedReservations.map((reservation) => (
-              <option key={reservation.reservationId} value={reservation.reservationId}>
-                #{reservation.reservationId} - {reservation.fullName} - {tableLabel(reservation)} - {reservation.reservationDate} {reservation.reservationTime}
-              </option>
-            ))}
-          </select>
-        </label>
-        <button type="button" className="orders-button orders-button--primary" onClick={createOrder} disabled={!reservationId || busy}>
-          <Plus size={17} /> Create order
-        </button>
-        {unusedReservations.length === 0 && (
-          <small className="orders-no-reservation">No assigned reservation is waiting for an order.</small>
-        )}
-      </div>
+      {!isActiveOrdersMode && (
+        <div className="orders-create-bar">
+          <label className="orders-reservation-field">
+            <span>Assigned reservation</span>
+            <select value={reservationId} onChange={(event) => setReservationId(event.target.value)}>
+              <option value="">Choose a checked-in table to open its order</option>
+              {unusedReservations.map((reservation) => (
+                <option key={reservation.reservationId} value={reservation.reservationId}>
+                  #{reservation.reservationId} - {reservation.fullName} - {tableLabel(reservation)} - {reservation.reservationDate} {reservation.reservationTime}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button type="button" className="orders-button orders-button--primary" onClick={createOrder} disabled={!reservationId || busy}>
+            <Plus size={17} /> Create order
+          </button>
+          {unusedReservations.length === 0 && (
+            <small className="orders-no-reservation">No assigned reservation is waiting for an order.</small>
+          )}
+        </div>
+      )}
 
-      <div className="orders-workspace">
-        <aside className="orders-list-panel">
-          <div className="orders-panel-title"><ClipboardList size={18} /> Active orders <span>{orders.length}</span></div>
-          {orders.length === 0 ? <p className="orders-empty">No active orders.</p> : orders.map((order) => (
-            <button
-              type="button"
-              key={order.id}
-              className={`orders-list-card ${selectedId === order.id ? 'is-active' : ''}`}
-              onClick={() => setSelectedId(order.id)}
-            >
-              <span><strong>{order.orderCode}</strong><small>{order.reservationGuestName} - {tableLabel(order)}</small></span>
-              <span className={`orders-service-badge orders-service-badge--${order.serviceStatus.toLowerCase()}`}>
-                {order.serviceStatus.replace('_', ' ')}
-              </span>
-              <b>{money(order.total)}</b>
-            </button>
-          ))}
-        </aside>
+      <div className={`orders-workspace ${isActiveOrdersMode ? '' : 'orders-workspace--single'}`}>
+        {isActiveOrdersMode && (
+          <aside className="orders-list-panel">
+            <div className="orders-panel-title"><ClipboardList size={18} /> Active orders <span>{orders.length}</span></div>
+            {orders.length === 0 ? <p className="orders-empty">No active orders.</p> : (
+              <>
+                {orderPagination.currentItems.map((order) => (
+                  <button
+                    type="button"
+                    key={order.id}
+                    className={`orders-list-card ${selectedId === order.id ? 'is-active' : ''}`}
+                    onClick={() => setSelectedId(order.id)}
+                  >
+                    <span><strong>{order.orderCode}</strong><small>{order.reservationGuestName} - {tableLabel(order)}</small></span>
+                    <span className={`orders-service-badge orders-service-badge--${order.serviceStatus.toLowerCase()}`}>
+                      {order.serviceStatus.replace('_', ' ')}
+                    </span>
+                    <b>{money(order.total)}</b>
+                  </button>
+                ))}
+                <PaginationBar pagination={orderPagination} className="orders-pagination-bar orders-pagination-bar--stacked" />
+              </>
+            )}
+          </aside>
+        )}
 
         <main className="orders-detail-panel">
-          {!selected ? <div className="orders-empty orders-empty--large">Select or create an order to begin.</div> : (
+          {!selected ? <div className="orders-empty orders-empty--large">{isActiveOrdersMode ? 'Select an active order to begin.' : 'Create an order to begin.'}</div> : (
             <>
               <div className="orders-detail-head">
                 <div>
@@ -245,9 +333,6 @@ function OrdersServiceScreen() {
                   <p>Reservation #{selected.reservationId} - {selected.reservationGuestName} - {tableLabel(selected)} - Waiter {selected.waiterName}</p>
                 </div>
                 <div className="orders-detail-actions">
-                  <button type="button" className="orders-button orders-button--secondary" onClick={copyQrLink}>
-                    <Copy size={16} /> Copy QR link
-                  </button>
                   <button type="button" className="orders-button orders-button--danger" disabled={busy} onClick={() => run(
                     () => orderApi.cancel(selected.id), 'Unable to cancel order.')}>
                     <XCircle size={16} /> Cancel
@@ -274,22 +359,21 @@ function OrdersServiceScreen() {
                                 placeholder="Special request"
                                 onBlur={(event) => {
                                   const note = event.target.value.trim() || null
-                                  if (note !== item.note) run(
-                                    () => orderApi.updateItem(selected.id, item.id, { quantity: item.quantity, note }),
-                                    'Unable to save item note.')
+                                  if (note !== item.note) updateItemSafely(item, item.quantity, note, 'Unable to save item note.')
                                 }}
+                                maxLength={MAX_ITEM_NOTE_LENGTH}
                               />
                             ) : <small>{item.note || 'No special request'}</small>}
                             <span className="orders-item-status">{statusLabels[item.status]}</span>
                           </div>
                           <div className="orders-quantity">
                             <button type="button" disabled={busy || !['DRAFT', 'CONFIRMED'].includes(item.status) || item.quantity <= 1}
-                              onClick={() => run(() => orderApi.updateItem(selected.id, item.id, { quantity: item.quantity - 1, note: item.note }), 'Unable to update quantity.')}>
+                              onClick={() => updateItemSafely(item, item.quantity - 1, item.note, 'Unable to update quantity.')}>
                               <Minus size={14} />
                             </button>
                             <b>{item.quantity}</b>
-                            <button type="button" disabled={busy || !['DRAFT', 'CONFIRMED'].includes(item.status)}
-                              onClick={() => run(() => orderApi.updateItem(selected.id, item.id, { quantity: item.quantity + 1, note: item.note }), 'Unable to update quantity.')}>
+                            <button type="button" disabled={busy || !['DRAFT', 'CONFIRMED'].includes(item.status) || item.quantity >= MAX_ORDER_QUANTITY}
+                              onClick={() => updateItemSafely(item, item.quantity + 1, item.note, 'Unable to update quantity.')}>
                               <Plus size={14} />
                             </button>
                           </div>
@@ -328,23 +412,16 @@ function OrdersServiceScreen() {
                     ))}</div>
                   </div>
                   <div className="orders-menu-grid">
-                    {availableMenu.map((item) => (
+                    {menuPagination.currentItems.map((item) => (
                       <article key={item.id}>
                         <img src={item.imageUrl || '/favicon.svg'} alt="" />
-                        <div><small>{item.category}</small><strong>{item.name}</strong><span>{money(item.suggestedPrice)}</span></div>
-                        <button type="button" disabled={busy} onClick={() => run(
-                          () => orderApi.addItem(selected.id, { menuItemId: item.id, quantity: 1, note: null }),
-                          'Unable to add dish.')}><Plus size={16} /> Add</button>
+                        <div><small>{item.category}</small><strong>{item.name}</strong><span>{money(item.price)}</span></div>
+                        <button type="button" disabled={busy} onClick={() => addMenuItemSafely(item)}><Plus size={16} /> Add</button>
                       </article>
                     ))}
                   </div>
+                  {availableMenu.length > 0 && <PaginationBar pagination={menuPagination} />}
                 </div>
-
-                <aside className="orders-qr-card">
-                  <span><QrCode size={17} /> Guest ordering QR</span>
-                  {qrDataUrl && <img src={qrDataUrl} alt="Guest order QR code" />}
-                  <p>Guests can scan this code to add and submit more dishes while the order is open.</p>
-                </aside>
               </div>
             </>
           )}
@@ -355,3 +432,4 @@ function OrdersServiceScreen() {
 }
 
 export default OrdersServiceScreen
+

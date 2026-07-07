@@ -22,7 +22,14 @@ export const dashboardNavItems = [
     ],
   },
   { label: 'Reservations', to: '/dashboard/reservations', icon: CalendarRange },
-  { label: 'Orders & Service', to: '/dashboard/orders-service', icon: ShoppingBag },
+  {
+    label: 'Orders & Service',
+    icon: ShoppingBag,
+    children: [
+      { label: 'Order Management', to: '/dashboard/orders-service/management' },
+      { label: 'Active Orders', to: '/dashboard/orders-service/active' },
+    ],
+  },
   { label: 'Menu Management', to: '/dashboard/menu-management', icon: UtensilsCrossed },
   { label: 'Promotions', to: '/dashboard/promotions', icon: BadgePercent },
   { label: 'Inventory', to: '/dashboard/inventory', icon: Boxes },
