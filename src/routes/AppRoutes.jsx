@@ -18,6 +18,7 @@ import CreateReservationScreen from '../features/reservations/screens/CreateRese
 import ReservationHistoryScreen from '../features/reservations/screens/ReservationHistoryScreen'
 import DashboardReservationsScreen from '../features/reservations/screens/DashboardReservationsScreen'
 import OrdersServiceScreen from '../features/orders/screens/OrdersServiceScreen'
+import OrderPaymentScreen from '../features/orders/screens/OrderPaymentScreen'
 import PublicOrderScreen from '../features/orders/screens/PublicOrderScreen'
 import TableManagementScreen from '../features/tables/screens/TableManagementScreen'
 import CheckInScreen from '../features/checkin/screens/CheckInScreen'
@@ -96,6 +97,7 @@ function AppRoutes() {
         <Route path="tables" element={<TableManagementScreen />} />
         <Route path="reservations" element={<DashboardReservationsScreen />} />
         <Route path="orders-service" element={<OrdersServiceScreen />} />
+        <Route path="orders-service/:orderId/payment" element={<OrderPaymentScreen />} />
         <Route
           path="menu-management"
           element={(

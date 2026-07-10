@@ -15,10 +15,6 @@ export const orderApi = {
   submit: (orderId) => axiosClient.post(`/orders/${orderId}/submit`),
   updateItemStatus: (orderId, itemId, status) =>
     axiosClient.patch(`/orders/${orderId}/items/${itemId}/status`, { status }),
-  applyPromotion: (orderId, code) => axiosClient.patch(`/orders/${orderId}/promotion`, { code }),
-  removePromotion: (orderId) => axiosClient.delete(`/orders/${orderId}/promotion`),
-  createSepayPayment: (orderId) => axiosClient.patch(`/orders/${orderId}/payment`),
-  getLatestPayment: (orderId) => axiosClient.get(`/payments/orders/${orderId}/latest`),
   close: (orderId) => axiosClient.patch(`/orders/${orderId}/close`),
   cancel: (orderId) => axiosClient.patch(`/orders/${orderId}/cancel`),
   // Payment/invoice calls are colocated because they operate on the selected order.
