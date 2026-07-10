@@ -10,6 +10,7 @@ import {
   RefreshCw,
   Search,
   Send,
+  Tag,
   Trash2,
   XCircle,
 } from 'lucide-react'
@@ -30,6 +31,10 @@ const loadErrorMessage = (error) => {
   return 'Unable to connect to the server.'
 }
 const tableLabel = (value) => {
+  const tableNames = Array.isArray(value?.tableNames) ? value.tableNames.filter(Boolean) : []
+  const tableNumbers = Array.isArray(value?.tableNumbers) ? value.tableNumbers.filter(Boolean) : []
+  if (tableNames.length > 0) return tableNames.join(', ')
+  if (tableNumbers.length > 0) return tableNumbers.join(', ')
   if (!value?.tableId) return 'No table assigned'
   const label = value.tableName || value.tableNumber || `Table ${value.tableId}`
   return value.tableNumber && value.tableName && value.tableName !== value.tableNumber
@@ -58,6 +63,7 @@ function OrdersServiceScreen() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [qrDataUrl, setQrDataUrl] = useState('')
+  const [promotionCode, setPromotionCode] = useState('')
 
   const selected = orders.find((order) => order.id === selectedId) || null
   const role = sessionStorage.getItem('role')
@@ -124,8 +130,11 @@ function OrdersServiceScreen() {
             orderCode: next.orderCode,
             orderStatus: next.status,
             tableId: next.tableId ?? reservation.tableId,
+            tableIds: next.tableIds ?? reservation.tableIds,
             tableNumber: next.tableNumber ?? reservation.tableNumber,
+            tableNumbers: next.tableNumbers ?? reservation.tableNumbers,
             tableName: next.tableName ?? reservation.tableName,
+            tableNames: next.tableNames ?? reservation.tableNames,
             status: next.status === 'CLOSED'
               ? 'COMPLETED'
               : next.status === 'CANCELLED' ? 'CANCELLED' : next.reservationStatus ?? reservation.status,
@@ -152,6 +161,17 @@ function OrdersServiceScreen() {
     } finally {
       setBusy(false)
     }
+  }
+
+  const applyPromotion = () => {
+    if (!selected || !promotionCode.trim()) return
+    run(() => orderApi.applyPromotion(selected.id, promotionCode.trim()), 'Unable to apply promotion.')
+      .then(() => setPromotionCode(''))
+  }
+
+  const removePromotion = () => {
+    if (!selected) return
+    run(() => orderApi.removePromotion(selected.id), 'Unable to remove promotion.')
   }
 
   const createOrder = () => {
@@ -250,6 +270,35 @@ function OrdersServiceScreen() {
               <div className="orders-content-grid">
                 <div>
                   <div className="orders-section-title"><h3>Order items</h3><strong>{money(selected.total)}</strong></div>
+                  <div className="orders-promotion-box">
+                    <div className="orders-promotion-form">
+                      <Tag size={17} />
+                      <input
+                        value={promotionCode}
+                        onChange={(event) => setPromotionCode(event.target.value)}
+                        placeholder="Enter promotion code"
+                      />
+                      <button
+                        type="button"
+                        className="orders-button orders-button--secondary"
+                        disabled={busy || !promotionCode.trim()}
+                        onClick={applyPromotion}
+                      >
+                        Apply
+                      </button>
+                    </div>
+                    {selected.promotionCode ? (
+                      <div className="orders-applied-promo">
+                        <span>Applied: <strong>{selected.promotionCode}</strong> {selected.promotionName ? `- ${selected.promotionName}` : ''}</span>
+                        <button type="button" disabled={busy} onClick={removePromotion}>Remove</button>
+                      </div>
+                    ) : null}
+                    <div className="orders-bill-summary">
+                      <span>Subtotal <strong>{money(selected.subtotal ?? selected.total)}</strong></span>
+                      <span>Discount <strong>-{money(selected.discountAmount || 0)}</strong></span>
+                      <span>Total <strong>{money(selected.total)}</strong></span>
+                    </div>
+                  </div>
                   <div className="orders-items">
                     {selected.items.length === 0 && <p className="orders-empty">Add dishes from the menu below.</p>}
                     {selected.items.map((item) => {

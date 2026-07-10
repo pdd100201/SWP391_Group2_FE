@@ -95,9 +95,7 @@ function AppRoutes() {
         <Route path="check-in" element={<CheckInScreen />} />
         <Route path="tables" element={<TableManagementScreen />} />
         <Route path="reservations" element={<DashboardReservationsScreen />} />
-        <Route path="orders-service" element={<Navigate to="/dashboard/orders-service/management" replace />} />
-        <Route path="orders-service/management" element={<OrdersServiceScreen mode="management" />} />
-        <Route path="orders-service/active" element={<OrdersServiceScreen mode="active" />} />
+        <Route path="orders-service" element={<OrdersServiceScreen />} />
         <Route
           path="menu-management"
           element={(
