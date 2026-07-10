@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { createSession, getMenu } from '../api/qrApi'
+import { createSession, getMenu, getActiveOrder } from '../api/qrApi'
 import './QrMenuScreen.css'
 
 const CART_KEY = 'qr_cart'
@@ -32,6 +32,7 @@ export default function QrMenuScreen() {
   const [error, setError] = useState(null)
   const [stockAlert, setStockAlert] = useState({ itemId: null, msg: '' })
   const [activeCategory, setActiveCategory] = useState('')
+  const [activeOrder, setActiveOrder] = useState(null)
 
   const stickyTopRef = useRef(null)   // wrapper chứa header + nav
   const navInnerRef = useRef(null)    // scrollable nav bar inner
@@ -46,9 +47,10 @@ export default function QrMenuScreen() {
       setLoading(true)
       setError(null)
       try {
-        const [sessionData, menuData] = await Promise.all([
+        const [sessionData, menuData, orderData] = await Promise.all([
           createSession(tableId),
           getMenu(),
+          getActiveOrder(tableId),
         ])
         if (cancelled) return
 
@@ -56,6 +58,7 @@ export default function QrMenuScreen() {
         sessionStorage.setItem('qr_table_id', sessionData.tableId)
         setTableNumber(sessionData.tableNumber || `Bàn ${tableId}`)
         setCategories(menuData.categories || [])
+        setActiveOrder(orderData || null)
       } catch {
         if (!cancelled) setError('Không thể tải menu. Vui lòng thử lại.')
       } finally {
@@ -141,6 +144,15 @@ export default function QrMenuScreen() {
 
   const totalItems = cart.reduce((sum, c) => sum + c.quantity, 0)
 
+  const itemStatusLabel = {
+    DRAFT: 'Chờ xác nhận',
+    CONFIRMED: 'Đã xác nhận',
+    PREPARING: 'Đang làm',
+    READY: 'Sẵn sàng',
+    SERVED: 'Đã phục vụ',
+    CANCELLED: 'Đã huỷ',
+  }
+
   // ── Loading ───────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -202,6 +214,37 @@ export default function QrMenuScreen() {
           </div>
         </nav>
       </div>
+
+      {/* Active order banner */}
+      {activeOrder && (
+        <div className="qr-active-order">
+          <div className="qr-active-order__header">
+            <span className="qr-active-order__title">Đơn hàng hiện tại</span>
+            <span className="qr-active-order__id">{activeOrder.orderCode || `#${activeOrder.orderId}`}</span>
+          </div>
+          <ul className="qr-active-order__list">
+            {(activeOrder.items || [])
+              .filter((item) => item.itemStatus !== 'CANCELLED')
+              .map((item) => (
+                <li key={item.orderItemId} className="qr-active-order__row">
+                  <span className="qr-active-order__item-name">{item.itemName}</span>
+                  <span className="qr-active-order__item-qty">x{item.quantity}</span>
+                  <span className={`qr-active-order__status qr-active-order__status--${(item.itemStatus || 'confirmed').toLowerCase()}`}>
+                    {itemStatusLabel[item.itemStatus] || item.itemStatus}
+                  </span>
+                </li>
+              ))}
+          </ul>
+          <div className="qr-active-order__footer">
+            <button
+              className="qr-active-order__view-btn"
+              onClick={() => navigate(`/qr/order/${activeOrder.orderId}/status`)}
+            >
+              Xem chi tiết
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Menu body */}
       <div className="qr-menu__body">

@@ -37,6 +37,8 @@ export default function QrOrderStatusScreen() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
+  const tableId = order?.tableId || sessionStorage.getItem('qr_table_id')
+
   async function fetchStatus() {
     try {
       const data = await getOrderStatus(orderId)
@@ -59,8 +61,15 @@ export default function QrOrderStatusScreen() {
     return (
       <div className="qr-status">
         <div className="qr-status__header">
-          <h1>Trạng thái đơn</h1>
-          <div className="qr-status__order-id">#{orderId}</div>
+          <div>
+            <h1>Trạng thái đơn</h1>
+            <div className="qr-status__order-id">#{orderId}</div>
+          </div>
+          {tableId && (
+            <button className="qr-status__back-btn" onClick={() => navigate(`/qr/table/${tableId}`)}>
+              ← Menu
+            </button>
+          )}
         </div>
         <div className="qr-status__loading">
           <div className="qr-status__spinner" />
@@ -74,8 +83,15 @@ export default function QrOrderStatusScreen() {
     return (
       <div className="qr-status">
         <div className="qr-status__header">
-          <h1>Trạng thái đơn</h1>
-          <div className="qr-status__order-id">#{orderId}</div>
+          <div>
+            <h1>Trạng thái đơn</h1>
+            <div className="qr-status__order-id">#{orderId}</div>
+          </div>
+          {tableId && (
+            <button className="qr-status__back-btn" onClick={() => navigate(`/qr/table/${tableId}`)}>
+              ← Menu
+            </button>
+          )}
         </div>
         <div className="qr-status__error">
           <span>{error}</span>
@@ -89,8 +105,15 @@ export default function QrOrderStatusScreen() {
   return (
     <div className="qr-status">
       <div className="qr-status__header">
-        <h1>Trạng thái đơn hàng</h1>
-        <div className="qr-status__order-id">Mã đơn #{orderId}</div>
+        <div>
+          <h1>Trạng thái đơn hàng</h1>
+          <div className="qr-status__order-id">Mã đơn #{orderId}</div>
+        </div>
+        {tableId && (
+          <button className="qr-status__back-btn" onClick={() => navigate(`/qr/table/${tableId}`)}>
+            ← Menu
+          </button>
+        )}
       </div>
 
       <div className="qr-status__body">
