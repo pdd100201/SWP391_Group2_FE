@@ -1,21 +1,17 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   AlertTriangle,
-  Calculator,
   CheckCircle2,
   ChefHat,
-  CircleDollarSign,
   Clock3,
   PackageX,
   Pencil,
   Plus,
   RefreshCw,
   Search,
-  Trash2,
   UtensilsCrossed,
   X,
 } from 'lucide-react'
-import { inventoryService } from '../../inventory/services/inventoryService'
 import { menuService } from '../services/menuService'
 import './MenuManagementScreen.css'
 
@@ -26,11 +22,10 @@ const EMPTY_FORM = {
   category: '',
   description: '',
   imageUrl: '',
-  profitMarginPercent: '100',
-  ingredients: [{ inventoryItemId: '', requiredQuantity: '' }],
+  price: '',
 }
 
-const money = (value) => `${Math.round(value || 0).toLocaleString('vi-VN')} ₫`
+const money = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} VND`
 
 function getErrorMessage(error, fallback) {
   const errors = error.response?.data?.errors
@@ -56,91 +51,36 @@ function AvailabilityBadge({ status }) {
   )
 }
 
-function DishModal({ item, inventory, onClose, onSaved }) {
+function DishModal({ item, onClose, onSaved }) {
   const [form, setForm] = useState(() => item
     ? {
         name: item.name,
         category: item.category,
         description: item.description || '',
         imageUrl: item.imageUrl || '',
-        profitMarginPercent: item.profitMarginPercent.toString(),
-        ingredients: item.ingredients.map((ingredient) => ({
-          inventoryItemId: ingredient.inventoryItemId.toString(),
-          requiredQuantity: ingredient.requiredQuantity.toString(),
-        })),
+        price: item.price?.toString() || '',
       }
     : EMPTY_FORM
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  const inventoryById = useMemo(
-    () => new Map(inventory.map((ingredient) => [ingredient.id, ingredient])),
-    [inventory]
-  )
-
-  const foodCost = form.ingredients.reduce((total, row) => {
-    const ingredient = inventoryById.get(Number(row.inventoryItemId))
-    const quantity = Number(row.requiredQuantity)
-    if (!ingredient || !Number.isFinite(quantity) || quantity <= 0) return total
-    return total + (ingredient.pricePerUnit || 0) * quantity
-  }, 0)
-  const margin = Number(form.profitMarginPercent) || 0
-  const suggestedPrice = Math.ceil((foodCost * (1 + margin / 100)) / 1000) * 1000
-  const missingPrice = form.ingredients.some((row) => {
-    const ingredient = inventoryById.get(Number(row.inventoryItemId))
-    return ingredient && ingredient.pricePerUnit == null
-  })
-
   const updateField = (event) => {
     const { name, value } = event.target
     setForm((current) => ({ ...current, [name]: value }))
-  }
-
-  const updateIngredient = (index, field, value) => {
-    setForm((current) => ({
-      ...current,
-      ingredients: current.ingredients.map((row, rowIndex) =>
-        rowIndex === index ? { ...row, [field]: value } : row
-      ),
-    }))
-  }
-
-  const addIngredient = () => {
-    setForm((current) => ({
-      ...current,
-      ingredients: [...current.ingredients, { inventoryItemId: '', requiredQuantity: '' }],
-    }))
-  }
-
-  const removeIngredient = (index) => {
-    setForm((current) => ({
-      ...current,
-      ingredients: current.ingredients.filter((_, rowIndex) => rowIndex !== index),
-    }))
   }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
     setError('')
 
-    const ingredients = form.ingredients
-      .filter((row) => row.inventoryItemId && row.requiredQuantity)
-      .map((row) => ({
-        inventoryItemId: Number(row.inventoryItemId),
-        requiredQuantity: Number(row.requiredQuantity),
-      }))
-
-    if (!form.name.trim() || !form.category || ingredients.length === 0) {
-      setError('Dish name, category and at least one recipe ingredient are required')
+    const price = Number(form.price)
+    if (!form.name.trim() || !form.category) {
+      setError('Dish name and category are required')
       return
     }
-    if (new Set(ingredients.map((ingredient) => ingredient.inventoryItemId)).size !== ingredients.length) {
-      setError('Each inventory ingredient can only appear once in a recipe')
-      return
-    }
-    if (ingredients.some((ingredient) => ingredient.requiredQuantity <= 0)) {
-      setError('Ingredient quantity must be greater than 0')
+    if (!Number.isFinite(price) || price <= 0) {
+      setError('Price must be greater than 0')
       return
     }
 
@@ -149,8 +89,7 @@ function DishModal({ item, inventory, onClose, onSaved }) {
       category: form.category,
       description: form.description.trim() || null,
       imageUrl: form.imageUrl.trim() || null,
-      profitMarginPercent: Number(form.profitMarginPercent),
-      ingredients,
+      price,
     }
 
     setSaving(true)
@@ -171,7 +110,7 @@ function DishModal({ item, inventory, onClose, onSaved }) {
       <div className="menu-modal" onClick={(event) => event.stopPropagation()}>
         <header className="menu-modal__header">
           <div>
-            <span className="menu-modal__eyebrow">Single-size recipe</span>
+            <span className="menu-modal__eyebrow">Simple pricing</span>
             <h2>{item ? 'Edit menu item' : 'Create menu item'}</h2>
           </div>
           <button type="button" className="menu-icon-button" onClick={onClose} aria-label="Close">
@@ -198,14 +137,15 @@ function DishModal({ item, inventory, onClose, onSaved }) {
               </select>
             </label>
             <label className="menu-field">
-              <span>Profit margin (%) *</span>
+              <span>Price (VND) *</span>
               <input
-                name="profitMarginPercent"
+                name="price"
                 type="number"
-                min="0"
-                step="1"
-                value={form.profitMarginPercent}
+                min="1"
+                step="1000"
+                value={form.price}
                 onChange={updateField}
+                placeholder="e.g. 149000"
               />
             </label>
             <label className="menu-field">
@@ -216,79 +156,6 @@ function DishModal({ item, inventory, onClose, onSaved }) {
               <span>Description</span>
               <textarea name="description" value={form.description} onChange={updateField} rows="3" />
             </label>
-          </div>
-
-          <section className="menu-recipe-editor">
-            <div className="menu-recipe-editor__header">
-              <div>
-                <h3>Recipe ingredients</h3>
-                <p>Quantities use the same unit configured in Inventory.</p>
-              </div>
-              <button type="button" className="menu-button menu-button--secondary" onClick={addIngredient}>
-                <Plus size={15} /> Add ingredient
-              </button>
-            </div>
-
-            <div className="menu-recipe-editor__rows">
-              {form.ingredients.map((row, index) => {
-                const selected = inventoryById.get(Number(row.inventoryItemId))
-                return (
-                  <div className="menu-recipe-row" key={`${index}-${row.inventoryItemId}`}>
-                    <label className="menu-field">
-                      <span>Inventory item</span>
-                      <select
-                        value={row.inventoryItemId}
-                        onChange={(event) => updateIngredient(index, 'inventoryItemId', event.target.value)}
-                      >
-                        <option value="">Select ingredient</option>
-                        {inventory.map((ingredient) => (
-                          <option key={ingredient.id} value={ingredient.id}>
-                            {ingredient.itemName} ({ingredient.availableQuantity ?? ingredient.quantity} {ingredient.unit} available)
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="menu-field">
-                      <span>Quantity per serving</span>
-                      <div className="menu-quantity-input">
-                        <input
-                          type="number"
-                          min="0.0001"
-                          step="0.0001"
-                          value={row.requiredQuantity}
-                          onChange={(event) => updateIngredient(index, 'requiredQuantity', event.target.value)}
-                        />
-                        <b>{selected?.unit || 'unit'}</b>
-                      </div>
-                    </label>
-                    <div className="menu-recipe-row__cost">
-                      <span>Ingredient cost</span>
-                      <strong>
-                        {selected && row.requiredQuantity
-                          ? money((selected.pricePerUnit || 0) * Number(row.requiredQuantity))
-                          : '—'}
-                      </strong>
-                    </div>
-                    <button
-                      type="button"
-                      className="menu-icon-button menu-icon-button--danger"
-                      onClick={() => removeIngredient(index)}
-                      disabled={form.ingredients.length === 1}
-                      aria-label="Remove ingredient"
-                    >
-                      <Trash2 size={17} />
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-          </section>
-
-          <div className="menu-cost-preview">
-            <div><Calculator size={18} /><span>Food cost</span><strong>{money(foodCost)}</strong></div>
-            <div><CircleDollarSign size={18} /><span>Suggested price</span><strong>{money(suggestedPrice)}</strong></div>
-            <div><span>Margin</span><strong>{margin}%</strong></div>
-            {missingPrice && <small>Some ingredients have no price, so the cost is incomplete.</small>}
           </div>
 
           <footer className="menu-modal__actions">
@@ -307,7 +174,6 @@ function MenuManagementScreen() {
   const role = sessionStorage.getItem('role')
   const canManage = ['ADMIN', 'MANAGER'].includes(role)
   const [menuItems, setMenuItems] = useState([])
-  const [inventory, setInventory] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [keyword, setKeyword] = useState('')
@@ -321,14 +187,10 @@ function MenuManagementScreen() {
     setLoading(true)
     setError('')
     try {
-      const [menuResponse, inventoryResponse] = await Promise.all([
-        menuService.getAll(),
-        inventoryService.getAll(),
-      ])
-      setMenuItems(menuResponse.data)
-      setInventory(inventoryResponse.data.filter((item) => item.isActive))
+      const response = await menuService.getAll()
+      setMenuItems(response.data)
     } catch (loadError) {
-      setError(getErrorMessage(loadError, 'Unable to load menu management data'))
+      setError(getErrorMessage(loadError, 'Unable to load menu items'))
     } finally {
       setLoading(false)
     }
@@ -397,9 +259,9 @@ function MenuManagementScreen() {
     <div className="menu-screen">
       <header className="menu-screen__header">
         <div>
-          <span className="menu-screen__eyebrow"><ChefHat size={16} /> Inventory-linked recipes</span>
+          <span className="menu-screen__eyebrow"><ChefHat size={16} /> Menu pricing</span>
           <h1>Menu Management</h1>
-          <p>Build exact recipes, track serving capacity and price dishes from live inventory costs.</p>
+          <p>Create dishes with a direct selling price.</p>
         </div>
         <div className="menu-screen__actions">
           <button type="button" className="menu-button menu-button--secondary" onClick={handleRefresh}>
@@ -441,7 +303,7 @@ function MenuManagementScreen() {
       {error && <div className="menu-page-error"><AlertTriangle size={18} />{error}</div>}
 
       {loading ? (
-        <div className="menu-loading"><RefreshCw className="menu-spin" /><span>Loading menu and inventory...</span></div>
+        <div className="menu-loading"><RefreshCw className="menu-spin" /><span>Loading menu...</span></div>
       ) : filteredItems.length === 0 ? (
         <div className="menu-empty"><ChefHat size={44} /><h2>No menu items found</h2><p>Create a dish or clear the current filters.</p></div>
       ) : (
@@ -471,35 +333,9 @@ function MenuManagementScreen() {
                 <p className="menu-card__description">{item.description || 'No description provided.'}</p>
 
                 <div className="menu-card__metrics">
-                  <div><span>Food cost</span><strong>{money(item.foodCost)}</strong></div>
-                  <div><span>Suggested price</span><strong>{money(item.suggestedPrice)}</strong></div>
-                  <div><span>Margin</span><strong>{item.profitMarginPercent}%</strong></div>
-                  <div><span>Can serve</span><strong>{item.availableServings} portions</strong></div>
+                  <div><span>Price</span><strong>{money(item.price)}</strong></div>
+                  <div><span>Status</span><strong>{item.availability?.replaceAll('_', ' ') || 'Unavailable'}</strong></div>
                 </div>
-
-                <div className="menu-card__recipe">
-                  <strong>Recipe per serving</strong>
-                  <div>
-                    {item.ingredients.map((ingredient) => (
-                      <span key={ingredient.inventoryItemId}>
-                        {ingredient.inventoryItemName}: {ingredient.requiredQuantity} {ingredient.unit}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {item.blockingIngredients.length > 0 && (
-                  <div className="menu-card__warning">
-                    <AlertTriangle size={15} />
-                    Blocked by: {item.blockingIngredients.join(', ')}
-                  </div>
-                )}
-                {!item.costComplete && (
-                  <div className="menu-card__warning">
-                    <CircleDollarSign size={15} />
-                    Cost is incomplete because an ingredient has no price.
-                  </div>
-                )}
 
                 {canManage && (
                   <button
@@ -520,7 +356,6 @@ function MenuManagementScreen() {
       {canManage && modalOpen && (
         <DishModal
           item={editingItem}
-          inventory={inventory}
           onClose={() => { setModalOpen(false); setEditingItem(null) }}
           onSaved={handleSaved}
         />

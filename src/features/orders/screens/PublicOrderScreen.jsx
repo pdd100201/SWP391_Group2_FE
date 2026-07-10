@@ -81,7 +81,7 @@ function PublicOrderScreen() {
               {shownMenu.map((item) => (
                 <article key={item.id}>
                   <img src={item.imageUrl || '/favicon.svg'} alt="" />
-                  <div><small>{item.category}</small><h2>{item.name}</h2><p>{item.description}</p><strong>{money(item.suggestedPrice)}</strong></div>
+                  <div><small>{item.category}</small><h2>{item.name}</h2><p>{item.description}</p><strong>{money(item.price)}</strong></div>
                   <button type="button" disabled={busy} onClick={() => run(
                     () => publicOrderApi.addItem(token, { menuItemId: item.id, quantity: 1, note: null }),
                     'Could not add this dish.')}><Plus size={17} /> Add to order</button>

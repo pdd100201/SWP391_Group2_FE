@@ -73,7 +73,7 @@ function OrdersServiceScreen() {
     [menu]
   )
   const availableMenu = useMemo(() => menu.filter((item) => {
-    const allowed = item.isActive && ['AVAILABLE', 'LIMITED'].includes(item.availability) && item.costComplete
+    const allowed = item.isActive && ['AVAILABLE', 'LIMITED'].includes(item.availability)
     const matchesCategory = category === 'All' || item.category === category
     const matchesSearch = item.name.toLowerCase().includes(search.trim().toLowerCase())
     return allowed && matchesCategory && matchesSearch
@@ -340,7 +340,7 @@ function OrdersServiceScreen() {
                     {availableMenu.map((item) => (
                       <article key={item.id}>
                         <img src={item.imageUrl || '/favicon.svg'} alt="" />
-                        <div><small>{item.category}</small><strong>{item.name}</strong><span>{money(item.suggestedPrice)}</span></div>
+                        <div><small>{item.category}</small><strong>{item.name}</strong><span>{money(item.price)}</span></div>
                         <button type="button" disabled={busy} onClick={() => run(
                           () => orderApi.addItem(selected.id, { menuItemId: item.id, quantity: 1, note: null }),
                           'Unable to add dish.')}><Plus size={16} /> Add</button>
