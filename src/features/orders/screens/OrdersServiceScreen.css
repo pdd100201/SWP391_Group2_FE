@@ -81,6 +81,83 @@
 .orders-next-button { border: 0; border-radius: 8px; padding: 8px 10px; background: #ecfdf5; color: #047857; font-weight: 800; cursor: pointer; text-transform: capitalize; }
 .orders-primary-actions { justify-content: flex-start; margin: 14px 0 22px; }
 
+.orders-promotion-box {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 12px;
+  border: 1px solid #d1fae5;
+  border-radius: 12px;
+  background: #f8fffb;
+}
+
+.orders-promotion-form {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  color: var(--order-green);
+}
+
+.orders-promotion-form input {
+  min-height: 40px;
+  padding: 8px 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: white;
+  color: #14211d;
+  color-scheme: light;
+  font: inherit;
+  outline: none;
+}
+
+.orders-promotion-form input::placeholder {
+  color: #94a3b8;
+}
+
+.orders-promotion-form input:focus {
+  border-color: #0f766e;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, .10);
+}
+
+.orders-applied-promo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #075c46;
+  font-size: .88rem;
+}
+
+.orders-applied-promo button {
+  border: 0;
+  background: transparent;
+  color: #b42318;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+}
+
+.orders-bill-summary {
+  display: grid;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid #d1fae5;
+}
+
+.orders-bill-summary span {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  color: #475569;
+}
+
+.orders-bill-summary span:last-child {
+  color: var(--order-green-dark);
+  font-size: 1rem;
+  font-weight: 800;
+}
+
 .orders-search { display: flex; align-items: center; gap: 8px; min-width: 250px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 0 11px; background: #fff; color: #475569; transition: border-color .15s ease, box-shadow .15s ease; }
 .orders-search:focus-within { border-color: #0f766e; box-shadow: 0 0 0 3px rgba(15, 118, 110, .10); }
 .orders-search input { flex: 1; height: 40px; min-width: 0; border: 0; outline: 0; background: transparent; color: #14211d; color-scheme: light; font: inherit; }

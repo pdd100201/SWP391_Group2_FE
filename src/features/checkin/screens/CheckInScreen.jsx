@@ -13,14 +13,33 @@ const todayInputValue = () => {
 }
 
 const ACTIVE_RESERVATION_STATUSES = new Set(['PENDING', 'CONFIRMED'])
+const LOCK_BEFORE_MINUTES = 45
+const NO_SHOW_GRACE_MINUTES = 15
 
 const displayValue = (value) => {
   if (value === null || value === undefined || value === '') return '-'
   return value
 }
 
+const getReservationTableIds = (reservation) => (
+    reservation?.tableIds?.length ? reservation.tableIds : [reservation?.tableId].filter(Boolean)
+)
+
+const isReservationLockActive = (reservation) => {
+  if (!reservation?.reservationDate || !reservation?.reservationTime) return false
+  const reservationDateTime = new Date(`${reservation.reservationDate}T${reservation.reservationTime}`)
+  if (Number.isNaN(reservationDateTime.getTime())) return false
+
+  const diffMinutes = (reservationDateTime.getTime() - Date.now()) / 60000
+  return diffMinutes <= LOCK_BEFORE_MINUTES && diffMinutes >= -NO_SHOW_GRACE_MINUTES
+}
+
 const normalizeReservation = (reservation) => ({
   reservationId: reservation.reservationId ?? reservation.id,
+  tableId: reservation.tableId ?? reservation.table?.id ?? null,
+  tableIds: Array.isArray(reservation.tableIds)
+      ? reservation.tableIds
+      : [reservation.tableId ?? reservation.table?.id].filter(Boolean),
   fullName: reservation.fullName ?? reservation.guestName ?? reservation.name ?? 'Guest',
   phone: reservation.phone ?? reservation.phoneNumber ?? '',
   reservationDate: reservation.reservationDate ?? reservation.date ?? '',
@@ -56,6 +75,9 @@ function CheckInScreen() {
   const [error, setError] = useState('')
   const [occupiedTableDetails, setOccupiedTableDetails] = useState(null)
   const [reservedTableDetails, setReservedTableDetails] = useState(null)
+  const [changeTableTarget, setChangeTableTarget] = useState(null)
+  const [changeTableSelection, setChangeTableSelection] = useState([])
+  const [showChangeTableConfirm, setShowChangeTableConfirm] = useState(false)
 
   const [selectedSection, setSelectedSection] = useState('All')
   const [selectedStatus, setSelectedStatus] = useState('All')
@@ -118,18 +140,70 @@ function CheckInScreen() {
     return selectedTables.reduce((sum, t) => sum + t.capacity, 0)
   }, [selectedTables])
 
+  const displayTables = useMemo(() => {
+    const isViewingToday = selectedDate === todayInputValue()
+    const activeReservedTableIds = new Set()
+
+    reservations
+        .filter((reservation) => reservation.reservationDate === selectedDate)
+        .filter((reservation) => reservation.status === 'CONFIRMED')
+        .filter(isReservationLockActive)
+        .forEach((reservation) => {
+          getReservationTableIds(reservation).forEach((tableId) => activeReservedTableIds.add(String(tableId)))
+        })
+
+    return tables.map((table) => {
+      let status = 'AVAILABLE'
+      if (isViewingToday && ['OCCUPIED', 'CLEANING'].includes(table.status)) {
+        status = table.status
+      }
+      if (activeReservedTableIds.has(String(table.id)) && status === 'AVAILABLE') {
+        status = 'RESERVED'
+      }
+      return { ...table, status }
+    })
+  }, [reservations, selectedDate, tables])
+
   const dynamicSections = useMemo(() => {
-    const sections = new Set(tables.map(t => t.tableType || 'Dining Room'))
+    const sections = new Set(displayTables.map(t => t.tableType || 'Dining Room'))
     return Array.from(sections)
-  }, [tables])
+  }, [displayTables])
 
   const dynamicStatuses = useMemo(() => {
-    const statuses = new Set(tables.map(t => t.status))
+    const statuses = new Set(displayTables.map(t => t.status))
     return Array.from(statuses)
-  }, [tables])
+  }, [displayTables])
+
+  const changeTableOptions = useMemo(() => (
+      displayTables.filter((table) => table.status === 'AVAILABLE')
+  ), [displayTables])
+
+  const changeTableReservation = useMemo(() => {
+    if (!changeTableTarget?.guest?.reservationId) return null
+    return reservations.find((reservation) => (
+        String(reservation.reservationId) === String(changeTableTarget.guest.reservationId)
+    )) ?? null
+  }, [changeTableTarget, reservations])
+
+  const keptChangeTables = useMemo(() => {
+    if (!changeTableTarget) return []
+    const assignedTableIds = getReservationTableIds(changeTableReservation)
+    return displayTables.filter((table) => (
+        assignedTableIds.some((tableId) => String(table.id) === String(tableId))
+        && String(table.id) !== String(changeTableTarget.table?.id)
+    ))
+  }, [changeTableReservation, changeTableTarget, displayTables])
+
+  const finalChangeTables = useMemo(() => (
+      [...keptChangeTables, ...changeTableSelection]
+  ), [changeTableSelection, keptChangeTables])
+
+  const finalChangeCapacity = useMemo(() => (
+      finalChangeTables.reduce((sum, table) => sum + table.capacity, 0)
+  ), [finalChangeTables])
 
   const tablesBySection = useMemo(() => {
-    return tables.reduce((groups, table) => {
+    return displayTables.reduce((groups, table) => {
       const section = table.tableType || 'Dining Room'
 
       if (selectedSection !== 'All' && section !== selectedSection) return groups
@@ -139,10 +213,20 @@ function CheckInScreen() {
       groups[section].push(table)
       return groups
     }, {})
-  }, [tables, selectedSection, selectedStatus])
+  }, [displayTables, selectedSection, selectedStatus])
 
   const handleReservationSelect = (reservation) => {
     setSelectedReservationId(reservation.reservationId)
+    const lockedTableIds = getReservationTableIds(reservation)
+    const lockedTables = isReservationLockActive(reservation) ? displayTables.filter((table) => (
+        lockedTableIds.some((tableId) => String(table.id) === String(tableId))
+    )) : []
+
+    if (lockedTables.length > 0) {
+      setSelectedTables(lockedTables)
+      setHint(`${reservation.fullName} already has ${lockedTables.map((table) => table.tableName).join(', ')} reserved. Confirm check-in when the guest arrives.`)
+      return
+    }
     setSelectedTables([]) // Reset lại bàn khi chọn khách khác
     setHint(`Ready to assign ${reservation.fullName}. You can select multiple available tables.`)
   }
@@ -175,12 +259,31 @@ function CheckInScreen() {
       return
     }
 
+    const lockedTableIds = getReservationTableIds(selectedReservation)
+    if (isReservationLockActive(selectedReservation) && lockedTableIds.length > 0) {
+      const lockedTables = displayTables.filter((item) => (
+          lockedTableIds.some((tableId) => String(item.id) === String(tableId))
+      ))
+      if (lockedTables.length > 0) {
+        setSelectedTables(lockedTables)
+        setHint(`${selectedReservation.fullName} already has ${lockedTables.map((item) => item.tableName).join(', ')} reserved. No extra table is needed.`)
+      }
+      return
+    }
+
     if (table.status !== 'AVAILABLE') {
       setHint(`Table ${table.tableNumber} is currently not available.`)
       return
     }
 
     // THAY ĐỔI 2: Logic chọn nhiều bàn (Toggle)
+    const requiredCapacity = Number(selectedReservation.numberOfGuests) || 0
+    const isAlreadySelected = selectedTables.some((selectedTable) => selectedTable.id === table.id)
+    if (!isAlreadySelected && requiredCapacity > 0 && totalSelectedCapacity >= requiredCapacity) {
+      setHint(`Selected tables already cover ${selectedReservation.numberOfGuests} Pax. Remove a table first if you want to change it.`)
+      return
+    }
+
     setSelectedTables((prev) => {
       const isAlreadySelected = prev.some(t => t.id === table.id)
       if (isAlreadySelected) {
@@ -222,10 +325,64 @@ function CheckInScreen() {
     }
   }
 
+  const toggleChangeTableSelection = (table) => {
+    setChangeTableSelection((prev) => {
+      const isSelected = prev.some((item) => item.id === table.id)
+      if (isSelected) return prev.filter((item) => item.id !== table.id)
+
+      const requiredCapacity = Number(changeTableTarget?.guest?.numberOfGuests) || 0
+      const keptCapacity = keptChangeTables.reduce((sum, item) => sum + item.capacity, 0)
+      const currentCapacity = keptCapacity + prev.reduce((sum, item) => sum + item.capacity, 0)
+      if (requiredCapacity > 0 && currentCapacity >= requiredCapacity) {
+        return prev
+      }
+      return [...prev, table]
+    })
+  }
+
+  const requestTableChangeConfirmation = () => {
+    if (!changeTableTarget || changeTableSelection.length === 0) return
+
+    const requiredCapacity = Number(changeTableTarget.guest?.numberOfGuests) || 0
+    if (finalChangeCapacity < requiredCapacity) {
+      alert(`Final tables only cover ${finalChangeCapacity} / ${requiredCapacity} Pax.`)
+      return
+    }
+
+    setShowChangeTableConfirm(true)
+  }
+
+  const submitTableChange = async () => {
+    if (!changeTableTarget || changeTableSelection.length === 0) return
+
+    try {
+      await checkinApi.changeTables(changeTableTarget.guest.reservationId, {
+        tableIds: finalChangeTables.map((table) => table.id),
+      })
+      setChangeTableTarget(null)
+      setChangeTableSelection([])
+      setShowChangeTableConfirm(false)
+      setOccupiedTableDetails(null)
+      await loadCheckInData()
+      setHint(`Replaced ${changeTableTarget.table.tableName} with ${changeTableSelection.map((table) => table.tableName).join(', ')} for ${changeTableTarget.guest.fullName}.`)
+    } catch (err) {
+      console.error("Change table error:", err)
+      const errorMessage = err.response?.data?.message
+          || err.response?.data?.error
+          || (typeof err.response?.data === 'string' ? err.response.data : '')
+          || err.message
+          || "Failed to change table."
+      alert(errorMessage)
+      setShowChangeTableConfirm(false)
+    }
+  }
+
   const formatStatusLabel = (statusString) => {
     if (!statusString) return ''
     return statusString.charAt(0).toUpperCase() + statusString.slice(1).toLowerCase()
   }
+
+  const isCheckingInReservedTable = selectedTables.some((table) => table.status === 'RESERVED')
 
   return (
       <div className="checkin-screen" style={{ position: 'relative' }}>
@@ -302,6 +459,9 @@ function CheckInScreen() {
                             <Clock size={13} /> {displayValue(reservation.reservationTime)}
                             <span style={{color: '#cbd5e1'}}>|</span>
                             <UsersRound size={13} /> {displayValue(reservation.numberOfGuests)} Pax
+                            <span className={`checkin-reservation__status checkin-reservation__status--${String(reservation.status).toLowerCase()}`}>
+                              {displayValue(reservation.status)}
+                            </span>
                           </span>
                         </div>
                         <button type="button" className="checkin-reservation__btn-trigger">
@@ -395,7 +555,11 @@ function CheckInScreen() {
               display: 'flex', alignItems: 'center', gap: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', zIndex: 100
             }}>
               <div>
-                <strong style={{ fontSize: '1.1rem', display: 'block' }}>{selectedTables.length} Tables Selected</strong>
+                <strong style={{ fontSize: '1.1rem', display: 'block' }}>
+                  {isCheckingInReservedTable
+                      ? `${selectedTables.length} Reserved Table${selectedTables.length > 1 ? 's' : ''}`
+                      : `${selectedTables.length} Tables Selected`}
+                </strong>
                 <span style={{ fontSize: '0.9rem', opacity: 0.9 }}>
                   Total Capacity: {totalSelectedCapacity} / {selectedReservation.numberOfGuests} Pax
                 </span>
@@ -403,7 +567,7 @@ function CheckInScreen() {
               <button
                   onClick={() => setShowConfirmModal(true)}
                   style={{ background: 'white', color: '#0e5c47', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>
-                Confirm Assignment
+                {isCheckingInReservedTable ? 'Check In Guest' : 'Confirm Assignment'}
               </button>
             </div>
         )}
@@ -415,17 +579,23 @@ function CheckInScreen() {
                 <div className="custom-modal-icon-wrapper">
                   <CheckCircle2 className="custom-modal-icon" size={28} />
                 </div>
-                <div className="custom-modal-title">Confirm Multiple Tables</div>
+                <div className="custom-modal-title">
+                  {isCheckingInReservedTable ? 'Confirm Check-in' : 'Confirm Multiple Tables'}
+                </div>
                 <div className="custom-modal-text">
-                  Confirm Assigning Guest <strong>[{selectedReservation.fullName}] ({selectedReservation.numberOfGuests} Pax)</strong>
-                  to <strong>{selectedTables.length} tables</strong>: <br/>
+                  {isCheckingInReservedTable ? 'Check in Guest ' : 'Confirm Assigning Guest '}
+                  <strong>[{selectedReservation.fullName}] ({selectedReservation.numberOfGuests} Pax)</strong>
+                  {isCheckingInReservedTable ? ' at ' : ' to '}
+                  <strong>{selectedTables.length} tables</strong>: <br/>
                   <span style={{color: '#0e5c47', fontWeight: 'bold'}}>
                     {selectedTables.map(t => t.tableName).join(', ')}
                   </span> ?
                 </div>
                 <div className="custom-modal-actions">
                   <button type="button" className="custom-btn-cancel" onClick={() => setShowConfirmModal(false)}>Cancel</button>
-                  <button type="button" className="custom-btn-confirm" onClick={confirmAssignment}>Confirm</button>
+                  <button type="button" className="custom-btn-confirm" onClick={confirmAssignment}>
+                    {isCheckingInReservedTable ? 'Check In' : 'Confirm'}
+                  </button>
                 </div>
               </div>
             </div>
@@ -451,10 +621,143 @@ function CheckInScreen() {
                   <button
                       type="button"
                       className="custom-btn-confirm"
+                      style={{ background: '#0e5c47' }}
+                      onClick={() => {
+                        setChangeTableTarget(occupiedTableDetails)
+                        setChangeTableSelection([])
+                      }}
+                  >
+                    Change Table
+                  </button>
+                  <button
+                      type="button"
+                      className="custom-btn-confirm"
                       style={{ background: '#3b82f6' }}
                       onClick={() => navigate('/dashboard/orders-service')}
                   >
                     {occupiedTableDetails.guest?.orderId ? 'Manage Order' : 'Create Order'}
+                  </button>
+                </div>
+              </div>
+            </div>
+        )}
+
+
+        {changeTableTarget && !showChangeTableConfirm && (
+            <div className="custom-modal-backdrop" onClick={() => {
+              setChangeTableTarget(null)
+              setShowChangeTableConfirm(false)
+            }}>
+              <div className="custom-modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '620px' }}>
+                <div className="custom-modal-icon-wrapper custom-modal-icon-wrapper--info">
+                  <CheckCircle2 className="custom-modal-icon" size={28} style={{ color: '#0e5c47' }} />
+                </div>
+                <div className="custom-modal-title">Replace Table</div>
+                <div className="custom-modal-text">
+                  Replace <strong>{changeTableTarget.table?.tableName}</strong> for <strong>{changeTableTarget.guest?.fullName}</strong>
+                </div>
+                <div style={{ margin: '14px 0', color: '#475569', fontWeight: 600 }}>
+                  Final Capacity: {finalChangeCapacity} / {changeTableTarget.guest?.numberOfGuests} Pax
+                </div>
+                {keptChangeTables.length > 0 && (
+                    <div style={{ marginBottom: '12px', padding: '10px 12px', borderRadius: '10px', background: '#f8fafc', color: '#475569', textAlign: 'left' }}>
+                      <strong>Keeping:</strong> {keptChangeTables.map((table) => table.tableName).join(', ')}
+                    </div>
+                )}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px', maxHeight: '280px', overflowY: 'auto' }}>
+                  {changeTableOptions.length === 0 ? (
+                      <div className="checkin-empty" style={{ gridColumn: '1 / -1' }}>No available tables to move this guest.</div>
+                  ) : (
+                      changeTableOptions.map((table) => {
+                        const isSelected = changeTableSelection.some((item) => item.id === table.id)
+                        return (
+                            <button
+                                key={table.id}
+                                type="button"
+                                onClick={() => toggleChangeTableSelection(table)}
+                                style={{
+                                  textAlign: 'left',
+                                  border: isSelected ? '2px solid #0e5c47' : '1px solid #d8e2ef',
+                                  background: isSelected ? '#eefcf5' : '#ffffff',
+                                  borderRadius: '10px',
+                                  padding: '12px',
+                                  cursor: 'pointer',
+                                  color: '#0f172a',
+                                }}
+                            >
+                              <strong style={{ display: 'block', marginBottom: '6px' }}>{table.tableName}</strong>
+                              <span style={{ color: '#64748b' }}>{table.capacity} Pax</span>
+                            </button>
+                        )
+                      })
+                  )}
+                </div>
+                <div className="custom-modal-actions" style={{ marginTop: '20px' }}>
+                  <button
+                      type="button"
+                      className="custom-btn-cancel"
+                      onClick={() => {
+                        setChangeTableTarget(null)
+                        setChangeTableSelection([])
+                        setShowChangeTableConfirm(false)
+                      }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                      type="button"
+                      className="custom-btn-confirm"
+                      onClick={requestTableChangeConfirmation}
+                      disabled={changeTableSelection.length === 0}
+                  >
+                    Review Change
+                  </button>
+                </div>
+              </div>
+            </div>
+        )}
+
+
+        {showChangeTableConfirm && changeTableTarget && (
+            <div className="custom-modal-backdrop" onClick={() => setShowChangeTableConfirm(false)}>
+              <div className="custom-modal-card" onClick={(e) => e.stopPropagation()}>
+                <div className="custom-modal-icon-wrapper" style={{ backgroundColor: '#fffbeb' }}>
+                  <HelpCircle className="custom-modal-icon" size={28} style={{ color: '#f59e0b' }} />
+                </div>
+                <div className="custom-modal-title">Confirm Table Replacement</div>
+                <div className="custom-modal-text" style={{ textAlign: 'left', background: '#fffbeb', padding: '16px', borderRadius: '12px', marginTop: '12px' }}>
+                  <div style={{ marginBottom: '8px' }}>
+                    <strong>Guest:</strong> {displayValue(changeTableTarget.guest?.fullName)}
+                  </div>
+                  <div style={{ marginBottom: '8px' }}>
+                    <strong>Replace:</strong> {displayValue(changeTableTarget.table?.tableName)}
+                  </div>
+                  <div style={{ marginBottom: '8px' }}>
+                    <strong>With:</strong> {changeTableSelection.map((table) => table.tableName).join(', ')}
+                  </div>
+                  {keptChangeTables.length > 0 && (
+                      <div style={{ marginBottom: '8px' }}>
+                        <strong>Keeping:</strong> {keptChangeTables.map((table) => table.tableName).join(', ')}
+                      </div>
+                  )}
+                  <div>
+                    <strong>Final Capacity:</strong> {finalChangeCapacity} / {changeTableTarget.guest?.numberOfGuests} Pax
+                  </div>
+                </div>
+                <div className="custom-modal-actions" style={{ marginTop: '20px' }}>
+                  <button
+                      type="button"
+                      className="custom-btn-cancel"
+                      onClick={() => setShowChangeTableConfirm(false)}
+                  >
+                    Back
+                  </button>
+                  <button
+                      type="button"
+                      className="custom-btn-confirm"
+                      onClick={submitTableChange}
+                  >
+                    Yes, Replace Table
                   </button>
                 </div>
               </div>
@@ -474,7 +777,7 @@ function CheckInScreen() {
                   <div style={{ marginBottom: '8px' }}><strong>Phone Number:</strong> {displayValue(reservedTableDetails.guest?.phone)}</div>
                   <div style={{ marginBottom: '8px' }}><strong>Party Size:</strong> {displayValue(reservedTableDetails.guest?.numberOfGuests)} Pax</div>
                   <div style={{ marginBottom: '8px' }}><strong>Reservation Time:</strong> {displayValue(reservedTableDetails.guest?.checkInTime)}</div>
-                  <div style={{ marginBottom: '8px' }}><strong>Reservation Reference:</strong> {displayValue(reservedTableDetails.guest?.orderId)}</div>
+                  <div style={{ marginBottom: '8px' }}><strong>Reservation Reference:</strong> {displayValue(reservedTableDetails.guest?.orderCode || reservedTableDetails.guest?.reservationId)}</div>
                 </div>
                 <div className="custom-modal-actions" style={{ marginTop: '20px' }}>
                   <button type="button" className="custom-btn-cancel" onClick={() => setReservedTableDetails(null)}>Close</button>

@@ -58,15 +58,21 @@ function CreateReservationScreen() {
       return
     }
 
-    // 2. Validate minimum advance booking time
+    // 2. Validate reservation time is not in the past
     const selectedDateTime = new Date(`${formData.reservationDate}T${formData.reservationTime}`)
     const currentDateTime = new Date()
-    const minimumReservationTime = new Date(currentDateTime.getTime() + 2 * 60 * 60 * 1000)
-    if (isNaN(selectedDateTime.getTime()) || selectedDateTime < minimumReservationTime) {
-      setError('Reservations must be made at least 2 hours in advance.')
+    if (isNaN(selectedDateTime.getTime()) || selectedDateTime < currentDateTime) {
+      setError('Reservation time cannot be in the past.')
       return
     }
-
+    // const selectedDateTime = new Date(`${formData.reservationDate}T${formData.reservationTime}`)
+    // const currentDateTime = new Date()
+    // const minimumReservationTime = new Date(currentDateTime.getTime() + 2 * 60 * 60 * 1000)
+    //
+    // if (isNaN(selectedDateTime.getTime()) || selectedDateTime < minimumReservationTime) {
+    //   setError('Reservations must be made at least 2 hours in advance.')
+    //   return
+    // }
     setSubmitting(true)
     setMessage('')
     setError('')

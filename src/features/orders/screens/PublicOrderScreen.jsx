@@ -7,6 +7,10 @@ import './PublicOrderScreen.css'
 const money = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} VND`
 // Trang gọi món công khai hiển thị tên bàn từ dữ liệu order lấy bằng token.
 const tableLabel = (order) => {
+  const tableNames = Array.isArray(order?.tableNames) ? order.tableNames.filter(Boolean) : []
+  const tableNumbers = Array.isArray(order?.tableNumbers) ? order.tableNumbers.filter(Boolean) : []
+  if (tableNames.length > 0) return tableNames.join(', ')
+  if (tableNumbers.length > 0) return tableNumbers.join(', ')
   if (!order?.tableId) return ''
   return order.tableName || order.tableNumber || `Table ${order.tableId}`
 }
