@@ -18,6 +18,7 @@ import {
   ShoppingCart,
   X,
 } from 'lucide-react'
+import { uploadImage } from '../../../shared/services/imageUploadService'
 import { inventoryService } from '../services/inventoryService'
 import './InventoryScreen.css'
 
@@ -131,11 +132,28 @@ function Toast({ message, type, onClose }) {
 function AddItemModal({ onClose, onSuccess }) {
   const [formData, setFormData] = useState(INITIAL_FORM)
   const [submitting, setSubmitting] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
   const [error, setError] = useState('')
 
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  const handleImageUpload = async (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setError('')
+    setUploadingImage(true)
+    try {
+      const response = await uploadImage(file, 'inventory')
+      setFormData((prev) => ({ ...prev, imageUrl: response.data.secureUrl || response.data.url }))
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to upload image to Cloudinary')
+    } finally {
+      setUploadingImage(false)
+      event.target.value = ''
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -267,15 +285,17 @@ function AddItemModal({ onClose, onSuccess }) {
             </div>
 
             <div className="inv-form-field inv-form-field--full">
-              <label htmlFor="add-imageUrl">Image URL</label>
+              <label htmlFor="add-imageUrl">Image</label>
               <input
                 id="add-imageUrl"
-                name="imageUrl"
-                type="url"
-                value={formData.imageUrl}
-                onChange={handleChange}
-                placeholder="https://..."
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                disabled={uploadingImage}
               />
+              <small className="inv-form-field__hint">
+                {uploadingImage ? 'Uploading to Cloudinary...' : 'Choose an image file'}
+              </small>
               {formData.imageUrl && (
                 <div className="inv-form-field__preview">
                   <img src={formData.imageUrl} alt="Preview" className="inv-img-preview" />
@@ -288,7 +308,7 @@ function AddItemModal({ onClose, onSuccess }) {
             <button type="button" className="inv-btn inv-btn--ghost" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="inv-btn inv-btn--primary" disabled={submitting}>
+            <button type="submit" className="inv-btn inv-btn--primary" disabled={submitting || uploadingImage}>
               {submitting ? 'Saving...' : 'Save Item'}
             </button>
           </div>
@@ -307,8 +327,10 @@ function UpdateItemModal({ item, onClose, onSuccess }) {
     minimumQuantity: item.minimumQuantity?.toString() ?? '',
     pricePerUnit: item.pricePerUnit?.toString() ?? '',
     supplier: item.supplier ?? '',
+    imageUrl: item.imageUrl ?? '',
   })
   const [submitting, setSubmitting] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
   const [error, setError] = useState('')
 
   const numQty = parseFloat(formData.quantity)
@@ -321,6 +343,22 @@ function UpdateItemModal({ item, onClose, onSuccess }) {
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData((current) => ({ ...current, [name]: value }))
+  }
+
+  const handleImageUpload = async (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setError('')
+    setUploadingImage(true)
+    try {
+      const response = await uploadImage(file, 'inventory')
+      setFormData((current) => ({ ...current, imageUrl: response.data.secureUrl || response.data.url }))
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to upload image to Cloudinary')
+    } finally {
+      setUploadingImage(false)
+      event.target.value = ''
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -350,6 +388,7 @@ function UpdateItemModal({ item, onClose, onSuccess }) {
         minimumQuantity,
         pricePerUnit,
         supplier: formData.supplier.trim() || null,
+        imageUrl: formData.imageUrl || null,
       })
       onSuccess(res.data)
     } catch (err) {
@@ -506,6 +545,25 @@ function UpdateItemModal({ item, onClose, onSuccess }) {
                 placeholder="e.g. Fresh Farm Co."
               />
             </div>
+
+            <div className="inv-form-field inv-form-field--full">
+              <label htmlFor="upd-imageUrl">Image</label>
+              <input
+                id="upd-imageUrl"
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                disabled={uploadingImage}
+              />
+              <small className="inv-form-field__hint">
+                {uploadingImage ? 'Uploading to Cloudinary...' : 'Choose an image file'}
+              </small>
+              {formData.imageUrl && (
+                <div className="inv-form-field__preview">
+                  <img src={formData.imageUrl} alt="Preview" className="inv-img-preview" />
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="inv-modal__actions">
@@ -515,7 +573,7 @@ function UpdateItemModal({ item, onClose, onSuccess }) {
             <button
               type="submit"
               className={`inv-btn ${needRestock ? (isOutOfStock ? 'inv-btn--danger' : 'inv-btn--warn') : 'inv-btn--primary'}`}
-              disabled={submitting}
+              disabled={submitting || uploadingImage}
             >
               {submitting ? 'Đang cập nhật...' : needRestock ? '⚠ Lưu thay đổi' : 'Lưu thay đổi'}
             </button>

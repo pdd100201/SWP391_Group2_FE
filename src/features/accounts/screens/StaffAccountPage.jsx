@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { getStaffAccounts, getStaffById, createStaff, updateStaff, deleteStaff, toggleStaffStatus } from '../api/accountApi'
 import { usePagination } from '../../../shared/hooks/usePagination'
+import { uploadImage } from '../../../shared/services/imageUploadService'
 import { useToast } from '../../../shared/components/ui/Toast/Toast'
 import ConfirmModal from '../../../shared/components/ui/ConfirmModal/ConfirmModal'
 import LoadingSpinner from '../../../shared/components/ui/LoadingSpinner/LoadingSpinner'
@@ -38,6 +39,7 @@ function StaffAccountPage() {
   const [viewLoading, setViewLoading] = useState(false)
   const [formModal, setFormModal] = useState({ open: false, mode: 'create', data: INITIAL_FORM })
   const [formLoading, setFormLoading] = useState(false)
+  const [avatarUploading, setAvatarUploading] = useState(false)
   const [formErrors, setFormErrors] = useState({})
   const [deleteModal, setDeleteModal] = useState({ open: false, id: null, name: '' })
   const [deleteLoading, setDeleteLoading] = useState(false)
@@ -113,6 +115,25 @@ function StaffAccountPage() {
     const { name, value } = e.target
     setFormModal((prev) => ({ ...prev, data: { ...prev.data, [name]: value } }))
     setFormErrors((prev) => ({ ...prev, [name]: '' }))
+  }
+
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setAvatarUploading(true)
+    try {
+      const res = await uploadImage(file, 'avatars')
+      setFormModal((prev) => ({
+        ...prev,
+        data: { ...prev.data, avatarUrl: res.data.secureUrl || res.data.url },
+      }))
+      showToast('Avatar uploaded to Cloudinary')
+    } catch (err) {
+      showToast(err.response?.data?.message || 'Failed to upload avatar', 'error')
+    } finally {
+      setAvatarUploading(false)
+      e.target.value = ''
+    }
   }
 
   const validateForm = () => {
@@ -356,14 +377,15 @@ function StaffAccountPage() {
                   </select>
                 </div>
                 <div className="staff-page__form-field">
-                  <label htmlFor="staff-avatar">Avatar URL</label>
-                  <input id="staff-avatar" name="avatarUrl" value={formModal.data.avatarUrl} onChange={handleFormChange} placeholder="https://..." />
+                  <label htmlFor="staff-avatar">Avatar</label>
+                  <input id="staff-avatar" type="file" accept="image/*" onChange={handleAvatarUpload} disabled={avatarUploading || formLoading} />
+                  {formModal.data.avatarUrl && <small>Cloudinary avatar ready</small>}
                 </div>
               </div>
               <div className="staff-page__form-actions">
-                <button type="button" className="staff-page__form-btn staff-page__form-btn--cancel" disabled={formLoading} onClick={() => setFormModal({ open: false, mode: 'create', data: INITIAL_FORM })}>Cancel</button>
-                <button type="submit" className="staff-page__form-btn staff-page__form-btn--submit" disabled={formLoading}>
-                  {formLoading ? 'Saving...' : formModal.mode === 'create' ? 'Create Account' : 'Save Changes'}
+                <button type="button" className="staff-page__form-btn staff-page__form-btn--cancel" disabled={formLoading || avatarUploading} onClick={() => setFormModal({ open: false, mode: 'create', data: INITIAL_FORM })}>Cancel</button>
+                <button type="submit" className="staff-page__form-btn staff-page__form-btn--submit" disabled={formLoading || avatarUploading}>
+                  {avatarUploading ? 'Uploading avatar...' : formLoading ? 'Saving...' : formModal.mode === 'create' ? 'Create Account' : 'Save Changes'}
                 </button>
               </div>
             </form>

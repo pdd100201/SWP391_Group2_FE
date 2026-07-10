@@ -17,6 +17,7 @@ import {
   X,
 } from 'lucide-react'
 import { usePagination } from '../../../shared/hooks/usePagination'
+import { uploadImage } from '../../../shared/services/imageUploadService'
 import { menuService } from '../services/menuService'
 import './MenuManagementScreen.css'
 
@@ -53,7 +54,7 @@ function isValidUrl(value) {
   }
 }
 
-function validateMenuForm(form) {
+function validateMenuForm(form, categoryOptions = MENU_CATEGORIES) {
   const errors = {}
   const name = form.name.trim()
   const imageUrl = form.imageUrl.trim()
@@ -65,7 +66,7 @@ function validateMenuForm(form) {
   else if (name.length > MAX_DISH_NAME_LENGTH) errors.name = `Dish name must not exceed ${MAX_DISH_NAME_LENGTH} characters`
 
   if (!form.category) errors.category = 'Category is required'
-  else if (!MENU_CATEGORIES.includes(form.category)) errors.category = 'Choose a valid category'
+  else if (!categoryOptions.includes(form.category)) errors.category = 'Choose a valid category'
 
   if (form.price === '') errors.price = 'Dish price is required'
   else if (!Number.isFinite(price) || price <= 0) errors.price = 'Dish price must be greater than 0'
@@ -95,7 +96,7 @@ function AvailabilityBadge({ status }) {
   )
 }
 
-function DishModal({ item, onClose, onSaved }) {
+function DishModal({ item, categoryOptions, onClose, onSaved }) {
   const [form, setForm] = useState(() => item
     ? {
         name: item.name,
@@ -107,6 +108,7 @@ function DishModal({ item, onClose, onSaved }) {
     : EMPTY_FORM
   )
   const [saving, setSaving] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
   const [error, setError] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
 
@@ -120,7 +122,7 @@ function DishModal({ item, onClose, onSaved }) {
     event.preventDefault()
     setError('')
 
-    const nextFieldErrors = validateMenuForm(form)
+    const nextFieldErrors = validateMenuForm(form, categoryOptions)
     setFieldErrors(nextFieldErrors)
     if (Object.keys(nextFieldErrors).length > 0) {
       setError('Please fix the highlighted fields before saving')
@@ -134,6 +136,7 @@ function DishModal({ item, onClose, onSaved }) {
       description: form.description.trim() || null,
       imageUrl: form.imageUrl.trim() || null,
       price,
+      categoryId: item?.category === form.category ? item.categoryId : null,
     }
 
     setSaving(true)
@@ -149,13 +152,33 @@ function DishModal({ item, onClose, onSaved }) {
     }
   }
 
+  const handleImageUpload = async (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setError('')
+    setUploadingImage(true)
+    try {
+      const response = await uploadImage(file, 'menu')
+      setForm((current) => ({
+        ...current,
+        imageUrl: response.data.secureUrl || response.data.url,
+      }))
+      setFieldErrors((current) => ({ ...current, imageUrl: '' }))
+    } catch (uploadError) {
+      setError(getErrorMessage(uploadError, 'Unable to upload image to Cloudinary'))
+    } finally {
+      setUploadingImage(false)
+      event.target.value = ''
+    }
+  }
+
   return (
     <div className="menu-modal-backdrop" role="dialog" aria-modal="true" onClick={onClose}>
       <div className="menu-modal" onClick={(event) => event.stopPropagation()}>
         <header className="menu-modal__header">
           <div>
             <span className="menu-modal__eyebrow">Menu item</span>
-            <h2>{item ? 'Edit menu item' : 'Create menu item'}</h2>
+            <h2>{item ? 'Update menu item' : 'Create menu item'}</h2>
           </div>
           <button type="button" className="menu-icon-button" onClick={onClose} aria-label="Close">
             <X size={20} />
@@ -182,7 +205,7 @@ function DishModal({ item, onClose, onSaved }) {
               <span>Category *</span>
               <select name="category" value={form.category} onChange={updateField} className={fieldErrors.category ? 'is-invalid' : ''}>
                 <option value="">Select category</option>
-                {MENU_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
+                {categoryOptions.map((category) => <option key={category}>{category}</option>)}
               </select>
               {fieldErrors.category && <small className="menu-field-error">{fieldErrors.category}</small>}
             </label>
@@ -201,15 +224,21 @@ function DishModal({ item, onClose, onSaved }) {
               {fieldErrors.price && <small className="menu-field-error">{fieldErrors.price}</small>}
             </label>
             <label className="menu-field">
-              <span>Image URL</span>
+              <span>Image</span>
               <input
-                name="imageUrl"
-                value={form.imageUrl}
-                onChange={updateField}
-                maxLength={MAX_IMAGE_URL_LENGTH}
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                disabled={uploadingImage}
                 className={fieldErrors.imageUrl ? 'is-invalid' : ''}
-                placeholder="https://..."
               />
+              {form.imageUrl && (
+                <div className="menu-image-upload-preview">
+                  <img src={form.imageUrl} alt="Menu item preview" />
+                  <span>{uploadingImage ? 'Uploading to Cloudinary...' : 'Cloudinary image ready'}</span>
+                </div>
+              )}
+              {!form.imageUrl && <small className="menu-field-hint">{uploadingImage ? 'Uploading to Cloudinary...' : 'Choose an image file'}</small>}
               {fieldErrors.imageUrl && <small className="menu-field-error">{fieldErrors.imageUrl}</small>}
             </label>
             <label className="menu-field menu-field--full">
@@ -234,8 +263,8 @@ function DishModal({ item, onClose, onSaved }) {
 
           <footer className="menu-modal__actions">
             <button type="button" className="menu-button menu-button--secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="menu-button menu-button--primary" disabled={saving}>
-              {saving ? 'Saving...' : 'Save menu item'}
+            <button type="submit" className="menu-button menu-button--primary" disabled={saving || uploadingImage}>
+              {saving ? 'Saving...' : item ? 'Update menu item' : 'Save menu item'}
             </button>
           </footer>
         </form>
@@ -294,6 +323,7 @@ function MenuManagementScreen() {
   }, [pagination.page, pagination.totalPages])
 
   const categories = [...new Set(menuItems.map((item) => item.category))].sort()
+  const categoryOptions = [...new Set([...MENU_CATEGORIES, ...categories])].sort()
   const stats = {
     total: menuItems.length,
     available: menuItems.filter((item) => item.availability === 'AVAILABLE').length,
@@ -309,6 +339,11 @@ function MenuManagementScreen() {
 
   const openCreate = () => {
     setEditingItem(null)
+    setModalOpen(true)
+  }
+
+  const openUpdate = (item) => {
+    setEditingItem(item)
     setModalOpen(true)
   }
 
@@ -399,16 +434,6 @@ function MenuManagementScreen() {
               <div className="menu-card__body">
                 <div className="menu-card__title-row">
                   <div><span>{item.category}</span><h2>{item.name}</h2></div>
-                  {canManage && (
-                    <button
-                      type="button"
-                      className="menu-icon-button"
-                      onClick={() => { setEditingItem(item); setModalOpen(true) }}
-                      aria-label={`Edit ${item.name}`}
-                    >
-                      <Pencil size={17} />
-                    </button>
-                  )}
                 </div>
                 <p className="menu-card__description">{item.description || 'No description provided.'}</p>
 
@@ -418,14 +443,23 @@ function MenuManagementScreen() {
                 </div>
 
                 {canManage && (
-                  <button
-                    type="button"
-                    className={`menu-button menu-button--wide ${item.isActive ? 'menu-button--danger-soft' : 'menu-button--primary'}`}
-                    onClick={() => toggleActive(item)}
-                    disabled={togglingId === item.id}
-                  >
-                    {togglingId === item.id ? 'Updating...' : item.isActive ? 'Stop serving manually' : 'Activate dish'}
-                  </button>
+                  <div className="menu-card__actions">
+                    <button
+                      type="button"
+                      className="menu-button menu-button--secondary"
+                      onClick={() => openUpdate(item)}
+                    >
+                      <Pencil size={16} /> Update
+                    </button>
+                    <button
+                      type="button"
+                      className={`menu-button ${item.isActive ? 'menu-button--danger-soft' : 'menu-button--primary'}`}
+                      onClick={() => toggleActive(item)}
+                      disabled={togglingId === item.id}
+                    >
+                      {togglingId === item.id ? 'Updating...' : item.isActive ? 'Stop serving' : 'Activate'}
+                    </button>
+                  </div>
                 )}
               </div>
             </article>
@@ -458,6 +492,7 @@ function MenuManagementScreen() {
       {canManage && modalOpen && (
         <DishModal
           item={editingItem}
+          categoryOptions={categoryOptions}
           onClose={() => { setModalOpen(false); setEditingItem(null) }}
           onSaved={handleSaved}
         />
