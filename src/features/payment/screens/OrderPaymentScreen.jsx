@@ -10,11 +10,18 @@ import {
   Tag,
   X,
 } from 'lucide-react'
-import { orderApi } from '../api/orderApi'
+import { paymentApi } from '../api/paymentApi'
 import './OrderPaymentScreen.css'
 
-const money = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} đ`
+const money = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} VND`
 const errorMessage = (error, fallback) => error.response?.data?.message || fallback
+
+const serviceStatusLabels = {
+  HAS_DRAFT: 'Has draft items',
+  PREPARING: 'Preparing',
+  READY: 'Ready to serve',
+  SERVED: 'Served',
+}
 
 const tableLabel = (value) => {
   const tableNames = Array.isArray(value?.tableNames) ? value.tableNames.filter(Boolean) : []
@@ -38,7 +45,7 @@ function OrderPaymentScreen() {
     setLoading(true)
     setError('')
     try {
-      const response = await orderApi.getById(orderId)
+      const response = await paymentApi.getOrder(orderId)
       setOrder(response.data)
     } catch (loadError) {
       setError(errorMessage(loadError, 'Unable to load order payment.'))
@@ -68,22 +75,22 @@ function OrderPaymentScreen() {
   const applyPromotion = () => {
     if (!promotionCode.trim()) return
     run(
-      () => orderApi.applyPromotion(order.id, promotionCode.trim()),
+      () => paymentApi.applyPromotion(order.id, promotionCode.trim()),
       'Unable to apply promotion.',
       () => setPromotionCode('')
     )
   }
 
   const removePromotion = () => {
-    run(() => orderApi.removePromotion(order.id), 'Unable to remove promotion.')
+    run(() => paymentApi.removePromotion(order.id), 'Unable to remove promotion.')
   }
 
   const createSepayPayment = () => {
-    run(() => orderApi.createSepayPayment(order.id), 'Unable to create SePay payment.')
+    run(() => paymentApi.createSepayPayment(order.id), 'Unable to create SePay payment.')
   }
 
   const closeOrder = () => {
-    run(() => orderApi.close(order.id), 'Unable to close order.', () => {
+    run(() => paymentApi.closeOrder(order.id), 'Unable to close order.', () => {
       navigate('/dashboard/orders-service')
     })
   }
@@ -139,7 +146,7 @@ function OrderPaymentScreen() {
               <span>Guest <strong>{order.reservationGuestName}</strong></span>
               <span>Tables <strong>{tableLabel(order)}</strong></span>
               <span>Waiter <strong>{order.waiterName || 'Unassigned'}</strong></span>
-              <span>Service <strong>{order.serviceStatus}</strong></span>
+              <span>Serving status <strong>{serviceStatusLabels[order.serviceStatus] || order.serviceStatus}</strong></span>
             </div>
             <div className="payment-items">
               {order.items.map((item) => (
