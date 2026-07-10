@@ -257,6 +257,25 @@
   flex-wrap: wrap; /* Nếu màn hình hẹp, giờ giấc và số khách tự động xuống hàng thay vì đâm thủng vách */
 }
 
+.checkin-reservation__status {
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.checkin-reservation__status--pending {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.checkin-reservation__status--confirmed {
+  background: #ecfdf5;
+  color: #047857;
+}
+
 .checkin-reservation__btn-trigger {
   border: 0;
   border-radius: 8px;
