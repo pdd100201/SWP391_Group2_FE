@@ -8,6 +8,7 @@ import { usePagination } from '../../../shared/hooks/usePagination'
 import { useToast } from '../../../shared/components/ui/Toast/Toast'
 import ConfirmModal from '../../../shared/components/ui/ConfirmModal/ConfirmModal'
 import LoadingSpinner from '../../../shared/components/ui/LoadingSpinner/LoadingSpinner'
+import ImageUploader from '../../../shared/components/ui/ImageUploader/ImageUploader'
 import './StaffAccountPage.css'
 
 const PAGE_SIZE = 10
@@ -356,8 +357,8 @@ function StaffAccountPage() {
                   </select>
                 </div>
                 <div className="staff-page__form-field">
-                  <label htmlFor="staff-avatar">Avatar URL</label>
-                  <input id="staff-avatar" name="avatarUrl" value={formModal.data.avatarUrl} onChange={handleFormChange} placeholder="https://..." />
+                  <ImageUploader label="Staff avatar" folder="avatars" value={formModal.data.avatarUrl}
+                    onChange={(avatarUrl) => setFormModal((current) => ({ ...current, data: { ...current.data, avatarUrl } }))} />
                 </div>
               </div>
               <div className="staff-page__form-actions">

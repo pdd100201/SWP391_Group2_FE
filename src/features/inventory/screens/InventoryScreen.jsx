@@ -19,6 +19,7 @@ import {
   X,
 } from 'lucide-react'
 import { inventoryService } from '../services/inventoryService'
+import ImageUploader from '../../../shared/components/ui/ImageUploader/ImageUploader'
 import './InventoryScreen.css'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -267,20 +268,8 @@ function AddItemModal({ onClose, onSuccess }) {
             </div>
 
             <div className="inv-form-field inv-form-field--full">
-              <label htmlFor="add-imageUrl">Image URL</label>
-              <input
-                id="add-imageUrl"
-                name="imageUrl"
-                type="url"
-                value={formData.imageUrl}
-                onChange={handleChange}
-                placeholder="https://..."
-              />
-              {formData.imageUrl && (
-                <div className="inv-form-field__preview">
-                  <img src={formData.imageUrl} alt="Preview" className="inv-img-preview" />
-                </div>
-              )}
+              <ImageUploader label="Inventory image" folder="inventory" value={formData.imageUrl}
+                onChange={(imageUrl) => setFormData((current) => ({ ...current, imageUrl }))} />
             </div>
           </div>
 

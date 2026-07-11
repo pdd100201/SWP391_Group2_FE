@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react'
 import { menuService } from '../services/menuService'
+import ImageUploader from '../../../shared/components/ui/ImageUploader/ImageUploader'
 import './MenuManagementScreen.css'
 
 const MENU_CATEGORIES = ['Appetizer', 'Main Course', 'Side Dish', 'Dessert', 'Beverage']
@@ -148,10 +149,10 @@ function DishModal({ item, onClose, onSaved }) {
                 placeholder="e.g. 149000"
               />
             </label>
-            <label className="menu-field">
-              <span>Image URL</span>
-              <input name="imageUrl" value={form.imageUrl} onChange={updateField} placeholder="https://..." />
-            </label>
+            <div className="menu-field">
+              <ImageUploader label="Dish image" folder="menu" value={form.imageUrl}
+                onChange={(imageUrl) => setForm((current) => ({ ...current, imageUrl }))} />
+            </div>
             <label className="menu-field menu-field--full">
               <span>Description</span>
               <textarea name="description" value={form.description} onChange={updateField} rows="3" />

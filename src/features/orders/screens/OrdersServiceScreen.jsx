@@ -4,18 +4,15 @@ import {
   Check,
   ChefHat,
   ClipboardList,
-  Copy,
   CreditCard,
   Minus,
   Plus,
-  QrCode,
   RefreshCw,
   Search,
   Send,
   Trash2,
   XCircle,
 } from 'lucide-react'
-import QRCode from 'qrcode'
 import { menuService } from '../../menu/services/menuService'
 import { getAllReservations } from '../../reservations/api/reservationApi'
 import { orderApi } from '../api/orderApi'
@@ -52,7 +49,7 @@ const statusLabels = {
   CANCELLED: 'Cancelled',
 }
 
-function OrdersServiceScreen() {
+function OrdersServiceScreen({ activeView = false }) {
   const [orders, setOrders] = useState([])
   const [selectedId, setSelectedId] = useState(null)
   const [menu, setMenu] = useState([])
@@ -63,7 +60,6 @@ function OrdersServiceScreen() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [qrDataUrl, setQrDataUrl] = useState('')
   const navigate = useNavigate()
 
   const selected = orders.find((order) => order.id === selectedId) || null
@@ -112,15 +108,6 @@ function OrdersServiceScreen() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load()
   }, [])
-
-  useEffect(() => {
-    if (!selected?.qrPath) {
-      return
-    }
-    QRCode.toDataURL(`${window.location.origin}${selected.qrPath}`, { width: 180, margin: 1 })
-      .then(setQrDataUrl)
-      .catch(() => setQrDataUrl(''))
-  }, [selected?.qrPath])
 
   const applyOrder = (next) => {
     setReservations((current) => current.map((reservation) => (
@@ -177,11 +164,6 @@ function OrdersServiceScreen() {
     return null
   }
 
-  const copyQrLink = async () => {
-    if (!selected) return
-    await navigator.clipboard.writeText(`${window.location.origin}${selected.qrPath}`)
-  }
-
   if (loading) return <div className="orders-loading">Loading order workspace...</div>
 
   return (
@@ -189,8 +171,10 @@ function OrdersServiceScreen() {
       <header className="orders-header">
         <div>
           <span className="orders-eyebrow"><ChefHat size={15} /> Orders &amp; Service</span>
-          <h1>Dining room orders</h1>
-          <p>Create an order from an assigned reservation and follow every dish to the table.</p>
+          <h1>{activeView ? 'Active orders' : 'Order management'}</h1>
+          <p>{activeView
+            ? 'Follow every active order and update each dish through service.'
+            : 'Create a dining room order from an assigned reservation.'}</p>
         </div>
         <button type="button" className="orders-button orders-button--secondary" onClick={load} disabled={busy}>
           <RefreshCw size={17} /> Refresh
@@ -199,7 +183,7 @@ function OrdersServiceScreen() {
 
       {error && <div className="orders-alert">{error}</div>}
 
-      <div className="orders-create-bar">
+      {!activeView && <div className="orders-create-bar">
         <label className="orders-reservation-field">
           <span>Assigned reservation</span>
           <select value={reservationId} onChange={(event) => setReservationId(event.target.value)}>
@@ -217,9 +201,9 @@ function OrdersServiceScreen() {
         {unusedReservations.length === 0 && (
           <small className="orders-no-reservation">No assigned reservation is waiting for an order.</small>
         )}
-      </div>
+      </div>}
 
-      <div className="orders-workspace">
+      {activeView ? <div className="orders-workspace">
         <aside className="orders-list-panel">
           <div className="orders-panel-title"><ClipboardList size={18} /> Active orders <span>{orders.length}</span></div>
           {orders.length === 0 ? <p className="orders-empty">No active orders.</p> : orders.map((order) => (
@@ -247,9 +231,6 @@ function OrdersServiceScreen() {
                   <p>Reservation #{selected.reservationId} - {selected.reservationGuestName} - {tableLabel(selected)} - Waiter {selected.waiterName}</p>
                 </div>
                 <div className="orders-detail-actions">
-                  <button type="button" className="orders-button orders-button--secondary" onClick={copyQrLink}>
-                    <Copy size={16} /> Copy QR link
-                  </button>
                   <button
                     type="button"
                     className="orders-button orders-button--primary"
@@ -349,16 +330,22 @@ function OrdersServiceScreen() {
                   </div>
                 </div>
 
-                <aside className="orders-qr-card">
-                  <span><QrCode size={17} /> Guest ordering QR</span>
-                  {qrDataUrl && <img src={qrDataUrl} alt="Guest order QR code" />}
-                  <p>Guests can scan this code to add and submit more dishes while the order is open.</p>
-                </aside>
               </div>
             </>
           )}
         </main>
-      </div>
+      </div> : (
+        <div className="orders-management-empty">
+          <ClipboardList size={28} />
+          <div>
+            <strong>Create an order above to get started</strong>
+            <p>Open orders are available in the Active orders tab in the sidebar.</p>
+          </div>
+          <button type="button" className="orders-button orders-button--secondary" onClick={() => navigate('/dashboard/orders-service/active')}>
+            View active orders <span aria-hidden="true">→</span>
+          </button>
+        </div>
+      )}
     </section>
   )
 }

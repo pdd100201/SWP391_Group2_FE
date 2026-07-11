@@ -97,6 +97,7 @@ function AppRoutes() {
         <Route path="tables" element={<TableManagementScreen />} />
         <Route path="reservations" element={<DashboardReservationsScreen />} />
         <Route path="orders-service" element={<OrdersServiceScreen />} />
+        <Route path="orders-service/active" element={<OrdersServiceScreen activeView />} />
         <Route path="orders-service/:orderId/payment" element={<OrderPaymentScreen />} />
         <Route
           path="menu-management"

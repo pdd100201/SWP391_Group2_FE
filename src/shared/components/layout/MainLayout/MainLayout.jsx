@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Bell, LogOut, Menu, Search, UserCircle2, X } from 'lucide-react'
+import { Bell, LogOut, Menu, UserCircle2, X } from 'lucide-react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import './MainLayout.css'
@@ -105,10 +105,6 @@ function MainLayout() {
         </header>
 
         <main className="dashboard-layout__main">
-          <div className="dashboard-layout__searchbar">
-            <Search size={18} />
-            <input type="search" placeholder="Search dashboard" aria-label="Search dashboard" />
-          </div>
           <Outlet />
         </main>
       </div>
