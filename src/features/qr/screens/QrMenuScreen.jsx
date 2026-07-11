@@ -124,7 +124,7 @@ export default function QrMenuScreen() {
       const currentQty = existing ? existing.quantity : 0
 
       if (currentQty >= item.canServe) {
-        setStockAlert({ itemId: item.itemId, msg: `Chỉ còn ${item.canServe} phần trong bếp` })
+        setStockAlert({ itemId: item.itemId, msg: `Only ${item.canServe} serving(s) available` })
         setTimeout(() => setStockAlert({ itemId: null, msg: '' }), 2500)
         return prev
       }
@@ -145,12 +145,12 @@ export default function QrMenuScreen() {
   const totalItems = cart.reduce((sum, c) => sum + c.quantity, 0)
 
   const itemStatusLabel = {
-    DRAFT: 'Chờ xác nhận',
-    CONFIRMED: 'Đã xác nhận',
-    PREPARING: 'Đang làm',
-    READY: 'Sẵn sàng',
-    SERVED: 'Đã phục vụ',
-    CANCELLED: 'Đã huỷ',
+    DRAFT: 'Draft',
+    CONFIRMED: 'Confirmed',
+    PREPARING: 'Preparing',
+    READY: 'Ready',
+    SERVED: 'Served',
+    CANCELLED: 'Cancelled',
   }
 
   // ── Loading ───────────────────────────────────────────────────────
@@ -159,12 +159,12 @@ export default function QrMenuScreen() {
       <div className="qr-menu">
         <div className="qr-menu__sticky-top">
           <div className="qr-menu__header">
-            <h1>Thực đơn</h1>
+            <h1>Menu</h1>
           </div>
         </div>
         <div className="qr-menu__loading">
           <div className="qr-menu__spinner" />
-          <span>Đang tải menu...</span>
+          <span>Loading menu...</span>
         </div>
       </div>
     )
@@ -176,13 +176,13 @@ export default function QrMenuScreen() {
       <div className="qr-menu">
         <div className="qr-menu__sticky-top">
           <div className="qr-menu__header">
-            <h1>Thực đơn</h1>
+            <h1>Menu</h1>
           </div>
         </div>
         <div className="qr-menu__error">
           <span>{error}</span>
           <button className="qr-menu__retry-btn" onClick={() => window.location.reload()}>
-            Thử lại
+            Retry
           </button>
         </div>
       </div>
@@ -195,7 +195,7 @@ export default function QrMenuScreen() {
       {/* Sticky: header + category nav */}
       <div className="qr-menu__sticky-top" ref={stickyTopRef}>
         <div className="qr-menu__header">
-          <h1>Thực đơn</h1>
+          <h1>Menu</h1>
           <span className="qr-menu__table-badge">{tableNumber}</span>
         </div>
 
@@ -219,28 +219,38 @@ export default function QrMenuScreen() {
       {activeOrder && (
         <div className="qr-active-order">
           <div className="qr-active-order__header">
-            <span className="qr-active-order__title">Đơn hàng hiện tại</span>
+            <span className="qr-active-order__title">Current order</span>
             <span className="qr-active-order__id">{activeOrder.orderCode || `#${activeOrder.orderId}`}</span>
           </div>
           <ul className="qr-active-order__list">
-            {(activeOrder.items || [])
-              .filter((item) => item.itemStatus !== 'CANCELLED')
-              .map((item) => (
-                <li key={item.orderItemId} className="qr-active-order__row">
-                  <span className="qr-active-order__item-name">{item.itemName}</span>
-                  <span className="qr-active-order__item-qty">x{item.quantity}</span>
-                  <span className={`qr-active-order__status qr-active-order__status--${(item.itemStatus || 'confirmed').toLowerCase()}`}>
-                    {itemStatusLabel[item.itemStatus] || item.itemStatus}
-                  </span>
-                </li>
-              ))}
+            {Object.values(
+              (activeOrder.items || [])
+                .filter((item) => item.itemStatus !== 'CANCELLED')
+                .reduce((acc, item) => {
+                  const key = `${item.itemName}-${item.itemStatus}`
+                  if (acc[key]) {
+                    acc[key].quantity += item.quantity
+                  } else {
+                    acc[key] = { ...item }
+                  }
+                  return acc
+                }, {})
+            ).map((item) => (
+              <li key={`${item.itemName}-${item.itemStatus}`} className="qr-active-order__row">
+                <span className="qr-active-order__item-name">{item.itemName}</span>
+                <span className="qr-active-order__item-qty">x{item.quantity}</span>
+                <span className={`qr-active-order__status qr-active-order__status--${(item.itemStatus || 'confirmed').toLowerCase()}`}>
+                  {itemStatusLabel[item.itemStatus] || item.itemStatus}
+                </span>
+              </li>
+            ))}
           </ul>
           <div className="qr-active-order__footer">
             <button
               className="qr-active-order__view-btn"
-              onClick={() => navigate(`/qr/order/${activeOrder.orderId}/status`)}
+              onClick={() => navigate(`/qr/table/${tableId}/status`)}
             >
-              Xem chi tiết
+              View details
             </button>
           </div>
         </div>
@@ -283,13 +293,13 @@ export default function QrMenuScreen() {
                     )}
                   </div>
                   {soldOut ? (
-                    <span className="qr-menu__sold-out">Hết món</span>
+                    <span className="qr-menu__sold-out">Sold out</span>
                   ) : (
                     <button
                       className={`qr-menu__add-btn${inCart ? ' qr-menu__add-btn--added' : ''}`}
                       onClick={() => addToCart(item)}
                     >
-                      {inCart ? `+${inCart.quantity}` : '+ Thêm'}
+                      {inCart ? `+${inCart.quantity}` : '+ Add'}
                     </button>
                   )}
                 </div>
@@ -304,7 +314,7 @@ export default function QrMenuScreen() {
           className="qr-menu__cart-fab"
           onClick={() => navigate(`/qr/table/${tableId}/cart`)}
         >
-          <span>Xem giỏ hàng</span>
+          <span>View cart</span>
           <span className="qr-menu__cart-fab-badge">{totalItems}</span>
         </button>
       )}

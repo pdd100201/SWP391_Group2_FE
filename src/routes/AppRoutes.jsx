@@ -129,7 +129,7 @@ function AppRoutes() {
       <Route path="/order" element={<QrOrderRedirect />} />
       <Route path="/qr/table/:tableId" element={<QrMenuScreen />} />
       <Route path="/qr/table/:tableId/cart" element={<QrCartScreen />} />
-      <Route path="/qr/order/:orderId/status" element={<QrOrderStatusScreen />} />
+      <Route path="/qr/table/:tableId/status" element={<QrOrderStatusScreen />} />
       <Route path="*" element={<Navigate to="/home" replace />} />
     </Routes>
   )

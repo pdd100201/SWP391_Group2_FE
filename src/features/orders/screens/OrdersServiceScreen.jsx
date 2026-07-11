@@ -83,10 +83,12 @@ function OrdersServiceScreen() {
     const matchesSearch = item.name.toLowerCase().includes(search.trim().toLowerCase())
     return allowed && matchesCategory && matchesSearch
   }), [menu, category, search])
+  const qrOccupiedTableIds = new Set(qrOrders.map((o) => o.tableId).filter(Boolean))
   const unusedReservations = reservations.filter((reservation) =>
     ['ARRIVED', 'CONFIRMED'].includes(reservation.status)
       && reservation.tableId
       && !reservation.orderId
+      && !qrOccupiedTableIds.has(reservation.tableId)
   )
 
   const load = async () => {
@@ -195,13 +197,13 @@ function OrdersServiceScreen() {
   }
 
   const computeQrServiceStatus = (items) => {
-    if (!items || items.length === 0) return 'CONFIRMED'
+    if (!items || items.length === 0) return 'OPEN'
     const allDone = items.every((i) => i.itemStatus === 'SERVED' || i.itemStatus === 'CANCELLED')
     if (allDone && items.some((i) => i.itemStatus === 'SERVED')) return 'SERVED'
+    if (items.some((i) => i.itemStatus === 'DRAFT')) return 'HAS_DRAFT'
     if (items.some((i) => i.itemStatus === 'PREPARING')) return 'PREPARING'
     if (items.some((i) => i.itemStatus === 'READY')) return 'READY'
-    if (items.some((i) => i.itemStatus === 'DRAFT')) return 'HAS_DRAFT'
-    return 'CONFIRMED'
+    return 'OPEN'
   }
 
   const runQr = async (action, fallback) => {
@@ -308,8 +310,8 @@ function OrdersServiceScreen() {
             </button>
           ))}
           {qrOrders.map((order) => {
-            const qrStatus = (order.serviceStatus || 'confirmed').toLowerCase()
-            const qrStatusLabel = { confirmed: 'Confirmed', preparing: 'Preparing', ready: 'Ready', served: 'Served' }[qrStatus] || qrStatus
+            const qrStatus = (order.serviceStatus || 'open').toLowerCase()
+            const qrStatusLabel = { open: 'Open', has_draft: 'HAS DRAFT', preparing: 'Preparing', ready: 'Ready', served: 'Served' }[qrStatus] || qrStatus
             return (
               <button
                 type="button"
@@ -319,7 +321,7 @@ function OrdersServiceScreen() {
               >
                 <span>
                   <strong>{order.orderCode || `QR #${order.orderId}`}</strong>
-                  <small>Bàn {order.tableId} · {order.itemCount} món · QR</small>
+                  <small>{[order.guestName, order.tableName || `Bàn ${order.tableId}`].filter(Boolean).join(' - ')}</small>
                 </span>
                 <span className={`orders-service-badge orders-service-badge--${qrStatus}`}>{qrStatusLabel}</span>
                 <b>{money(order.totalAmount)}</b>

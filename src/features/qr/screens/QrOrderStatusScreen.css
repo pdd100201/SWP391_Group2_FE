@@ -273,32 +273,16 @@
 
 /* Item-level status badge */
 .qr-status__item-badge {
-  display: inline-block;
-  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 99px;
   padding: 3px 10px;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: .68rem;
+  font-weight: 800;
+  text-transform: uppercase;
   white-space: nowrap;
-}
-
-.qr-status__item-badge--pending {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.qr-status__item-badge--preparing {
-  background: #dbeafe;
-  color: #1e40af;
-}
-
-.qr-status__item-badge--served {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-.qr-status__item-badge--default {
-  background: #e5e7eb;
-  color: #374151;
+  background: #e2e8f0;
+  color: #475569;
 }
 
 /* Total */
