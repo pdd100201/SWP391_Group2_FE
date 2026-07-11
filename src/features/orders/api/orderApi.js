@@ -14,8 +14,6 @@ export const orderApi = {
   submit: (orderId) => axiosClient.post(`/orders/${orderId}/submit`),
   updateItemStatus: (orderId, itemId, status) =>
     axiosClient.patch(`/orders/${orderId}/items/${itemId}/status`, { status }),
-  applyPromotion: (orderId, code) => axiosClient.patch(`/orders/${orderId}/promotion`, { code }),
-  removePromotion: (orderId) => axiosClient.delete(`/orders/${orderId}/promotion`),
   close: (orderId) => axiosClient.patch(`/orders/${orderId}/close`),
   cancel: (orderId) => axiosClient.patch(`/orders/${orderId}/cancel`),
 }

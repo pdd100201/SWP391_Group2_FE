@@ -1,16 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Check,
   ChefHat,
   ClipboardList,
   Copy,
+  CreditCard,
   Minus,
   Plus,
   QrCode,
   RefreshCw,
   Search,
   Send,
-  Tag,
   Trash2,
   XCircle,
 } from 'lucide-react'
@@ -70,6 +71,7 @@ function OrdersServiceScreen() {
   const [qrDataUrl, setQrDataUrl] = useState('')
   const [promotionCode, setPromotionCode] = useState('')
   const [qrTableDataUrl, setQrTableDataUrl] = useState('')
+  const navigate = useNavigate()
 
   const selected = orders.find((order) => order.id === selectedId) || null
   const role = sessionStorage.getItem('role')
@@ -228,6 +230,7 @@ function OrdersServiceScreen() {
       setQrBusy(false)
     }
   }
+
 
   const createOrder = () => {
     if (!reservationId) return
@@ -467,6 +470,13 @@ function OrdersServiceScreen() {
                   <button type="button" className="orders-button orders-button--secondary" onClick={copyQrLink}>
                     <Copy size={16} /> Copy QR link
                   </button>
+                  <button
+                    type="button"
+                    className="orders-button orders-button--primary"
+                    onClick={() => navigate(`/dashboard/orders-service/${selected.id}/payment`)}
+                  >
+                    <CreditCard size={16} /> Payment
+                  </button>
                   <button type="button" className="orders-button orders-button--danger" disabled={busy} onClick={() => run(
                     () => orderApi.cancel(selected.id), 'Unable to cancel order.')}>
                     <XCircle size={16} /> Cancel
@@ -477,35 +487,6 @@ function OrdersServiceScreen() {
               <div className="orders-content-grid">
                 <div>
                   <div className="orders-section-title"><h3>Order items</h3><strong>{money(selected.total)}</strong></div>
-                  <div className="orders-promotion-box">
-                    <div className="orders-promotion-form">
-                      <Tag size={17} />
-                      <input
-                        value={promotionCode}
-                        onChange={(event) => setPromotionCode(event.target.value)}
-                        placeholder="Enter promotion code"
-                      />
-                      <button
-                        type="button"
-                        className="orders-button orders-button--secondary"
-                        disabled={busy || !promotionCode.trim()}
-                        onClick={applyPromotion}
-                      >
-                        Apply
-                      </button>
-                    </div>
-                    {selected.promotionCode ? (
-                      <div className="orders-applied-promo">
-                        <span>Applied: <strong>{selected.promotionCode}</strong> {selected.promotionName ? `- ${selected.promotionName}` : ''}</span>
-                        <button type="button" disabled={busy} onClick={removePromotion}>Remove</button>
-                      </div>
-                    ) : null}
-                    <div className="orders-bill-summary">
-                      <span>Subtotal <strong>{money(selected.subtotal ?? selected.total)}</strong></span>
-                      <span>Discount <strong>-{money(selected.discountAmount || 0)}</strong></span>
-                      <span>Total <strong>{money(selected.total)}</strong></span>
-                    </div>
-                  </div>
                   <div className="orders-items">
                     {selected.items.length === 0 && <p className="orders-empty">Add dishes from the menu below.</p>}
                     {selected.items.map((item) => {
@@ -563,7 +544,7 @@ function OrdersServiceScreen() {
                       onClick={() => run(() => orderApi.submit(selected.id), 'Unable to submit order.')}>
                       <Send size={17} /> Submit draft items
                     </button>
-                    <button type="button" className="orders-button orders-button--success" disabled={busy || selected.serviceStatus !== 'SERVED'}
+                    <button type="button" className="orders-button orders-button--success" disabled={busy || selected.serviceStatus !== 'SERVED' || selected.paymentStatus !== 'PAID'}
                       onClick={() => run(() => orderApi.close(selected.id), 'Unable to close order.')}>
                       <Check size={17} /> Close order
                     </button>
