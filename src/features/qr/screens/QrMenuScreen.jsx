@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { createSession, getMenu } from '../api/qrApi'
+import { createSession, getMenu, getActiveOrder } from '../api/qrApi'
 import './QrMenuScreen.css'
 
 const CART_KEY = 'qr_cart'
@@ -32,6 +32,7 @@ export default function QrMenuScreen() {
   const [error, setError] = useState(null)
   const [stockAlert, setStockAlert] = useState({ itemId: null, msg: '' })
   const [activeCategory, setActiveCategory] = useState('')
+  const [activeOrder, setActiveOrder] = useState(null)
 
   const stickyTopRef = useRef(null)   // wrapper chứa header + nav
   const navInnerRef = useRef(null)    // scrollable nav bar inner
@@ -46,9 +47,10 @@ export default function QrMenuScreen() {
       setLoading(true)
       setError(null)
       try {
-        const [sessionData, menuData] = await Promise.all([
+        const [sessionData, menuData, orderData] = await Promise.all([
           createSession(tableId),
           getMenu(),
+          getActiveOrder(tableId),
         ])
         if (cancelled) return
 
@@ -56,6 +58,7 @@ export default function QrMenuScreen() {
         sessionStorage.setItem('qr_table_id', sessionData.tableId)
         setTableNumber(sessionData.tableNumber || `Bàn ${tableId}`)
         setCategories(menuData.categories || [])
+        setActiveOrder(orderData || null)
       } catch {
         if (!cancelled) setError('Không thể tải menu. Vui lòng thử lại.')
       } finally {
@@ -121,7 +124,7 @@ export default function QrMenuScreen() {
       const currentQty = existing ? existing.quantity : 0
 
       if (currentQty >= item.canServe) {
-        setStockAlert({ itemId: item.itemId, msg: `Chỉ còn ${item.canServe} phần trong bếp` })
+        setStockAlert({ itemId: item.itemId, msg: `Only ${item.canServe} serving(s) available` })
         setTimeout(() => setStockAlert({ itemId: null, msg: '' }), 2500)
         return prev
       }
@@ -141,18 +144,27 @@ export default function QrMenuScreen() {
 
   const totalItems = cart.reduce((sum, c) => sum + c.quantity, 0)
 
+  const itemStatusLabel = {
+    DRAFT: 'Draft',
+    CONFIRMED: 'Confirmed',
+    PREPARING: 'Preparing',
+    READY: 'Ready',
+    SERVED: 'Served',
+    CANCELLED: 'Cancelled',
+  }
+
   // ── Loading ───────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="qr-menu">
         <div className="qr-menu__sticky-top">
           <div className="qr-menu__header">
-            <h1>Thực đơn</h1>
+            <h1>Menu</h1>
           </div>
         </div>
         <div className="qr-menu__loading">
           <div className="qr-menu__spinner" />
-          <span>Đang tải menu...</span>
+          <span>Loading menu...</span>
         </div>
       </div>
     )
@@ -164,13 +176,13 @@ export default function QrMenuScreen() {
       <div className="qr-menu">
         <div className="qr-menu__sticky-top">
           <div className="qr-menu__header">
-            <h1>Thực đơn</h1>
+            <h1>Menu</h1>
           </div>
         </div>
         <div className="qr-menu__error">
           <span>{error}</span>
           <button className="qr-menu__retry-btn" onClick={() => window.location.reload()}>
-            Thử lại
+            Retry
           </button>
         </div>
       </div>
@@ -183,7 +195,7 @@ export default function QrMenuScreen() {
       {/* Sticky: header + category nav */}
       <div className="qr-menu__sticky-top" ref={stickyTopRef}>
         <div className="qr-menu__header">
-          <h1>Thực đơn</h1>
+          <h1>Menu</h1>
           <span className="qr-menu__table-badge">{tableNumber}</span>
         </div>
 
@@ -202,6 +214,47 @@ export default function QrMenuScreen() {
           </div>
         </nav>
       </div>
+
+      {/* Active order banner */}
+      {activeOrder && (
+        <div className="qr-active-order">
+          <div className="qr-active-order__header">
+            <span className="qr-active-order__title">Current order</span>
+            <span className="qr-active-order__id">{activeOrder.orderCode || `#${activeOrder.orderId}`}</span>
+          </div>
+          <ul className="qr-active-order__list">
+            {Object.values(
+              (activeOrder.items || [])
+                .filter((item) => item.itemStatus !== 'CANCELLED')
+                .reduce((acc, item) => {
+                  const key = `${item.itemName}-${item.itemStatus}`
+                  if (acc[key]) {
+                    acc[key].quantity += item.quantity
+                  } else {
+                    acc[key] = { ...item }
+                  }
+                  return acc
+                }, {})
+            ).map((item) => (
+              <li key={`${item.itemName}-${item.itemStatus}`} className="qr-active-order__row">
+                <span className="qr-active-order__item-name">{item.itemName}</span>
+                <span className="qr-active-order__item-qty">x{item.quantity}</span>
+                <span className={`qr-active-order__status qr-active-order__status--${(item.itemStatus || 'confirmed').toLowerCase()}`}>
+                  {itemStatusLabel[item.itemStatus] || item.itemStatus}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div className="qr-active-order__footer">
+            <button
+              className="qr-active-order__view-btn"
+              onClick={() => navigate(`/qr/table/${tableId}/status`)}
+            >
+              View details
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Menu body */}
       <div className="qr-menu__body">
@@ -240,13 +293,13 @@ export default function QrMenuScreen() {
                     )}
                   </div>
                   {soldOut ? (
-                    <span className="qr-menu__sold-out">Hết món</span>
+                    <span className="qr-menu__sold-out">Sold out</span>
                   ) : (
                     <button
                       className={`qr-menu__add-btn${inCart ? ' qr-menu__add-btn--added' : ''}`}
                       onClick={() => addToCart(item)}
                     >
-                      {inCart ? `+${inCart.quantity}` : '+ Thêm'}
+                      {inCart ? `+${inCart.quantity}` : '+ Add'}
                     </button>
                   )}
                 </div>
@@ -261,7 +314,7 @@ export default function QrMenuScreen() {
           className="qr-menu__cart-fab"
           onClick={() => navigate(`/qr/table/${tableId}/cart`)}
         >
-          <span>Xem giỏ hàng</span>
+          <span>View cart</span>
           <span className="qr-menu__cart-fab-badge">{totalItems}</span>
         </button>
       )}
