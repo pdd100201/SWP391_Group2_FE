@@ -31,7 +31,7 @@ axiosClient.interceptors.request.use(
 axiosClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 || error.response?.status === 403) {
+    if (error.response?.status === 401) {
       sessionStorage.removeItem('token');
       sessionStorage.removeItem('role');
       sessionStorage.removeItem('fullName');

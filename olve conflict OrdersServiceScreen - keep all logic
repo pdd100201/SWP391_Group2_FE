@@ -1,0 +1,66 @@
+[1mdiff --cc src/features/orders/screens/OrdersServiceScreen.jsx[m
+[1mindex 439baac,390fdf8..0000000[m
+[1m--- a/src/features/orders/screens/OrdersServiceScreen.jsx[m
+[1m+++ b/src/features/orders/screens/OrdersServiceScreen.jsx[m
+[36m@@@ -68,8 -64,7 +69,9 @@@[m [mfunction OrdersServiceScreen() [m
+    const [busy, setBusy] = useState(false)[m
+    const [error, setError] = useState('')[m
+    const [qrDataUrl, setQrDataUrl] = useState('')[m
+[32m +  const [promotionCode, setPromotionCode] = useState('')[m
+[32m +  const [qrTableDataUrl, setQrTableDataUrl] = useState('')[m
+[32m+   const navigate = useNavigate()[m
+  [m
+    const selected = orders.find((order) => order.id === selectedId) || null[m
+    const role = sessionStorage.getItem('role')[m
+[36m@@@ -185,50 -164,6 +187,51 @@@[m
+      }[m
+    }[m
+  [m
+[32m +  const applyPromotion = () => {[m
+[32m +    if (!selected || !promotionCode.trim()) return[m
+[32m +    run(() => orderApi.applyPromotion(selected.id, promotionCode.trim()), 'Unable to apply promotion.')[m
+[32m +      .then(() => setPromotionCode(''))[m
+[32m +  }[m
+[32m +[m
+[32m +  const removePromotion = () => {[m
+[32m +    if (!selected) return[m
+[32m +    run(() => orderApi.removePromotion(selected.id), 'Unable to remove promotion.')[m
+[32m +  }[m
+[32m +[m
+[32m +  const computeQrServiceStatus = (items) => {[m
+[32m +    if (!items || items.length === 0) return 'OPEN'[m
+[32m +    const allDone = items.every((i) => i.itemStatus === 'SERVED' || i.itemStatus === 'CANCELLED')[m
+[32m +    if (allDone && items.some((i) => i.itemStatus === 'SERVED')) return 'SERVED'[m
+[32m +    if (items.some((i) => i.itemStatus === 'DRAFT')) return 'HAS_DRAFT'[m
+[32m +    if (items.some((i) => i.itemStatus === 'PREPARING')) return 'PREPARING'[m
+[32m +    if (items.some((i) => i.itemStatus === 'READY')) return 'READY'[m
+[32m +    return 'OPEN'[m
+[32m +  }[m
+[32m +[m
+[32m +  const runQr = async (action, fallback) => {[m
+[32m +    setQrBusy(true)[m
+[32m +    setError('')[m
+[32m +    try {[m
+[32m +      const data = await action()[m
+[32m +      setQrDetail(data)[m
+[32m +      if (data.status !== 'OPEN') {[m
+[32m +        setSelectedQrId(null)[m
+[32m +        setQrDetail(null)[m
+[32m +        setQrOrders((prev) => prev.filter((o) => o.orderId !== data.orderId))[m
+[32m +      } else {[m
+[32m +        const serviceStatus = computeQrServiceStatus(data.items)[m
+[32m +        const activeItems = (data.items || []).filter((i) => i.itemStatus !== 'CANCELLED')[m
+[32m +        setQrOrders((prev) => prev.map((o) => o.orderId === data.orderId[m
+[32m +          ? { ...o, totalAmount: data.totalAmount, serviceStatus, itemCount: activeItems.length } : o))[m
+[32m +      }[m
+[32m +    } catch (e) {[m
+[32m +      setError(e.response?.data?.message || fallback)[m
+[32m +    } finally {[m
+[32m +      setQrBusy(false)[m
+[32m +    }[m
+[32m +  }[m
+[32m +[m
+[32m++[m
+    const createOrder = () => {[m
+      if (!reservationId) return[m
+      run(() => orderApi.create({ reservationId: Number(reservationId) }), 'Unable to create order.')[m
