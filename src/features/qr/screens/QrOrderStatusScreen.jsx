@@ -123,6 +123,9 @@ export default function QrOrderStatusScreen() {
                     <span className="qr-status__order-item-name">
                       {item.itemName || `Item #${item.itemId}`}
                     </span>
+                    <small className="qr-status__order-item-note">
+                      {item.note || 'No special request'}
+                    </small>
                     <span className="qr-status__order-item-qty">x{item.quantity}</span>
                   </div>
                   <div className="qr-status__order-item-right">

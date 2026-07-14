@@ -47,6 +47,14 @@ export default function QrCartScreen() {
     })
   }
 
+  function updateNote(itemId, note) {
+    setCart((prev) => {
+      const next = prev.map((c) => c.itemId === itemId ? { ...c, note } : c)
+      saveCart(next)
+      return next
+    })
+  }
+
   const totalAmount = cart.reduce((sum, c) => sum + c.price * c.quantity, 0)
   const totalItems = cart.reduce((sum, c) => sum + c.quantity, 0)
 
@@ -59,7 +67,7 @@ export default function QrCartScreen() {
     }
     setSubmitting(true)
     try {
-      const payload = cart.map((c) => ({ itemId: c.itemId, quantity: c.quantity }))
+      const payload = cart.map((c) => ({ itemId: c.itemId, quantity: c.quantity, note: c.note || null }))
       const result = await createOrder(sessionToken, payload)
       sessionStorage.removeItem(CART_KEY)
       navigate(`/qr/table/${tableId}/status`)
@@ -113,6 +121,12 @@ export default function QrCartScreen() {
                 ✕
               </button>
             </div>
+            <input
+              className="qr-cart__item-note"
+              defaultValue={item.note || ''}
+              placeholder="Special request"
+              onBlur={(e) => updateNote(item.itemId, e.target.value.trim() || null)}
+            />
             <div className="qr-cart__item-bottom">
               <span className="qr-cart__item-subtotal">
                 {formatPrice(item.price * item.quantity)}
