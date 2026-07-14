@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
+  Banknote,
   Check,
   CreditCard,
   QrCode,
@@ -40,6 +41,8 @@ function OrderPaymentScreen() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('SEPAY')
+  const [showCashConfirm, setShowCashConfirm] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -47,6 +50,9 @@ function OrderPaymentScreen() {
     try {
       const response = await paymentApi.getOrder(orderId)
       setOrder(response.data)
+      if (response.data?.paymentProvider) {
+        setSelectedPaymentMethod(response.data.paymentProvider)
+      }
     } catch (loadError) {
       setError(errorMessage(loadError, 'Unable to load order payment.'))
     } finally {
@@ -64,6 +70,9 @@ function OrderPaymentScreen() {
     try {
       const response = await action()
       setOrder(response.data)
+      if (response.data?.paymentProvider) {
+        setSelectedPaymentMethod(response.data.paymentProvider)
+      }
       afterSuccess?.()
     } catch (actionError) {
       setError(errorMessage(actionError, fallback))
@@ -89,6 +98,18 @@ function OrderPaymentScreen() {
     run(() => paymentApi.createSepayPayment(order.id), 'Unable to create SePay payment.')
   }
 
+  const createCashPayment = () => {
+    setShowCashConfirm(true)
+  }
+
+  const confirmCashPayment = () => {
+    run(
+      () => paymentApi.createCashPayment(order.id),
+      'Unable to confirm cash payment.',
+      () => setShowCashConfirm(false)
+    )
+  }
+
   const closeOrder = () => {
     run(() => paymentApi.closeOrder(order.id), 'Unable to close order.', () => {
       navigate('/dashboard/orders-service')
@@ -110,6 +131,9 @@ function OrderPaymentScreen() {
 
   const paymentStatus = order.paymentStatus || 'NOT CREATED'
   const canClose = order.serviceStatus === 'SERVED' && order.paymentStatus === 'PAID'
+  const isBillReady = order.serviceStatus === 'SERVED'
+  const canCreatePayment = isBillReady && order.paymentStatus !== 'PAID'
+  const paymentMethodLocked = order.paymentStatus === 'PAID'
 
   return (
     <section className="payment-screen">
@@ -207,33 +231,102 @@ function OrderPaymentScreen() {
 
           <section className="payment-panel payment-qr-panel">
             <div className="payment-panel-title">
-              <QrCode size={18} />
-              <h2>SePay QR</h2>
+              <CreditCard size={18} />
+              <h2>Payment method</h2>
             </div>
-            {order.paymentCode ? (
-              <div className="payment-code-box">
-                <span>Transfer content</span>
-                <strong>{order.paymentCode}</strong>
+
+            {!isBillReady && order.paymentStatus !== 'PAID' ? (
+              <div className="payment-next-step payment-next-step--warning">
+                Finish and serve all order items before creating payment.
               </div>
             ) : null}
-            {order.paymentQrImageUrl ? (
-              <img className="payment-qr" src={order.paymentQrImageUrl} alt="SePay payment QR" />
-            ) : (
-              <p className="payment-note">Create the payment QR when the bill is ready.</p>
+
+            <button
+              type="button"
+              className={`payment-method-card payment-method-card--cash ${selectedPaymentMethod === 'CASH' ? 'is-active' : ''}`}
+              disabled={busy || paymentMethodLocked}
+              onClick={() => setSelectedPaymentMethod('CASH')}
+            >
+              <div>
+                <span><Banknote size={17} /> Cash</span>
+                <p>Confirm this after staff receives cash at the counter.</p>
+              </div>
+              <i className="payment-method-radio" />
+            </button>
+
+            <button
+              type="button"
+              className={`payment-method-card payment-method-card--sepay ${selectedPaymentMethod === 'SEPAY' ? 'is-active' : ''}`}
+              disabled={busy || paymentMethodLocked}
+              onClick={() => setSelectedPaymentMethod('SEPAY')}
+            >
+              <div>
+                <span><QrCode size={17} /> SePay QR</span>
+                <p>Generate a bank transfer QR and wait for webhook confirmation.</p>
+              </div>
+              <i className="payment-method-radio" />
+            </button>
+
+            {selectedPaymentMethod === 'CASH' && (
+              <div className="payment-method-action">
+                {order.paymentStatus !== 'PAID' ? (
+                <button
+                  type="button"
+                  className="payment-button payment-button--secondary"
+                  disabled={busy || !canCreatePayment || Number(order.total) <= 0}
+                  onClick={createCashPayment}
+                >
+                  Confirm Cash
+                </button>
+                ) : order.paymentProvider === 'CASH' ? (
+                  <div className="payment-paid">Paid by cash.</div>
+                ) : (
+                  <div className="payment-note">Payment was completed with {order.paymentProvider || 'another method'}.</div>
+                )}
+              </div>
             )}
-            {order.paymentStatus !== 'PAID' ? (
-              <button
-                type="button"
-                className="payment-button payment-button--primary"
-                disabled={busy || Number(order.total) <= 0}
-                onClick={createSepayPayment}
-              >
-                <QrCode size={17} /> Create SePay QR
-              </button>
-            ) : (
-              <div className="payment-paid">Payment received.</div>
+
+            {selectedPaymentMethod === 'SEPAY' && (
+              <div className="payment-method-action">
+                {order.paymentProvider === 'SEPAY' && order.paymentCode ? (
+                  <div className="payment-code-box">
+                    <span>Transfer content</span>
+                    <strong>{order.paymentCode}</strong>
+                  </div>
+                ) : null}
+                {order.paymentProvider === 'SEPAY' && order.paymentQrImageUrl ? (
+                  <img className="payment-qr" src={order.paymentQrImageUrl} alt="SePay payment QR" />
+                ) : (
+                  <p className="payment-note">Create the payment QR when the bill is ready.</p>
+                )}
+                {order.paymentStatus !== 'PAID' ? (
+                  <button
+                    type="button"
+                    className="payment-button payment-button--primary"
+                    disabled={busy || !canCreatePayment || Number(order.total) <= 0}
+                    onClick={createSepayPayment}
+                  >
+                    <QrCode size={17} /> Create SePay QR
+                  </button>
+                ) : (
+                  <div className="payment-paid">Payment received.</div>
+                )}
+              </div>
             )}
           </section>
+
+          {order.paymentStatus === 'PAID' && !canClose ? (
+            <div className="payment-next-step payment-next-step--warning">
+              Payment received. Return to Order Service, submit/serve remaining items, then close this order.
+              <button
+                type="button"
+                className="payment-button payment-button--secondary"
+                onClick={() => navigate('/dashboard/orders-service')}
+              >
+                Back to Order Service
+              </button>
+            </div>
+          ) : null}
 
           <button
             type="button"
@@ -245,6 +338,43 @@ function OrderPaymentScreen() {
           </button>
         </aside>
       </div>
+
+      {showCashConfirm && (
+        <div className="payment-modal-backdrop" onClick={() => !busy && setShowCashConfirm(false)}>
+          <div className="payment-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="payment-modal-icon">
+              <Banknote size={28} />
+            </div>
+            <h2>Confirm Cash Payment</h2>
+            <p>
+              Confirm that staff has received cash for this order.
+            </p>
+            <div className="payment-modal-summary">
+              <span>Order <strong>{order.orderCode}</strong></span>
+              <span>Guest <strong>{order.reservationGuestName}</strong></span>
+              <span>Total <strong>{money(order.total)}</strong></span>
+            </div>
+            <div className="payment-modal-actions">
+              <button
+                type="button"
+                className="payment-button payment-button--secondary"
+                disabled={busy}
+                onClick={() => setShowCashConfirm(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="payment-button payment-button--primary"
+                disabled={busy}
+                onClick={confirmCashPayment}
+              >
+                {busy ? 'Confirming...' : 'Confirm Cash'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }

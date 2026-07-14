@@ -27,6 +27,7 @@ export const dashboardNavItems = [
     children: [
       { label: 'Order management', to: '/dashboard/orders-service' },
       { label: 'Active orders', to: '/dashboard/orders-service/active' },
+      { label: 'Revenue', to: '/dashboard/revenue', roles: ['ADMIN', 'MANAGER'] },
     ],
   },
   { label: 'Menu Management', to: '/dashboard/menu-management', icon: UtensilsCrossed },
