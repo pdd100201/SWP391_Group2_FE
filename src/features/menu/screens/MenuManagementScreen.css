@@ -90,7 +90,7 @@
 
 .menu-stats {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -256,7 +256,6 @@
 }
 
 .menu-badge--available { color: #047857; background: #ecfdf5; }
-.menu-badge--limited { color: #a16207; background: #fffbeb; }
 .menu-badge--out { color: #b42318; background: #fff1f0; }
 .menu-badge--inactive { color: #475569; background: #f1f5f9; }
 

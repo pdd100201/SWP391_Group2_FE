@@ -14,10 +14,4 @@ export const menuService = {
   create: (data) => axios.post(API_BASE, data, authConfig()),
   update: (id, data) => axios.put(`${API_BASE}/${id}`, data, authConfig()),
   toggleActive: (id) => axios.patch(`${API_BASE}/${id}/toggle-active`, {}, authConfig()),
-  reserve: (id, servings, referenceCode) =>
-    axios.post(`${API_BASE}/${id}/reservations`, { servings, referenceCode }, authConfig()),
-  serveReservation: (reservationId) =>
-    axios.post(`${API_BASE}/reservations/${reservationId}/serve`, {}, authConfig()),
-  releaseReservation: (reservationId) =>
-    axios.post(`${API_BASE}/reservations/${reservationId}/release`, {}, authConfig()),
 }

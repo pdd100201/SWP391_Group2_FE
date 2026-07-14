@@ -8,7 +8,6 @@ import AuthScreen from '../features/auth/screens/AuthScreen'
 import ForgotPasswordScreen from '../features/auth/screens/ForgotPasswordScreen'
 import VerifyOtpScreen from '../features/auth/screens/VerifyOtpScreen'
 import ResetPasswordScreen from '../features/auth/screens/ResetPasswordScreen'
-import InventoryScreen from '../features/inventory/screens/InventoryScreen'
 import MenuManagementScreen from '../features/menu/screens/MenuManagementScreen'
 import ProfileScreen from '../features/profile/screens/ProfileScreen'
 import DashboardProfileScreen from '../features/profile/screens/DashboardProfileScreen'
@@ -115,14 +114,6 @@ function AppRoutes() {
                   </RequireAuth>
               )}
           />
-        <Route
-          path="inventory"
-          element={(
-            <RequireAuth allowedRoles={['ADMIN', 'MANAGER', 'RECEPTIONIST', 'WAITER']}>
-              <InventoryScreen />
-            </RequireAuth>
-          )}
-        />
         <Route path="reports" element={<DashboardPage />} />
         <Route path="account-management" element={<DashboardPage />} />
         <Route path="accounts/staff" element={<StaffAccountPage />} />

@@ -3,8 +3,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   ChefHat,
-  Clock3,
-  PackageX,
   Pencil,
   Plus,
   RefreshCw,
@@ -37,8 +35,6 @@ function getErrorMessage(error, fallback) {
 function AvailabilityBadge({ status }) {
   const config = {
     AVAILABLE: { label: 'Available', className: 'menu-badge--available', icon: CheckCircle2 },
-    LIMITED: { label: 'Limited', className: 'menu-badge--limited', icon: Clock3 },
-    OUT_OF_STOCK: { label: 'Out of stock', className: 'menu-badge--out', icon: PackageX },
     INACTIVE: { label: 'Inactive', className: 'menu-badge--inactive', icon: AlertTriangle },
   }
   const current = config[status] || config.INACTIVE
@@ -214,8 +210,7 @@ function MenuManagementScreen() {
   const stats = {
     total: menuItems.length,
     available: menuItems.filter((item) => item.availability === 'AVAILABLE').length,
-    limited: menuItems.filter((item) => item.availability === 'LIMITED').length,
-    unavailable: menuItems.filter((item) => ['OUT_OF_STOCK', 'INACTIVE'].includes(item.availability)).length,
+    inactive: menuItems.filter((item) => item.availability === 'INACTIVE').length,
   }
 
   const handleRefresh = () => {
@@ -279,8 +274,7 @@ function MenuManagementScreen() {
       <section className="menu-stats">
         <article><UtensilsCrossed /><div><strong>{stats.total}</strong><span>Total dishes</span></div></article>
         <article><CheckCircle2 /><div><strong>{stats.available}</strong><span>Available</span></div></article>
-        <article><Clock3 /><div><strong>{stats.limited}</strong><span>Limited</span></div></article>
-        <article><PackageX /><div><strong>{stats.unavailable}</strong><span>Unavailable</span></div></article>
+        <article><AlertTriangle /><div><strong>{stats.inactive}</strong><span>Inactive</span></div></article>
       </section>
 
       <section className="menu-filters">
@@ -295,8 +289,6 @@ function MenuManagementScreen() {
         <select value={availability} onChange={(event) => setAvailability(event.target.value)}>
           <option value="">All availability</option>
           <option value="AVAILABLE">Available</option>
-          <option value="LIMITED">Limited</option>
-          <option value="OUT_OF_STOCK">Out of stock</option>
           <option value="INACTIVE">Inactive</option>
         </select>
       </section>
