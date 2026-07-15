@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Check,
@@ -49,6 +49,14 @@ const statusLabels = {
   CANCELLED: 'Cancelled',
 }
 
+// Đồng bộ với điều kiện Active Orders ở backend để cập nhật UI ngay sau mỗi thao tác.
+const isActiveOrder = (order) => {
+  if (order.status !== 'OPEN') return false
+  const serviceInProgress = order.serviceStatus !== 'SERVED'
+  const paymentOutstanding = Number(order.total) > 0 && order.paymentStatus !== 'PAID'
+  return serviceInProgress || paymentOutstanding
+}
+
 function OrdersServiceScreen({ activeView = false }) {
   const [orders, setOrders] = useState([])
   const [selectedId, setSelectedId] = useState(null)
@@ -80,12 +88,13 @@ function OrdersServiceScreen({ activeView = false }) {
       && !reservation.orderId
   )
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
       const [ordersResponse, menuResponse, reservationsResponse] = await Promise.all([
-        orderApi.getAll(true),
+        // Order Management lấy toàn bộ lịch sử; Active Orders yêu cầu backend lọc nghiệp vụ.
+        orderApi.getAll(activeView),
         menuService.getAll(),
         getAllReservations(),
       ])
@@ -101,13 +110,13 @@ function OrdersServiceScreen({ activeView = false }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [activeView])
 
   useEffect(() => {
     // Initial data synchronization with the API.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load()
-  }, [])
+  }, [load])
 
   const applyOrder = (next) => {
     setReservations((current) => current.map((reservation) => (
@@ -130,11 +139,11 @@ function OrdersServiceScreen({ activeView = false }) {
         : reservation
     )))
     setOrders((current) => {
-      if (next.status !== 'OPEN') return current.filter((order) => order.id !== next.id)
+      if (activeView && !isActiveOrder(next)) return current.filter((order) => order.id !== next.id)
       const exists = current.some((order) => order.id === next.id)
       return exists ? current.map((order) => order.id === next.id ? next : order) : [next, ...current]
     })
-    if (next.status === 'OPEN') setSelectedId(next.id)
+    if (!activeView || isActiveOrder(next)) setSelectedId(next.id)
     else setSelectedId(null)
   }
 
@@ -173,8 +182,8 @@ function OrdersServiceScreen({ activeView = false }) {
           <span className="orders-eyebrow"><ChefHat size={15} /> Orders &amp; Service</span>
           <h1>{activeView ? 'Active orders' : 'Order management'}</h1>
           <p>{activeView
-            ? 'Follow every active order and update each dish through service.'
-            : 'Create a dining room order from an assigned reservation.'}</p>
+            ? 'Orders still being served or waiting for payment.'
+            : 'Create orders and manage the complete order history across every status.'}</p>
         </div>
         <button type="button" className="orders-button orders-button--secondary" onClick={load} disabled={busy}>
           <RefreshCw size={17} /> Refresh
@@ -203,10 +212,12 @@ function OrdersServiceScreen({ activeView = false }) {
         )}
       </div>}
 
-      {activeView ? <div className="orders-workspace">
+      <div className="orders-workspace">
         <aside className="orders-list-panel">
-          <div className="orders-panel-title"><ClipboardList size={18} /> Active orders <span>{orders.length}</span></div>
-          {orders.length === 0 ? <p className="orders-empty">No active orders.</p> : orders.map((order) => (
+          <div className="orders-panel-title">
+            <ClipboardList size={18} /> {activeView ? 'Active orders' : 'All orders'} <span>{orders.length}</span>
+          </div>
+          {orders.length === 0 ? <p className="orders-empty">{activeView ? 'No active orders.' : 'No orders found.'}</p> : orders.map((order) => (
             <button
               type="button"
               key={order.id}
@@ -217,31 +228,40 @@ function OrdersServiceScreen({ activeView = false }) {
               <span className={`orders-service-badge orders-service-badge--${order.serviceStatus.toLowerCase()}`}>
                 {order.serviceStatus.replace('_', ' ')}
               </span>
+              <span className={`orders-payment-badge orders-payment-badge--${(order.paymentStatus || 'unpaid').toLowerCase()}`}>
+                {order.paymentStatus || 'UNPAID'}
+              </span>
               <b>{money(order.total)}</b>
             </button>
           ))}
         </aside>
 
         <main className="orders-detail-panel">
-          {!selected ? <div className="orders-empty orders-empty--large">Select or create an order to begin.</div> : (
+          {!selected ? <div className="orders-empty orders-empty--large">Select an order to view its details.</div> : (
             <>
               <div className="orders-detail-head">
                 <div>
                   <h2>{selected.orderCode}</h2>
                   <p>Reservation #{selected.reservationId} - {selected.reservationGuestName} - {tableLabel(selected)} - Waiter {selected.waiterName}</p>
+                  <div className="orders-detail-statuses">
+                    <span className={`orders-order-badge orders-order-badge--${selected.status.toLowerCase()}`}>{selected.status}</span>
+                    <span className={`orders-payment-badge orders-payment-badge--${(selected.paymentStatus || 'unpaid').toLowerCase()}`}>
+                      {selected.paymentStatus || 'UNPAID'}
+                    </span>
+                  </div>
                 </div>
                 <div className="orders-detail-actions">
-                  <button
+                  {selected.status === 'OPEN' && selected.paymentStatus !== 'PAID' && <button
                     type="button"
                     className="orders-button orders-button--primary"
                     onClick={() => navigate(`/dashboard/orders-service/${selected.id}/payment`)}
                   >
                     <CreditCard size={16} /> Payment
-                  </button>
-                  <button type="button" className="orders-button orders-button--danger" disabled={busy} onClick={() => run(
+                  </button>}
+                  {selected.status === 'OPEN' && <button type="button" className="orders-button orders-button--danger" disabled={busy} onClick={() => run(
                     () => orderApi.cancel(selected.id), 'Unable to cancel order.')}>
                     <XCircle size={16} /> Cancel
-                  </button>
+                  </button>}
                 </div>
               </div>
 
@@ -249,7 +269,9 @@ function OrdersServiceScreen({ activeView = false }) {
                 <div>
                   <div className="orders-section-title"><h3>Order items</h3><strong>{money(selected.total)}</strong></div>
                   <div className="orders-items">
-                    {selected.items.length === 0 && <p className="orders-empty">Add dishes from the menu below.</p>}
+                    {selected.items.length === 0 && <p className="orders-empty">
+                      {selected.status === 'OPEN' ? 'Add dishes from the menu below.' : 'This order has no items.'}
+                    </p>}
                     {selected.items.map((item) => {
                       const target = nextStatus(item)
                       return (
@@ -257,7 +279,7 @@ function OrdersServiceScreen({ activeView = false }) {
                           <img src={item.menuItemImageUrl || '/favicon.svg'} alt="" />
                           <div className="orders-item-main">
                             <strong>{item.menuItemName}</strong>
-                            {['DRAFT', 'CONFIRMED'].includes(item.status) ? (
+                            {selected.status === 'OPEN' && ['DRAFT', 'CONFIRMED'].includes(item.status) ? (
                               <input
                                 className="orders-item-note"
                                 defaultValue={item.note || ''}
@@ -273,24 +295,24 @@ function OrdersServiceScreen({ activeView = false }) {
                             <span className="orders-item-status">{statusLabels[item.status]}</span>
                           </div>
                           <div className="orders-quantity">
-                            <button type="button" disabled={busy || !['DRAFT', 'CONFIRMED'].includes(item.status) || item.quantity <= 1}
+                            <button type="button" disabled={busy || selected.status !== 'OPEN' || !['DRAFT', 'CONFIRMED'].includes(item.status) || item.quantity <= 1}
                               onClick={() => run(() => orderApi.updateItem(selected.id, item.id, { quantity: item.quantity - 1, note: item.note }), 'Unable to update quantity.')}>
                               <Minus size={14} />
                             </button>
                             <b>{item.quantity}</b>
-                            <button type="button" disabled={busy || !['DRAFT', 'CONFIRMED'].includes(item.status)}
+                            <button type="button" disabled={busy || selected.status !== 'OPEN' || !['DRAFT', 'CONFIRMED'].includes(item.status)}
                               onClick={() => run(() => orderApi.updateItem(selected.id, item.id, { quantity: item.quantity + 1, note: item.note }), 'Unable to update quantity.')}>
                               <Plus size={14} />
                             </button>
                           </div>
                           <strong>{money(item.lineTotal)}</strong>
-                          {target ? (
+                          {selected.status === 'OPEN' && target ? (
                             <button type="button" className="orders-next-button" disabled={busy}
                               onClick={() => run(() => orderApi.updateItemStatus(selected.id, item.id, target), 'Unable to update item status.')}>
                               {target.replace('_', ' ')}
                             </button>
                           ) : (
-                            <button type="button" className="orders-trash-button" disabled={busy || !['DRAFT', 'CONFIRMED'].includes(item.status)}
+                            <button type="button" className="orders-trash-button" disabled={busy || selected.status !== 'OPEN' || !['DRAFT', 'CONFIRMED'].includes(item.status)}
                               onClick={() => run(() => orderApi.removeItem(selected.id, item.id), 'Unable to remove item.')}>
                               <Trash2 size={16} />
                             </button>
@@ -300,7 +322,7 @@ function OrdersServiceScreen({ activeView = false }) {
                     })}
                   </div>
 
-                  <div className="orders-primary-actions">
+                  {selected.status === 'OPEN' && <div className="orders-primary-actions">
                     <button type="button" className="orders-button orders-button--primary" disabled={busy || !selected.items.some((item) => item.status === 'DRAFT')}
                       onClick={() => run(() => orderApi.submit(selected.id), 'Unable to submit order.')}>
                       <Send size={17} /> Submit draft items
@@ -309,8 +331,9 @@ function OrdersServiceScreen({ activeView = false }) {
                       onClick={() => run(() => orderApi.close(selected.id), 'Unable to close order.')}>
                       <Check size={17} /> Close order
                     </button>
-                  </div>
+                  </div>}
 
+                  {selected.status === 'OPEN' && <>
                   <div className="orders-menu-toolbar">
                     <div className="orders-search"><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search dishes" /></div>
                     <div className="orders-categories">{categories.map((name) => (
@@ -328,24 +351,14 @@ function OrdersServiceScreen({ activeView = false }) {
                       </article>
                     ))}
                   </div>
+                  </>}
                 </div>
 
               </div>
             </>
           )}
         </main>
-      </div> : (
-        <div className="orders-management-empty">
-          <ClipboardList size={28} />
-          <div>
-            <strong>Create an order above to get started</strong>
-            <p>Open orders are available in the Active orders tab in the sidebar.</p>
-          </div>
-          <button type="button" className="orders-button orders-button--secondary" onClick={() => navigate('/dashboard/orders-service/active')}>
-            View active orders <span aria-hidden="true">→</span>
-          </button>
-        </div>
-      )}
+      </div>
     </section>
   )
 }

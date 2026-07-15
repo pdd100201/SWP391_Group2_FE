@@ -1,14 +1,7 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { CheckCircle, XCircle, X } from 'lucide-react'
+import { ToastContext } from './ToastContext'
 import './Toast.css'
-
-const ToastContext = createContext(null)
-
-export function useToast() {
-  const context = useContext(ToastContext)
-  if (!context) throw new Error('useToast must be used within ToastProvider')
-  return context
-}
 
 function ToastItem({ toast, onRemove }) {
   const [exiting, setExiting] = useState(false)

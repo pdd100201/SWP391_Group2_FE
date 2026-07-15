@@ -10,13 +10,6 @@ const INITIAL_TABLES = []
 const STATUS_OPTIONS = ['ALL', 'AVAILABLE', 'OCCUPIED', 'RESERVED', 'CLEANING']
 const TYPE_OPTIONS = ['ALL', 'Main Hall', 'VIP Room', 'Patio']
 
-const STATUS_LABELS = {
-  AVAILABLE: 'AVAILABLE',
-  OCCUPIED: 'OCCUPIED',
-  RESERVED: 'RESERVED',
-  CLEANING: 'CLEANING',
-}
-
 const PAGE_SIZE = 10
 
 const mapApiTableToUi = (table) => ({
@@ -80,8 +73,8 @@ function TableManagementScreen() {
   }, [])
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadTables()
+    const timer = window.setTimeout(loadTables, 0)
+    return () => window.clearTimeout(timer)
   }, [loadTables])
 
   const filteredTables = useMemo(() => {
@@ -95,16 +88,13 @@ function TableManagementScreen() {
   }, [tables, search, statusFilter, typeFilter])
 
   const pagination = usePagination(filteredTables, PAGE_SIZE)
+  const { page, totalPages, setPage } = pagination
 
   useEffect(() => {
-    pagination.reset()
-  }, [search, statusFilter, typeFilter])
-
-  useEffect(() => {
-    if (pagination.page > 0 && pagination.page >= pagination.totalPages) {
-      pagination.setPage(Math.max(0, pagination.totalPages - 1))
+    if (page > 0 && page >= totalPages) {
+      setPage(Math.max(0, totalPages - 1))
     }
-  }, [pagination.page, pagination.totalPages])
+  }, [page, totalPages, setPage])
 
   const updateStatus = async (tableId, nextStatus) => {
     try {
@@ -280,14 +270,14 @@ function TableManagementScreen() {
         <div className="table-mgmt__toolbar">
           <div className="table-mgmt__search">
             <Search size={16} className="table-mgmt__search-icon" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by Table Number, Name or Type..." />
+            <input value={search} onChange={(e) => { setSearch(e.target.value); pagination.reset() }} placeholder="Search by Table Number, Name or Type..." />
           </div>
 
           <div className="table-mgmt__filters">
-            <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+            <select value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); pagination.reset() }}>
               {TYPE_OPTIONS.map((option) => <option key={option} value={option}>{option === 'ALL' ? 'All Types' : option}</option>)}
             </select>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); pagination.reset() }}>
               {STATUS_OPTIONS.map((option) => <option key={option} value={option}>{option === 'ALL' ? 'All Statuses' : option}</option>)}
             </select>
           </div>

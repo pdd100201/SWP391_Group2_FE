@@ -114,7 +114,8 @@ function CheckInScreen() {
   }, [])
 
   useEffect(() => {
-    loadCheckInData()
+    const timer = window.setTimeout(loadCheckInData, 0)
+    return () => window.clearTimeout(timer)
   }, [loadCheckInData])
 
   const filteredReservations = useMemo(() => {
