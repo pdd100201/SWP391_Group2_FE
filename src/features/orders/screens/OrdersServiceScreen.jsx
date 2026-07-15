@@ -83,8 +83,8 @@ function OrdersServiceScreen({ activeView = false }) {
     return allowed && matchesCategory && matchesSearch
   }), [menu, category, search])
   const unusedReservations = reservations.filter((reservation) =>
-    ['ARRIVED', 'CONFIRMED'].includes(reservation.status)
-      && reservation.tableId
+    reservation.status === 'ARRIVED'
+      && (reservation.tableId || reservation.tableIds?.length)
       && !reservation.orderId
   )
 

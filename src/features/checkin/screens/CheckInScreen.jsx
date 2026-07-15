@@ -12,7 +12,7 @@ const todayInputValue = () => {
   return offsetDate.toISOString().slice(0, 10)
 }
 
-const ACTIVE_RESERVATION_STATUSES = new Set(['PENDING', 'CONFIRMED'])
+const CHECK_IN_RESERVATION_STATUSES = new Set(['CONFIRMED'])
 const LOCK_BEFORE_MINUTES = 45
 const NO_SHOW_GRACE_MINUTES = 15
 
@@ -78,9 +78,12 @@ function CheckInScreen() {
   const [changeTableTarget, setChangeTableTarget] = useState(null)
   const [changeTableSelection, setChangeTableSelection] = useState([])
   const [showChangeTableConfirm, setShowChangeTableConfirm] = useState(false)
+  const [cleaningConfirmTable, setCleaningConfirmTable] = useState(null)
+  const [cleaningStatusError, setCleaningStatusError] = useState('')
 
   const [selectedSection, setSelectedSection] = useState('All')
   const [selectedStatus, setSelectedStatus] = useState('All')
+  const [statusBusyTableId, setStatusBusyTableId] = useState(null)
 
   const loadCheckInData = useCallback(async () => {
     setLoading(true)
@@ -121,7 +124,7 @@ function CheckInScreen() {
   const filteredReservations = useMemo(() => {
     const keyword = search.trim().toLowerCase()
     return reservations
-        .filter((reservation) => ACTIVE_RESERVATION_STATUSES.has(reservation.status))
+        .filter((reservation) => CHECK_IN_RESERVATION_STATUSES.has(reservation.status))
         .filter((reservation) => reservation.reservationDate === selectedDate)
         .filter((reservation) => {
           if (!keyword) return true
@@ -236,10 +239,31 @@ function CheckInScreen() {
     if (table.status === 'OCCUPIED') {
       try {
         const response = await checkinApi.getActiveGuestByTable(table.id)
+        if (!response.data) {
+          await tableApi.updateStatus(table.id, 'AVAILABLE')
+          setTables((prev) => prev.map((item) => (
+              item.id === table.id ? { ...item, status: 'AVAILABLE' } : item
+          )))
+          setHint(`${table.tableName} had no active guest and has been released.`)
+          return
+        }
         setOccupiedTableDetails({ table, guest: response.data })
       } catch (err) {
         console.error("Error fetching active guest details:", err)
-        alert("Could not fetch active guest details. Please try again.")
+        if (err.response?.status === 404) {
+          try {
+            await tableApi.updateStatus(table.id, 'AVAILABLE')
+            setTables((prev) => prev.map((item) => (
+                item.id === table.id ? { ...item, status: 'AVAILABLE' } : item
+            )))
+            setHint(`${table.tableName} had no active guest and has been released.`)
+          } catch (releaseError) {
+            console.error("Error releasing stale occupied table:", releaseError)
+            alert("This table is occupied but has no active guest. Please update its status in Tables.")
+          }
+        } else {
+          alert("Could not fetch active guest details. Please try again.")
+        }
       }
       return
     }
@@ -339,6 +363,33 @@ function CheckInScreen() {
       }
       return [...prev, table]
     })
+  }
+
+  const markTableAvailable = (event, table) => {
+    event.stopPropagation()
+    setCleaningStatusError('')
+    setCleaningConfirmTable(table)
+  }
+
+  const confirmMarkTableAvailable = async () => {
+    if (!cleaningConfirmTable) return
+
+    const tableLabel = cleaningConfirmTable.tableName || `Table ${cleaningConfirmTable.tableNumber}`
+    setStatusBusyTableId(cleaningConfirmTable.id)
+    setCleaningStatusError('')
+    try {
+      await tableApi.updateStatus(cleaningConfirmTable.id, 'AVAILABLE')
+      setTables((prev) => prev.map((item) => (
+          item.id === cleaningConfirmTable.id ? { ...item, status: 'AVAILABLE' } : item
+      )))
+      setHint(`${tableLabel} is now available.`)
+      setCleaningConfirmTable(null)
+    } catch (err) {
+      console.error('Error updating table status:', err)
+      setCleaningStatusError(err.response?.data?.message || 'Unable to mark table as available.')
+    } finally {
+      setStatusBusyTableId(null)
+    }
   }
 
   const requestTableChangeConfirmation = () => {
@@ -517,9 +568,11 @@ function CheckInScreen() {
                         <div className="checkin-table-grid">
                           {sectionTables.map((table) => {
                             const isAvailable = table.status === 'AVAILABLE'
+                            const isCleaning = table.status === 'CLEANING'
                             const canAssign = Boolean(selectedReservation) && isAvailable
                             // Kiểm tra xem bàn này có nằm trong danh sách đang chọn không
                             const isSelected = selectedTables.some(t => t.id === table.id)
+                            const isStatusBusy = statusBusyTableId === table.id
 
                             return (
                                 <div
@@ -537,6 +590,16 @@ function CheckInScreen() {
                                     {isSelected ? 'Selected' : formatStatusLabel(table.status)}
                                   </div>
                                   <div className="checkin-table__capacity">{table.capacity} Pax</div>
+                                  {isCleaning && (
+                                      <button
+                                          type="button"
+                                          className="checkin-table__cleaned-button"
+                                          disabled={isStatusBusy}
+                                          onClick={(event) => markTableAvailable(event, table)}
+                                      >
+                                        {isStatusBusy ? 'Updating...' : 'Mark Available'}
+                                      </button>
+                                  )}
                                 </div>
                             )
                           })}
@@ -574,6 +637,52 @@ function CheckInScreen() {
         )}
 
         {/* MODAL 1: XÁC NHẬN GÁN NHIỀU BÀN */}
+        {cleaningConfirmTable && (
+            <div
+                className="custom-modal-backdrop"
+                onClick={() => {
+                  if (!statusBusyTableId) {
+                    setCleaningConfirmTable(null)
+                    setCleaningStatusError('')
+                  }
+                }}
+            >
+              <div className="custom-modal-card" onClick={(e) => e.stopPropagation()}>
+                <div className="custom-modal-icon-wrapper custom-modal-icon-wrapper--info">
+                  <CheckCircle2 className="custom-modal-icon" size={28} style={{ color: '#2563eb' }} />
+                </div>
+                <div className="custom-modal-title">Cleaning Complete?</div>
+                <div className="custom-modal-text">
+                  Mark <strong>{cleaningConfirmTable.tableName}</strong> as available for new guests.
+                  {cleaningStatusError && (
+                      <div className="custom-modal-error">{cleaningStatusError}</div>
+                  )}
+                </div>
+                <div className="custom-modal-actions">
+                  <button
+                      type="button"
+                      className="custom-btn-cancel"
+                      disabled={Boolean(statusBusyTableId)}
+                      onClick={() => {
+                        setCleaningConfirmTable(null)
+                        setCleaningStatusError('')
+                      }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                      type="button"
+                      className="custom-btn-confirm custom-btn-confirm--blue"
+                      disabled={Boolean(statusBusyTableId)}
+                      onClick={confirmMarkTableAvailable}
+                  >
+                    {statusBusyTableId ? 'Updating...' : 'Mark Available'}
+                  </button>
+                </div>
+              </div>
+            </div>
+        )}
+
         {showConfirmModal && selectedReservation && (
             <div className="custom-modal-backdrop" onClick={() => setShowConfirmModal(false)}>
               <div className="custom-modal-card" onClick={(e) => e.stopPropagation()}>

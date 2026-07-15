@@ -19,6 +19,7 @@ import ReservationHistoryScreen from '../features/reservations/screens/Reservati
 import DashboardReservationsScreen from '../features/reservations/screens/DashboardReservationsScreen'
 import OrdersServiceScreen from '../features/orders/screens/OrdersServiceScreen'
 import OrderPaymentScreen from '../features/payment/screens/OrderPaymentScreen'
+import RevenueScreen from '../features/revenue/screens/RevenueScreen'
 import PublicOrderScreen from '../features/orders/screens/PublicOrderScreen'
 import CheckInScreen from '../features/checkin/screens/CheckInScreen'
 import MainLayout from '../shared/components/layout/MainLayout/MainLayout'
@@ -107,6 +108,14 @@ function AppRoutes() {
         <Route path="orders-service" element={<OrdersServiceScreen />} />
         <Route path="orders-service/active" element={<OrdersServiceScreen activeView />} />
         <Route path="orders-service/:orderId/payment" element={<OrderPaymentScreen />} />
+        <Route
+          path="revenue"
+          element={(
+            <RequireAuth allowedRoles={['ADMIN', 'MANAGER']}>
+              <RevenueScreen />
+            </RequireAuth>
+          )}
+        />
         <Route
           path="menu-management"
           element={(
