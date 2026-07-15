@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -44,7 +44,7 @@ function OrderPaymentScreen() {
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('SEPAY')
   const [showCashConfirm, setShowCashConfirm] = useState(false)
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
@@ -58,11 +58,12 @@ function OrderPaymentScreen() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [orderId])
 
   useEffect(() => {
-    load()
-  }, [orderId])
+    const timer = window.setTimeout(load, 0)
+    return () => window.clearTimeout(timer)
+  }, [load])
 
   const run = async (action, fallback, afterSuccess) => {
     setBusy(true)

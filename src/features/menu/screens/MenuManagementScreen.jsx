@@ -14,8 +14,6 @@ import { menuService } from '../services/menuService'
 import ImageUploader from '../../../shared/components/ui/ImageUploader/ImageUploader'
 import './MenuManagementScreen.css'
 
-const MENU_CATEGORIES = ['Appetizer', 'Main Course', 'Side Dish', 'Dessert', 'Beverage']
-
 const EMPTY_FORM = {
   name: '',
   category: '',
@@ -25,6 +23,7 @@ const EMPTY_FORM = {
 }
 
 const money = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} VND`
+const wordCount = (value) => value.trim() ? value.trim().split(/\s+/).length : 0
 
 function getErrorMessage(error, fallback) {
   const errors = error.response?.data?.errors
@@ -48,7 +47,8 @@ function AvailabilityBadge({ status }) {
   )
 }
 
-function DishModal({ item, onClose, onSaved }) {
+function DishModal({ item, categories, onClose, onSaved }) {
+  // Một modal dùng chung cho cả tạo mới và chỉnh sửa; item=null là chế độ tạo mới.
   const [form, setForm] = useState(() => item
     ? {
         name: item.name,
@@ -76,8 +76,20 @@ function DishModal({ item, onClose, onSaved }) {
       setError('Dish name and category are required')
       return
     }
-    if (!Number.isFinite(price) || price <= 0) {
-      setError('Price must be greater than 0')
+    if (!Number.isSafeInteger(price) || price <= 0) {
+      setError('Price must be a positive integer')
+      return
+    }
+    if (!form.description.trim()) {
+      setError('Dish description is required')
+      return
+    }
+    if (wordCount(form.description) > 200) {
+      setError('Dish description must not exceed 200 words')
+      return
+    }
+    if (!form.imageUrl.trim()) {
+      setError('Dish image is required')
       return
     }
 
@@ -85,6 +97,7 @@ function DishModal({ item, onClose, onSaved }) {
       name: form.name.trim(),
       category: form.category,
       description: form.description.trim() || null,
+      // ImageUploader đã upload file trước và đưa secure URL của Cloudinary vào state.
       imageUrl: form.imageUrl.trim() || null,
       price,
     }
@@ -121,16 +134,16 @@ function DishModal({ item, onClose, onSaved }) {
           <div className="menu-form-grid">
             <label className="menu-field">
               <span>Dish name *</span>
-              <input name="name" value={form.name} onChange={updateField} placeholder="e.g. Garlic Butter Salmon" />
+              <input name="name" value={form.name} onChange={updateField} maxLength="100" required placeholder="e.g. Garlic Butter Salmon" />
             </label>
             <label className="menu-field">
               <span>Category *</span>
-              <select name="category" value={form.category} onChange={updateField}>
+              <select name="category" value={form.category} onChange={updateField} required>
                 <option value="">Select category</option>
-                {item?.category && !MENU_CATEGORIES.includes(item.category) && (
+                {item?.category && !categories.some((category) => category.name === item.category) && (
                   <option value={item.category}>{item.category}</option>
                 )}
-                {MENU_CATEGORIES.map((category) => <option key={category}>{category}</option>)}
+                {categories.map((category) => <option key={category.id} value={category.name}>{category.name}</option>)}
               </select>
             </label>
             <label className="menu-field">
@@ -139,19 +152,21 @@ function DishModal({ item, onClose, onSaved }) {
                 name="price"
                 type="number"
                 min="1"
-                step="1000"
+                step="1"
+                required
                 value={form.price}
                 onChange={updateField}
                 placeholder="e.g. 149000"
               />
             </label>
             <div className="menu-field">
-              <ImageUploader label="Dish image" folder="menu" value={form.imageUrl}
+              {/* Ảnh món ăn được gom vào thư mục golden-spoon/menu trên Cloudinary. */}
+              <ImageUploader label="Dish image *" folder="menu" value={form.imageUrl}
                 onChange={(imageUrl) => setForm((current) => ({ ...current, imageUrl }))} />
             </div>
             <label className="menu-field menu-field--full">
-              <span>Description</span>
-              <textarea name="description" value={form.description} onChange={updateField} rows="3" />
+              <span>Description * ({wordCount(form.description)}/200 words)</span>
+              <textarea name="description" value={form.description} onChange={updateField} rows="3" required />
             </label>
           </div>
 
@@ -171,6 +186,7 @@ function MenuManagementScreen() {
   const role = sessionStorage.getItem('role')
   const canManage = ['ADMIN', 'MANAGER'].includes(role)
   const [menuItems, setMenuItems] = useState([])
+  const [menuCategories, setMenuCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [keyword, setKeyword] = useState('')
@@ -184,8 +200,12 @@ function MenuManagementScreen() {
     setLoading(true)
     setError('')
     try {
-      const response = await menuService.getAll()
-      setMenuItems(response.data)
+      const [menuResponse, categoryResponse] = await Promise.all([
+        menuService.getAll(),
+        menuService.getCategories(),
+      ])
+      setMenuItems(menuResponse.data)
+      setMenuCategories(categoryResponse.data)
     } catch (loadError) {
       setError(getErrorMessage(loadError, 'Unable to load menu items'))
     } finally {
@@ -200,13 +220,14 @@ function MenuManagementScreen() {
   }, [])
 
   const filteredItems = menuItems.filter((item) => {
+    // Lọc tại client vì endpoint hiện trả toàn bộ menu trong một request.
     const matchesKeyword = item.name.toLowerCase().includes(keyword.trim().toLowerCase())
     const matchesCategory = !category || item.category === category
     const matchesAvailability = !availability || item.availability === availability
     return matchesKeyword && matchesCategory && matchesAvailability
   })
 
-  const categories = [...new Set(menuItems.map((item) => item.category))].sort()
+  const filterCategories = [...new Set(menuItems.map((item) => item.category))].sort()
   const stats = {
     total: menuItems.length,
     available: menuItems.filter((item) => item.availability === 'AVAILABLE').length,
@@ -226,6 +247,7 @@ function MenuManagementScreen() {
   }
 
   const handleSaved = (savedItem) => {
+    // Cập nhật đúng card vừa lưu để không cần gọi lại API lấy toàn bộ danh sách.
     setMenuItems((current) => {
       const exists = current.some((item) => item.id === savedItem.id)
       return exists
@@ -284,7 +306,7 @@ function MenuManagementScreen() {
         </label>
         <select value={category} onChange={(event) => setCategory(event.target.value)}>
           <option value="">All categories</option>
-          {categories.map((itemCategory) => <option key={itemCategory}>{itemCategory}</option>)}
+          {filterCategories.map((itemCategory) => <option key={itemCategory}>{itemCategory}</option>)}
         </select>
         <select value={availability} onChange={(event) => setAvailability(event.target.value)}>
           <option value="">All availability</option>
@@ -349,6 +371,7 @@ function MenuManagementScreen() {
       {canManage && modalOpen && (
         <DishModal
           item={editingItem}
+          categories={menuCategories}
           onClose={() => { setModalOpen(false); setEditingItem(null) }}
           onSaved={handleSaved}
         />

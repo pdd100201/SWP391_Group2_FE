@@ -56,11 +56,6 @@ function ReservationHistoryScreen() {
     return list
   }, [reservations, sortBy, sortOrder])
 
-  // Reset page when sorting changes
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [sortBy, sortOrder])
-
   // Pagination logic
   const totalPages = Math.ceil(sortedReservations.length / itemsPerPage)
   const paginatedReservations = useMemo(() => {
@@ -82,7 +77,8 @@ function ReservationHistoryScreen() {
   }
 
   useEffect(() => {
-    loadReservations()
+    const timer = window.setTimeout(loadReservations, 0)
+    return () => window.clearTimeout(timer)
   }, [])
 
   const handleCancel = async (reservationId) => {
@@ -149,6 +145,7 @@ function ReservationHistoryScreen() {
                     const [field, order] = event.target.value.split('-')
                     setSortBy(field)
                     setSortOrder(order)
+                    setCurrentPage(1)
                   }}
                   className="reservation-control-select"
                 >

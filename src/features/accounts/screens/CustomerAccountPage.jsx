@@ -7,7 +7,7 @@ import {
   getCustomerAccounts, getCustomerById, updateCustomer, deleteCustomer
 } from '../api/accountApi'
 import { usePagination } from '../../../shared/hooks/usePagination'
-import { useToast } from '../../../shared/components/ui/Toast/Toast'
+import { useToast } from '../../../shared/components/ui/Toast/ToastContext'
 import ConfirmModal from '../../../shared/components/ui/ConfirmModal/ConfirmModal'
 import LoadingSpinner from '../../../shared/components/ui/LoadingSpinner/LoadingSpinner'
 import ImageUploader from '../../../shared/components/ui/ImageUploader/ImageUploader'
@@ -49,7 +49,10 @@ function CustomerAccountPage() {
     }
   }, [search, showToast])
 
-  useEffect(() => { fetchAccounts() }, [fetchAccounts])
+  useEffect(() => {
+    const timer = window.setTimeout(fetchAccounts, 0)
+    return () => window.clearTimeout(timer)
+  }, [fetchAccounts])
 
   const handleSearch = () => { setSearch(searchInput); pagination.reset() }
 

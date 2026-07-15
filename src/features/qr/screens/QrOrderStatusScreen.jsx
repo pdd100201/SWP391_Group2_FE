@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getOrderStatus } from '../api/qrApi'
 import './QrOrderStatusScreen.css'
@@ -37,7 +37,7 @@ export default function QrOrderStatusScreen() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  async function fetchStatus() {
+  const fetchStatus = useCallback(async () => {
     try {
       const data = await getOrderStatus(orderId)
       setOrder(data)
@@ -47,13 +47,16 @@ export default function QrOrderStatusScreen() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [orderId])
 
   useEffect(() => {
-    fetchStatus()
+    const initialTimer = window.setTimeout(fetchStatus, 0)
     const timer = setInterval(fetchStatus, 30000)
-    return () => clearInterval(timer)
-  }, [orderId])
+    return () => {
+      window.clearTimeout(initialTimer)
+      clearInterval(timer)
+    }
+  }, [fetchStatus])
 
   if (loading) {
     return (

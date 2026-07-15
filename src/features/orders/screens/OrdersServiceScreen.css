@@ -52,6 +52,13 @@
 .orders-service-badge--preparing { background: #fff7ed; color: #c2410c; }
 .orders-service-badge--ready, .orders-service-badge--served { background: #dcfce7; color: #166534; }
 .orders-service-badge--has_draft { background: #fef3c7; color: #92400e; }
+.orders-payment-badge, .orders-order-badge { display: inline-flex; width: fit-content; margin: 7px 0 0 5px; padding: 3px 7px; border-radius: 99px; background: #fef3c7; color: #92400e; font-size: .68rem; font-weight: 800; text-transform: uppercase; }
+.orders-payment-badge--paid { background: #dcfce7; color: #166534; }
+.orders-payment-badge--failed, .orders-payment-badge--cancelled { background: #fee2e2; color: #b42318; }
+.orders-order-badge { margin-left: 0; background: #dbeafe; color: #1d4ed8; }
+.orders-order-badge--closed { background: #dcfce7; color: #166534; }
+.orders-order-badge--cancelled { background: #fee2e2; color: #b42318; }
+.orders-detail-statuses { display: flex; align-items: center; flex-wrap: wrap; }
 
 .orders-detail-panel { padding: 20px; overflow: hidden; min-width: 0; }
 .orders-detail-head { padding-bottom: 16px; border-bottom: 1px solid var(--order-border); }
@@ -59,10 +66,6 @@
 .orders-detail-actions { display: flex; gap: 8px; }
 .orders-content-grid { padding-top: 18px; }
 
-.orders-management-empty { min-height: 260px; padding: 34px; border: 1px solid var(--order-border); border-radius: 16px; background: white; box-shadow: 0 8px 28px rgba(15, 23, 42, .04); display: flex; align-items: center; justify-content: center; gap: 16px; color: var(--order-green); text-align: left; }
-.orders-management-empty > div { max-width: 480px; }
-.orders-management-empty strong { display: block; color: var(--order-green-dark); font-size: 1.05rem; }
-.orders-management-empty p { margin: 5px 0 0; color: var(--order-muted); }
 .orders-section-title h3 { margin: 0 0 10px; }
 .orders-section-title > strong { color: var(--order-green-dark); font-size: 1.15rem; }
 .orders-items { display: grid; gap: 9px; }
@@ -273,5 +276,4 @@
   .orders-item > strong { grid-column: 2; }
   .orders-next-button, .orders-trash-button { grid-column: 3; grid-row: 1 / span 2; }
   .orders-categories { justify-content: flex-start; }
-  .orders-management-empty { align-items: flex-start; flex-direction: column; padding: 24px; }
 }
