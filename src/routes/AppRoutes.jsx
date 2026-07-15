@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import HomeScreen from '../features/home/screens/HomeScreen'
 import QrMenuScreen from '../features/qr/screens/QrMenuScreen'
@@ -8,7 +9,6 @@ import AuthScreen from '../features/auth/screens/AuthScreen'
 import ForgotPasswordScreen from '../features/auth/screens/ForgotPasswordScreen'
 import VerifyOtpScreen from '../features/auth/screens/VerifyOtpScreen'
 import ResetPasswordScreen from '../features/auth/screens/ResetPasswordScreen'
-import InventoryScreen from '../features/inventory/screens/InventoryScreen'
 import MenuManagementScreen from '../features/menu/screens/MenuManagementScreen'
 import ProfileScreen from '../features/profile/screens/ProfileScreen'
 import DashboardProfileScreen from '../features/profile/screens/DashboardProfileScreen'
@@ -19,13 +19,15 @@ import ReservationHistoryScreen from '../features/reservations/screens/Reservati
 import DashboardReservationsScreen from '../features/reservations/screens/DashboardReservationsScreen'
 import OrdersServiceScreen from '../features/orders/screens/OrdersServiceScreen'
 import OrderPaymentScreen from '../features/payment/screens/OrderPaymentScreen'
+import RevenueScreen from '../features/revenue/screens/RevenueScreen'
 import PublicOrderScreen from '../features/orders/screens/PublicOrderScreen'
-import TableManagementScreen from '../features/tables/screens/TableManagementScreen'
 import CheckInScreen from '../features/checkin/screens/CheckInScreen'
 import MainLayout from '../shared/components/layout/MainLayout/MainLayout'
 import RequireAuth from '../shared/components/ui/RequireAuth'
 import RedirectByRole from '../shared/components/ui/RedirectByRole'
 import PromotionsScreen from '../features/promotions/screens/PromotionsScreen'
+
+const TableManagementScreen = lazy(() => import('../features/tables/screens/TableManagementScreen'))
 
 function DashboardPage() {
   return <div className="dashboard-placeholder">Dashboard content goes here</div>
@@ -94,10 +96,26 @@ function AppRoutes() {
       >
         <Route index element={<DashboardPage />} />
         <Route path="check-in" element={<CheckInScreen />} />
-        <Route path="tables" element={<TableManagementScreen />} />
+        <Route
+          path="tables"
+          element={(
+            <Suspense fallback={<div className="dashboard-placeholder">Loading tables...</div>}>
+              <TableManagementScreen />
+            </Suspense>
+          )}
+        />
         <Route path="reservations" element={<DashboardReservationsScreen />} />
         <Route path="orders-service" element={<OrdersServiceScreen />} />
+        <Route path="orders-service/active" element={<OrdersServiceScreen activeView />} />
         <Route path="orders-service/:orderId/payment" element={<OrderPaymentScreen />} />
+        <Route
+          path="revenue"
+          element={(
+            <RequireAuth allowedRoles={['ADMIN', 'MANAGER']}>
+              <RevenueScreen />
+            </RequireAuth>
+          )}
+        />
         <Route
           path="menu-management"
           element={(
@@ -114,14 +132,6 @@ function AppRoutes() {
                   </RequireAuth>
               )}
           />
-        <Route
-          path="inventory"
-          element={(
-            <RequireAuth allowedRoles={['ADMIN', 'MANAGER', 'RECEPTIONIST', 'WAITER']}>
-              <InventoryScreen />
-            </RequireAuth>
-          )}
-        />
         <Route path="reports" element={<DashboardPage />} />
         <Route path="account-management" element={<DashboardPage />} />
         <Route path="accounts/staff" element={<StaffAccountPage />} />

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Edit, Loader2, Plus, Power, Save, Search, Trash2, X } from 'lucide-react';
 import { promotionApi } from '../api/promotionApi';
 import './PromotionsScreen.css';
@@ -43,7 +43,8 @@ function PromotionsScreen() {
   };
 
   useEffect(() => {
-    fetchPromotions();
+    const timer = window.setTimeout(fetchPromotions, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const filteredPromotions = useMemo(() => {

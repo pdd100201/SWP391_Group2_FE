@@ -7,9 +7,10 @@ import {
   getCustomerAccounts, getCustomerById, updateCustomer, deleteCustomer
 } from '../api/accountApi'
 import { usePagination } from '../../../shared/hooks/usePagination'
-import { useToast } from '../../../shared/components/ui/Toast/Toast'
+import { useToast } from '../../../shared/components/ui/Toast/ToastContext'
 import ConfirmModal from '../../../shared/components/ui/ConfirmModal/ConfirmModal'
 import LoadingSpinner from '../../../shared/components/ui/LoadingSpinner/LoadingSpinner'
+import ImageUploader from '../../../shared/components/ui/ImageUploader/ImageUploader'
 import './CustomerAccountPage.css'
 
 const PAGE_SIZE = 4
@@ -48,7 +49,10 @@ function CustomerAccountPage() {
     }
   }, [search, showToast])
 
-  useEffect(() => { fetchAccounts() }, [fetchAccounts])
+  useEffect(() => {
+    const timer = window.setTimeout(fetchAccounts, 0)
+    return () => window.clearTimeout(timer)
+  }, [fetchAccounts])
 
   const handleSearch = () => { setSearch(searchInput); pagination.reset() }
 
@@ -259,8 +263,8 @@ function CustomerAccountPage() {
                   {formErrors.phone && <p className="customer-page__form-error">{formErrors.phone}</p>}
                 </div>
                 <div className="customer-page__form-field">
-                  <label htmlFor="cust-avatar">Avatar URL</label>
-                  <input id="cust-avatar" name="avatarUrl" value={editModal.data.avatarUrl} onChange={handleEditChange} placeholder="https://..." />
+                  <ImageUploader label="Customer avatar" folder="avatars" value={editModal.data.avatarUrl}
+                    onChange={(avatarUrl) => setEditModal((current) => ({ ...current, data: { ...current.data, avatarUrl } }))} />
                 </div>
               </div>
               <div className="customer-page__form-actions">

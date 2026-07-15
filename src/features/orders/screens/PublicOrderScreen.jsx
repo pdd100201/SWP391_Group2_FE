@@ -81,7 +81,7 @@ function PublicOrderScreen() {
               {shownMenu.map((item) => (
                 <article key={item.id}>
                   <img src={item.imageUrl || '/favicon.svg'} alt="" />
-                  <div><small>{item.category}</small><h2>{item.name}</h2><p>{item.description}</p><strong>{money(item.suggestedPrice)}</strong></div>
+                  <div><small>{item.category}</small><h2>{item.name}</h2><p>{item.description}</p><strong>{money(item.price)}</strong></div>
                   <button type="button" disabled={busy} onClick={() => run(
                     () => publicOrderApi.addItem(token, { menuItemId: item.id, quantity: 1, note: null }),
                     'Could not add this dish.')}><Plus size={17} /> Add to order</button>
@@ -119,7 +119,7 @@ function PublicOrderScreen() {
             <div className="public-cart-total"><span>Draft total</span><strong>{money(drafts.reduce((sum, item) => sum + Number(item.lineTotal), 0))}</strong></div>
             <button type="button" className="public-submit" disabled={busy || drafts.length === 0} onClick={() => run(
               () => publicOrderApi.submit(token), 'Could not submit your dishes.')}><Send size={17} /> Submit to kitchen</button>
-            <p className="public-cart-hint">Inventory is checked again when you submit. Confirmed dishes can only be changed by restaurant staff.</p>
+            <p className="public-cart-hint">Confirmed dishes can only be changed by restaurant staff.</p>
           </aside>
         </div>
       )}

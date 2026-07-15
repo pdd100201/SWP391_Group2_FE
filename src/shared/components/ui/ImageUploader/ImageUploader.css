@@ -1,0 +1,11 @@
+.image-uploader { display: grid; gap: 7px; width: 100%; }
+.image-uploader__label { font-size: .84rem; font-weight: 700; color: #334155; }
+.image-uploader__body { display: flex; align-items: center; gap: 12px; padding: 10px; border: 1px dashed #cbd5e1; border-radius: 10px; background: #f8fafc; }
+.image-uploader__body img, .image-uploader__placeholder { width: 76px; height: 76px; flex: 0 0 76px; border-radius: 9px; object-fit: cover; background: #e2e8f0; }
+.image-uploader__placeholder { display: grid; place-items: center; color: #64748b; }
+.image-uploader__actions { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; }
+.image-uploader__button, .image-uploader__actions button { display: inline-flex; align-items: center; gap: 6px; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px; background: white; color: #075c46; font: inherit; font-size: .8rem; font-weight: 750; cursor: pointer; }
+.image-uploader__button input { display: none; }
+.image-uploader__actions button { color: #b42318; }
+.image-uploader__actions small { width: 100%; color: #64748b; font-size: .72rem; }
+.image-uploader__error { color: #b42318; }

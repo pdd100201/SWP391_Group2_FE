@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { AlertTriangle, X } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 import './ConfirmModal.css'
 
 function ConfirmModal({ open, title, message, onConfirm, onCancel, loading = false, confirmText = 'Delete', confirmVariant = 'danger' }) {

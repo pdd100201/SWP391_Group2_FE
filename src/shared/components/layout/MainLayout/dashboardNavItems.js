@@ -5,7 +5,6 @@ import {
   ShoppingBag,
   UtensilsCrossed,
   BadgePercent,
-  Boxes,
   BarChart3,
   Users,
 } from 'lucide-react'
@@ -22,10 +21,17 @@ export const dashboardNavItems = [
     ],
   },
   { label: 'Reservations', to: '/dashboard/reservations', icon: CalendarRange },
-  { label: 'Orders & Service', to: '/dashboard/orders-service', icon: ShoppingBag },
+  {
+    label: 'Orders & Service',
+    icon: ShoppingBag,
+    children: [
+      { label: 'Order management', to: '/dashboard/orders-service' },
+      { label: 'Active orders', to: '/dashboard/orders-service/active' },
+      { label: 'Revenue', to: '/dashboard/revenue', roles: ['ADMIN', 'MANAGER'] },
+    ],
+  },
   { label: 'Menu Management', to: '/dashboard/menu-management', icon: UtensilsCrossed },
   { label: 'Promotions', to: '/dashboard/promotions', icon: BadgePercent },
-  { label: 'Inventory', to: '/dashboard/inventory', icon: Boxes },
   { label: 'Reports', to: '/dashboard/reports', icon: BarChart3 },
   {
     label: 'Account Management',
