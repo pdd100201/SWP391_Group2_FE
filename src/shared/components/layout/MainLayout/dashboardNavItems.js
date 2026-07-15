@@ -7,6 +7,7 @@ import {
   BadgePercent,
   BarChart3,
   Users,
+  QrCode,
 } from 'lucide-react'
 
 export const dashboardNavItems = [
@@ -31,6 +32,7 @@ export const dashboardNavItems = [
     ],
   },
   { label: 'Menu Management', to: '/dashboard/menu-management', icon: UtensilsCrossed },
+  { label: 'QR Orders', to: '/dashboard/qr-orders', icon: QrCode },
   { label: 'Promotions', to: '/dashboard/promotions', icon: BadgePercent },
   { label: 'Reports', to: '/dashboard/reports', icon: BarChart3 },
   {
