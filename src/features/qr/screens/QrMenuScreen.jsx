@@ -188,9 +188,9 @@ export default function QrMenuScreen() {
         </div>
         <div className="qr-menu__error" style={{ textAlign: 'center', padding: '48px 24px' }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>🪑</div>
-          <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 8 }}>Bàn chưa được check-in</div>
+          <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 8 }}>Table not checked in</div>
           <div style={{ color: '#666', fontSize: 14 }}>
-            Vui lòng liên hệ nhân viên để được phục vụ.
+            Please contact a staff member for assistance.
           </div>
         </div>
       </div>
