@@ -30,6 +30,7 @@ export default function QrMenuScreen() {
   const [cart, setCart] = useState(loadCart)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [notCheckedIn, setNotCheckedIn] = useState(false)
   const [stockAlert, setStockAlert] = useState({ itemId: null, msg: '' })
   const [activeCategory, setActiveCategory] = useState('')
   const [activeOrder, setActiveOrder] = useState(null)
@@ -59,8 +60,14 @@ export default function QrMenuScreen() {
         setTableNumber(sessionData.tableNumber || `Bàn ${tableId}`)
         setCategories(menuData.categories || [])
         setActiveOrder(orderData || null)
-      } catch {
-        if (!cancelled) setError('Không thể tải menu. Vui lòng thử lại.')
+      } catch (err) {
+        if (!cancelled) {
+          if (err?.response?.status === 409) {
+            setNotCheckedIn(true)
+          } else {
+            setError('Không thể tải menu. Vui lòng thử lại.')
+          }
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -165,6 +172,26 @@ export default function QrMenuScreen() {
         <div className="qr-menu__loading">
           <div className="qr-menu__spinner" />
           <span>Loading menu...</span>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Bàn chưa check-in ────────────────────────────────────────────
+  if (notCheckedIn) {
+    return (
+      <div className="qr-menu">
+        <div className="qr-menu__sticky-top">
+          <div className="qr-menu__header">
+            <h1>Menu</h1>
+          </div>
+        </div>
+        <div className="qr-menu__error" style={{ textAlign: 'center', padding: '48px 24px' }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🪑</div>
+          <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 8 }}>Bàn chưa được check-in</div>
+          <div style={{ color: '#666', fontSize: 14 }}>
+            Vui lòng liên hệ nhân viên để được phục vụ.
+          </div>
         </div>
       </div>
     )
