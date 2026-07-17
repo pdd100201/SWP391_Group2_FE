@@ -20,6 +20,8 @@ function Sidebar({ open, onClose }) {
     return children?.some((child) => location.pathname === child.to)
   }
 
+  const canSeeItem = (item) => !item.roles || item.roles.includes(userRole)
+
   return (
     <aside className={`dashboard-layout__sidebar ${open ? 'dashboard-layout__sidebar--open' : ''}`}>
       <div className="dashboard-layout__brand">
@@ -39,7 +41,8 @@ function Sidebar({ open, onClose }) {
 
           /* ── Item with children (dropdown) ── */
           if (item.children) {
-            const childActive = isChildActive(item.children)
+            const visibleChildren = item.children.filter(canSeeItem)
+            const childActive = isChildActive(visibleChildren)
             const isOpen = openMenus[item.label] || childActive
 
             return (
@@ -59,10 +62,11 @@ function Sidebar({ open, onClose }) {
                 </button>
 
                 <div className={`dashboard-layout__nav-submenu ${isOpen ? 'dashboard-layout__nav-submenu--open' : ''}`}>
-                  {item.children.map((child) => (
+                  {visibleChildren.map((child) => (
                     <NavLink
                       key={child.label}
                       to={child.to}
+                      end
                       className={({ isActive }) =>
                         `dashboard-layout__nav-subitem ${isActive ? 'dashboard-layout__nav-subitem--active' : ''}`
                       }
@@ -82,6 +86,7 @@ function Sidebar({ open, onClose }) {
             <NavLink
               key={item.label}
               to={item.to}
+              end={item.to === '/dashboard'}
               className={({ isActive }) =>
                 `dashboard-layout__nav-item ${isActive ? 'dashboard-layout__nav-item--active' : ''}`
               }

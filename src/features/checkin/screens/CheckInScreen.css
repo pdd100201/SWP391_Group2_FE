@@ -450,6 +450,28 @@
 }
 
 /* Phân mảnh đường viền màu sắc theo mẫu thiết kế */
+.checkin-table__cleaned-button {
+  width: 100%;
+  min-height: 34px;
+  margin-top: 10px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1d4ed8;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.checkin-table__cleaned-button:hover:not(:disabled) {
+  background: #dbeafe;
+}
+
+.checkin-table__cleaned-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 .checkin-table--available { border-top: 4px solid #10b981; }
 .checkin-table--available .checkin-table__status-dot { background-color: #10b981; }
 
@@ -532,6 +554,16 @@
   margin-bottom: 24px;
 }
 
+.custom-modal-error {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-weight: 700;
+}
+
 .custom-modal-actions {
   display: flex;
   gap: 12px;
@@ -564,6 +596,14 @@
 
 .custom-btn-confirm:hover {
   background-color: #0a4636;
+}
+
+.custom-btn-confirm--blue {
+  background-color: #2563eb;
+}
+
+.custom-btn-confirm--blue:hover {
+  background-color: #1d4ed8;
 }
 
 /* Responsive quy chuẩn di động */

@@ -1,14 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   AlertTriangle,
-  ChevronFirst,
-  ChevronLast,
-  ChevronLeft,
-  ChevronRight,
   CheckCircle2,
   ChefHat,
-  CircleDollarSign,
-  PackageX,
   Pencil,
   Plus,
   RefreshCw,
@@ -16,17 +10,9 @@ import {
   UtensilsCrossed,
   X,
 } from 'lucide-react'
-import { usePagination } from '../../../shared/hooks/usePagination'
-import { uploadImage } from '../../../shared/services/imageUploadService'
 import { menuService } from '../services/menuService'
+import ImageUploader from '../../../shared/components/ui/ImageUploader/ImageUploader'
 import './MenuManagementScreen.css'
-
-const MENU_CATEGORIES = ['Appetizer', 'Main Course', 'Side Dish', 'Dessert', 'Beverage']
-const PAGE_SIZE = 6
-const MAX_DISH_NAME_LENGTH = 80
-const MAX_DESCRIPTION_LENGTH = 500
-const MAX_IMAGE_URL_LENGTH = 500
-const MAX_PRICE = 999999999
 
 const EMPTY_FORM = {
   name: '',
@@ -36,48 +22,13 @@ const EMPTY_FORM = {
   price: '',
 }
 
-const money = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} ₫`
+const money = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} VND`
+const wordCount = (value) => value.trim() ? value.trim().split(/\s+/).length : 0
 
 function getErrorMessage(error, fallback) {
   const errors = error.response?.data?.errors
   if (errors) return Object.values(errors).join('. ')
   return error.response?.data?.message || fallback
-}
-
-function isValidUrl(value) {
-  if (!value.trim()) return true
-  try {
-    const url = new URL(value)
-    return ['http:', 'https:'].includes(url.protocol)
-  } catch {
-    return false
-  }
-}
-
-function validateMenuForm(form, categoryOptions = MENU_CATEGORIES) {
-  const errors = {}
-  const name = form.name.trim()
-  const imageUrl = form.imageUrl.trim()
-  const description = form.description.trim()
-  const price = Number(form.price)
-
-  if (!name) errors.name = 'Dish name is required'
-  else if (name.length < 2) errors.name = 'Dish name must be at least 2 characters'
-  else if (name.length > MAX_DISH_NAME_LENGTH) errors.name = `Dish name must not exceed ${MAX_DISH_NAME_LENGTH} characters`
-
-  if (!form.category) errors.category = 'Category is required'
-  else if (!categoryOptions.includes(form.category)) errors.category = 'Choose a valid category'
-
-  if (form.price === '') errors.price = 'Dish price is required'
-  else if (!Number.isFinite(price) || price <= 0) errors.price = 'Dish price must be greater than 0'
-  else if (price > MAX_PRICE) errors.price = 'Dish price is too large'
-
-  if (imageUrl.length > MAX_IMAGE_URL_LENGTH) errors.imageUrl = `Image URL must not exceed ${MAX_IMAGE_URL_LENGTH} characters`
-  else if (!isValidUrl(imageUrl)) errors.imageUrl = 'Image URL must start with http:// or https://'
-
-  if (description.length > MAX_DESCRIPTION_LENGTH) errors.description = `Description must not exceed ${MAX_DESCRIPTION_LENGTH} characters`
-
-  return errors
 }
 
 function AvailabilityBadge({ status }) {
@@ -96,7 +47,8 @@ function AvailabilityBadge({ status }) {
   )
 }
 
-function DishModal({ item, categoryOptions, onClose, onSaved }) {
+function DishModal({ item, categories, onClose, onSaved }) {
+  // Một modal dùng chung cho cả tạo mới và chỉnh sửa; item=null là chế độ tạo mới.
   const [form, setForm] = useState(() => item
     ? {
         name: item.name,
@@ -108,35 +60,46 @@ function DishModal({ item, categoryOptions, onClose, onSaved }) {
     : EMPTY_FORM
   )
   const [saving, setSaving] = useState(false)
-  const [uploadingImage, setUploadingImage] = useState(false)
   const [error, setError] = useState('')
-  const [fieldErrors, setFieldErrors] = useState({})
 
   const updateField = (event) => {
     const { name, value } = event.target
     setForm((current) => ({ ...current, [name]: value }))
-    setFieldErrors((current) => ({ ...current, [name]: '' }))
   }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
     setError('')
 
-    const nextFieldErrors = validateMenuForm(form, categoryOptions)
-    setFieldErrors(nextFieldErrors)
-    if (Object.keys(nextFieldErrors).length > 0) {
-      setError('Please fix the highlighted fields before saving')
+    const price = Number(form.price)
+    if (!form.name.trim() || !form.category) {
+      setError('Dish name and category are required')
       return
     }
-    const price = Number(form.price)
+    if (!Number.isSafeInteger(price) || price <= 0) {
+      setError('Price must be a positive integer')
+      return
+    }
+    if (!form.description.trim()) {
+      setError('Dish description is required')
+      return
+    }
+    if (wordCount(form.description) > 200) {
+      setError('Dish description must not exceed 200 words')
+      return
+    }
+    if (!form.imageUrl.trim()) {
+      setError('Dish image is required')
+      return
+    }
 
     const payload = {
       name: form.name.trim(),
       category: form.category,
       description: form.description.trim() || null,
+      // ImageUploader đã upload file trước và đưa secure URL của Cloudinary vào state.
       imageUrl: form.imageUrl.trim() || null,
       price,
-      categoryId: item?.category === form.category ? item.categoryId : null,
     }
 
     setSaving(true)
@@ -152,33 +115,13 @@ function DishModal({ item, categoryOptions, onClose, onSaved }) {
     }
   }
 
-  const handleImageUpload = async (event) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-    setError('')
-    setUploadingImage(true)
-    try {
-      const response = await uploadImage(file, 'menu')
-      setForm((current) => ({
-        ...current,
-        imageUrl: response.data.secureUrl || response.data.url,
-      }))
-      setFieldErrors((current) => ({ ...current, imageUrl: '' }))
-    } catch (uploadError) {
-      setError(getErrorMessage(uploadError, 'Unable to upload image to Cloudinary'))
-    } finally {
-      setUploadingImage(false)
-      event.target.value = ''
-    }
-  }
-
   return (
     <div className="menu-modal-backdrop" role="dialog" aria-modal="true" onClick={onClose}>
       <div className="menu-modal" onClick={(event) => event.stopPropagation()}>
         <header className="menu-modal__header">
           <div>
-            <span className="menu-modal__eyebrow">Menu item</span>
-            <h2>{item ? 'Update menu item' : 'Create menu item'}</h2>
+            <span className="menu-modal__eyebrow">Simple pricing</span>
+            <h2>{item ? 'Edit menu item' : 'Create menu item'}</h2>
           </div>
           <button type="button" className="menu-icon-button" onClick={onClose} aria-label="Close">
             <X size={20} />
@@ -191,80 +134,46 @@ function DishModal({ item, categoryOptions, onClose, onSaved }) {
           <div className="menu-form-grid">
             <label className="menu-field">
               <span>Dish name *</span>
-              <input
-                name="name"
-                value={form.name}
-                onChange={updateField}
-                maxLength={MAX_DISH_NAME_LENGTH}
-                className={fieldErrors.name ? 'is-invalid' : ''}
-                placeholder="e.g. Garlic Butter Salmon"
-              />
-              {fieldErrors.name && <small className="menu-field-error">{fieldErrors.name}</small>}
+              <input name="name" value={form.name} onChange={updateField} maxLength="100" required placeholder="e.g. Garlic Butter Salmon" />
             </label>
             <label className="menu-field">
               <span>Category *</span>
-              <select name="category" value={form.category} onChange={updateField} className={fieldErrors.category ? 'is-invalid' : ''}>
+              <select name="category" value={form.category} onChange={updateField} required>
                 <option value="">Select category</option>
-                {categoryOptions.map((category) => <option key={category}>{category}</option>)}
+                {item?.category && !categories.some((category) => category.name === item.category) && (
+                  <option value={item.category}>{item.category}</option>
+                )}
+                {categories.map((category) => <option key={category.id} value={category.name}>{category.name}</option>)}
               </select>
-              {fieldErrors.category && <small className="menu-field-error">{fieldErrors.category}</small>}
             </label>
             <label className="menu-field">
               <span>Price (VND) *</span>
               <input
                 name="price"
                 type="number"
-                min="0"
-                step="1000"
+                min="1"
+                step="1"
+                required
                 value={form.price}
                 onChange={updateField}
-                className={fieldErrors.price ? 'is-invalid' : ''}
-                placeholder="54000"
+                placeholder="e.g. 149000"
               />
-              {fieldErrors.price && <small className="menu-field-error">{fieldErrors.price}</small>}
             </label>
-            <label className="menu-field">
-              <span>Image</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                disabled={uploadingImage}
-                className={fieldErrors.imageUrl ? 'is-invalid' : ''}
-              />
-              {form.imageUrl && (
-                <div className="menu-image-upload-preview">
-                  <img src={form.imageUrl} alt="Menu item preview" />
-                  <span>{uploadingImage ? 'Uploading to Cloudinary...' : 'Cloudinary image ready'}</span>
-                </div>
-              )}
-              {!form.imageUrl && <small className="menu-field-hint">{uploadingImage ? 'Uploading to Cloudinary...' : 'Choose an image file'}</small>}
-              {fieldErrors.imageUrl && <small className="menu-field-error">{fieldErrors.imageUrl}</small>}
-            </label>
+            <div className="menu-field">
+              {/* Ảnh món ăn được gom vào thư mục golden-spoon/menu trên Cloudinary. */}
+              <ImageUploader label="Dish image *" folder="menu" value={form.imageUrl}
+                onChange={(imageUrl) => setForm((current) => ({ ...current, imageUrl }))} />
+            </div>
             <label className="menu-field menu-field--full">
-              <span>Description</span>
-              <textarea
-                name="description"
-                value={form.description}
-                onChange={updateField}
-                maxLength={MAX_DESCRIPTION_LENGTH}
-                className={fieldErrors.description ? 'is-invalid' : ''}
-                rows="3"
-              />
-              {fieldErrors.description && <small className="menu-field-error">{fieldErrors.description}</small>}
+              <span>Description * ({wordCount(form.description)}/200 words)</span>
+              <textarea name="description" value={form.description} onChange={updateField} rows="3" required />
             </label>
-          </div>
-
-          <div className="menu-price-preview">
-            <CircleDollarSign size={18} />
-            <span>Menu price</span>
-            <strong>{money(form.price)}</strong>
           </div>
 
           <footer className="menu-modal__actions">
             <button type="button" className="menu-button menu-button--secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="menu-button menu-button--primary" disabled={saving || uploadingImage}>
-              {saving ? 'Saving...' : item ? 'Update menu item' : 'Save menu item'}
+            <button type="submit" className="menu-button menu-button--primary" disabled={saving}>
+              {saving ? 'Saving...' : 'Save menu item'}
             </button>
           </footer>
         </form>
@@ -277,6 +186,7 @@ function MenuManagementScreen() {
   const role = sessionStorage.getItem('role')
   const canManage = ['ADMIN', 'MANAGER'].includes(role)
   const [menuItems, setMenuItems] = useState([])
+  const [menuCategories, setMenuCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [keyword, setKeyword] = useState('')
@@ -290,40 +200,34 @@ function MenuManagementScreen() {
     setLoading(true)
     setError('')
     try {
-      const menuResponse = await menuService.getAll()
+      const [menuResponse, categoryResponse] = await Promise.all([
+        menuService.getAll(),
+        menuService.getCategories(),
+      ])
       setMenuItems(menuResponse.data)
+      setMenuCategories(categoryResponse.data)
     } catch (loadError) {
-      setError(getErrorMessage(loadError, 'Unable to load menu management data'))
+      setError(getErrorMessage(loadError, 'Unable to load menu items'))
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
+    // Initial API synchronization for this management screen.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData()
   }, [])
 
-  const filteredItems = useMemo(() => menuItems.filter((item) => {
+  const filteredItems = menuItems.filter((item) => {
+    // Lọc tại client vì endpoint hiện trả toàn bộ menu trong một request.
     const matchesKeyword = item.name.toLowerCase().includes(keyword.trim().toLowerCase())
     const matchesCategory = !category || item.category === category
     const matchesAvailability = !availability || item.availability === availability
     return matchesKeyword && matchesCategory && matchesAvailability
-  }), [menuItems, keyword, category, availability])
+  })
 
-  const pagination = usePagination(filteredItems, PAGE_SIZE)
-
-  useEffect(() => {
-    pagination.reset()
-  }, [keyword, category, availability])
-
-  useEffect(() => {
-    if (pagination.page > 0 && pagination.page >= pagination.totalPages) {
-      pagination.setPage(Math.max(0, pagination.totalPages - 1))
-    }
-  }, [pagination.page, pagination.totalPages])
-
-  const categories = [...new Set(menuItems.map((item) => item.category))].sort()
-  const categoryOptions = [...new Set([...MENU_CATEGORIES, ...categories])].sort()
+  const filterCategories = [...new Set(menuItems.map((item) => item.category))].sort()
   const stats = {
     total: menuItems.length,
     available: menuItems.filter((item) => item.availability === 'AVAILABLE').length,
@@ -342,12 +246,8 @@ function MenuManagementScreen() {
     setModalOpen(true)
   }
 
-  const openUpdate = (item) => {
-    setEditingItem(item)
-    setModalOpen(true)
-  }
-
   const handleSaved = (savedItem) => {
+    // Cập nhật đúng card vừa lưu để không cần gọi lại API lấy toàn bộ danh sách.
     setMenuItems((current) => {
       const exists = current.some((item) => item.id === savedItem.id)
       return exists
@@ -396,7 +296,7 @@ function MenuManagementScreen() {
       <section className="menu-stats">
         <article><UtensilsCrossed /><div><strong>{stats.total}</strong><span>Total dishes</span></div></article>
         <article><CheckCircle2 /><div><strong>{stats.available}</strong><span>Available</span></div></article>
-        <article><PackageX /><div><strong>{stats.inactive}</strong><span>Inactive</span></div></article>
+        <article><AlertTriangle /><div><strong>{stats.inactive}</strong><span>Inactive</span></div></article>
       </section>
 
       <section className="menu-filters">
@@ -406,7 +306,7 @@ function MenuManagementScreen() {
         </label>
         <select value={category} onChange={(event) => setCategory(event.target.value)}>
           <option value="">All categories</option>
-          {categories.map((itemCategory) => <option key={itemCategory}>{itemCategory}</option>)}
+          {filterCategories.map((itemCategory) => <option key={itemCategory}>{itemCategory}</option>)}
         </select>
         <select value={availability} onChange={(event) => setAvailability(event.target.value)}>
           <option value="">All availability</option>
@@ -423,7 +323,7 @@ function MenuManagementScreen() {
         <div className="menu-empty"><ChefHat size={44} /><h2>No menu items found</h2><p>Create a dish or clear the current filters.</p></div>
       ) : (
         <section className="menu-grid">
-          {pagination.currentItems.map((item) => (
+          {filteredItems.map((item) => (
             <article className="menu-card" key={item.id}>
               <div className="menu-card__image">
                 {item.imageUrl
@@ -434,32 +334,33 @@ function MenuManagementScreen() {
               <div className="menu-card__body">
                 <div className="menu-card__title-row">
                   <div><span>{item.category}</span><h2>{item.name}</h2></div>
+                  {canManage && (
+                    <button
+                      type="button"
+                      className="menu-icon-button"
+                      onClick={() => { setEditingItem(item); setModalOpen(true) }}
+                      aria-label={`Edit ${item.name}`}
+                    >
+                      <Pencil size={17} />
+                    </button>
+                  )}
                 </div>
                 <p className="menu-card__description">{item.description || 'No description provided.'}</p>
 
-                <div className="menu-card__price">
-                  <span>Price</span>
-                  <strong>{money(item.price)}</strong>
+                <div className="menu-card__metrics">
+                  <div><span>Price</span><strong>{money(item.price)}</strong></div>
+                  <div><span>Status</span><strong>{item.availability?.replaceAll('_', ' ') || 'Unavailable'}</strong></div>
                 </div>
 
                 {canManage && (
-                  <div className="menu-card__actions">
-                    <button
-                      type="button"
-                      className="menu-button menu-button--secondary"
-                      onClick={() => openUpdate(item)}
-                    >
-                      <Pencil size={16} /> Update
-                    </button>
-                    <button
-                      type="button"
-                      className={`menu-button ${item.isActive ? 'menu-button--danger-soft' : 'menu-button--primary'}`}
-                      onClick={() => toggleActive(item)}
-                      disabled={togglingId === item.id}
-                    >
-                      {togglingId === item.id ? 'Updating...' : item.isActive ? 'Stop serving' : 'Activate'}
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    className={`menu-button menu-button--wide ${item.isActive ? 'menu-button--danger-soft' : 'menu-button--primary'}`}
+                    onClick={() => toggleActive(item)}
+                    disabled={togglingId === item.id}
+                  >
+                    {togglingId === item.id ? 'Updating...' : item.isActive ? 'Stop serving manually' : 'Activate dish'}
+                  </button>
                 )}
               </div>
             </article>
@@ -467,32 +368,10 @@ function MenuManagementScreen() {
         </section>
       )}
 
-      {!loading && filteredItems.length > 0 && (
-        <div className="menu-pagination-bar">
-          <span>Showing {pagination.startIdx}-{pagination.endIdx} of {pagination.totalElements}</span>
-          <div className="menu-pagination">
-            <button type="button" aria-label="First page" disabled={pagination.isFirst} onClick={() => pagination.setPage(0)}><ChevronFirst size={16} /></button>
-            <button type="button" aria-label="Previous page" disabled={pagination.isFirst} onClick={() => pagination.setPage(pagination.page - 1)}><ChevronLeft size={16} /></button>
-            {pagination.getPageNumbers().map((pageNumber) => (
-              <button
-                key={pageNumber}
-                type="button"
-                className={pageNumber === pagination.page ? 'is-active' : ''}
-                onClick={() => pagination.setPage(pageNumber)}
-              >
-                {pageNumber + 1}
-              </button>
-            ))}
-            <button type="button" aria-label="Next page" disabled={pagination.isLast} onClick={() => pagination.setPage(pagination.page + 1)}><ChevronRight size={16} /></button>
-            <button type="button" aria-label="Last page" disabled={pagination.isLast} onClick={() => pagination.setPage(Math.max(0, pagination.totalPages - 1))}><ChevronLast size={16} /></button>
-          </div>
-        </div>
-      )}
-
       {canManage && modalOpen && (
         <DishModal
           item={editingItem}
-          categoryOptions={categoryOptions}
+          categories={menuCategories}
           onClose={() => { setModalOpen(false); setEditingItem(null) }}
           onSaved={handleSaved}
         />

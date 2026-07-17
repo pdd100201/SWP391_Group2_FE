@@ -123,7 +123,7 @@ function PublicOrderScreen() {
             <div className="public-cart-total"><span>Draft total</span><strong>{money(drafts.reduce((sum, item) => sum + Number(item.lineTotal), 0))}</strong></div>
             <button type="button" className="public-submit" disabled={busy || drafts.length === 0} onClick={() => run(
               () => publicOrderApi.submit(token), 'Could not submit your dishes.')}><Send size={17} /> Submit to kitchen</button>
-            <p className="public-cart-hint">Inventory is checked again when you submit. Confirmed dishes can only be changed by restaurant staff.</p>
+            <p className="public-cart-hint">Confirmed dishes can only be changed by restaurant staff.</p>
           </aside>
         </div>
       )}

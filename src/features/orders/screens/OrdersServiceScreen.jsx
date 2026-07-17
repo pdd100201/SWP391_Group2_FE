@@ -1,9 +1,8 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Check,
   ChefHat,
   ClipboardList,
-  Copy,
   CreditCard,
   Minus,
   Plus,
@@ -15,7 +14,6 @@ import {
   Trash2,
   XCircle,
 } from 'lucide-react'
-import QRCode from 'qrcode'
 import { menuService } from '../../menu/services/menuService'
 import { getAllReservations } from '../../reservations/api/reservationApi'
 import { orderApi } from '../api/orderApi'
@@ -52,7 +50,15 @@ const statusLabels = {
   CANCELLED: 'Cancelled',
 }
 
-function OrdersServiceScreen() {
+// Đồng bộ với điều kiện Active Orders ở backend để cập nhật UI ngay sau mỗi thao tác.
+const isActiveOrder = (order) => {
+  if (order.status !== 'OPEN') return false
+  const serviceInProgress = order.serviceStatus !== 'SERVED'
+  const paymentOutstanding = Number(order.total) > 0 && order.paymentStatus !== 'PAID'
+  return serviceInProgress || paymentOutstanding
+}
+
+function OrdersServiceScreen({ activeView = false }) {
   const [orders, setOrders] = useState([])
   const [selectedId, setSelectedId] = useState(null)
   const [menu, setMenu] = useState([])
@@ -63,15 +69,13 @@ function OrdersServiceScreen() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [qrDataUrl, setQrDataUrl] = useState('')
   const [promotionCode, setPromotionCode] = useState('')
 
   const selected = orders.find((order) => order.id === selectedId) || null
   const paymentStatus = selected?.paymentStatus || 'NOT_CREATED'
   const canCreatePayment = selected?.serviceStatus === 'SERVED'
     && Number(selected?.total || 0) > 0
-    && paymentStatus !== 'PENDING'
-    && paymentStatus !== 'PAID'
+    && !['PENDING', 'PAID'].includes(paymentStatus)
   const canCloseOrder = selected?.serviceStatus === 'SERVED' && paymentStatus === 'PAID'
   const role = sessionStorage.getItem('role')
   const categories = useMemo(
@@ -79,23 +83,24 @@ function OrdersServiceScreen() {
     [menu]
   )
   const availableMenu = useMemo(() => menu.filter((item) => {
-    const allowed = item.isActive && ['AVAILABLE', 'LIMITED'].includes(item.availability) && item.costComplete
+    const allowed = item.isActive && ['AVAILABLE', 'LIMITED'].includes(item.availability)
     const matchesCategory = category === 'All' || item.category === category
     const matchesSearch = item.name.toLowerCase().includes(search.trim().toLowerCase())
     return allowed && matchesCategory && matchesSearch
   }), [menu, category, search])
   const unusedReservations = reservations.filter((reservation) =>
-    ['ARRIVED', 'CONFIRMED'].includes(reservation.status)
-      && reservation.tableId
+    reservation.status === 'ARRIVED'
+      && (reservation.tableId || reservation.tableIds?.length)
       && !reservation.orderId
   )
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
       const [ordersResponse, menuResponse, reservationsResponse] = await Promise.all([
-        orderApi.getAll(true),
+        // Order Management lấy toàn bộ lịch sử; Active Orders yêu cầu backend lọc nghiệp vụ.
+        orderApi.getAll(activeView),
         menuService.getAll(),
         getAllReservations(),
       ])
@@ -111,22 +116,13 @@ function OrdersServiceScreen() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [activeView])
 
   useEffect(() => {
     // Initial data synchronization with the API.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load()
-  }, [])
-
-  useEffect(() => {
-    if (!selected?.qrPath) {
-      return
-    }
-    QRCode.toDataURL(`${window.location.origin}${selected.qrPath}`, { width: 180, margin: 1 })
-      .then(setQrDataUrl)
-      .catch(() => setQrDataUrl(''))
-  }, [selected?.qrPath])
+  }, [load])
 
   const applyOrder = (next) => {
     setReservations((current) => current.map((reservation) => (
@@ -149,11 +145,11 @@ function OrdersServiceScreen() {
         : reservation
     )))
     setOrders((current) => {
-      if (next.status !== 'OPEN') return current.filter((order) => order.id !== next.id)
+      if (activeView && !isActiveOrder(next)) return current.filter((order) => order.id !== next.id)
       const exists = current.some((order) => order.id === next.id)
       return exists ? current.map((order) => order.id === next.id ? next : order) : [next, ...current]
     })
-    if (next.status === 'OPEN') setSelectedId(next.id)
+    if (!activeView || isActiveOrder(next)) setSelectedId(next.id)
     else setSelectedId(null)
   }
 
@@ -168,6 +164,12 @@ function OrdersServiceScreen() {
     } finally {
       setBusy(false)
     }
+  }
+
+  const createOrder = () => {
+    if (!reservationId) return
+    run(() => orderApi.create({ reservationId: Number(reservationId) }), 'Unable to create order.')
+      .then(() => setReservationId(''))
   }
 
   const applyPromotion = () => {
@@ -186,22 +188,11 @@ function OrdersServiceScreen() {
     run(() => orderApi.createPayment(selected.id), 'Unable to create SePay payment QR.')
   }
 
-  const createOrder = () => {
-    if (!reservationId) return
-    run(() => orderApi.create({ reservationId: Number(reservationId) }), 'Unable to create order.')
-      .then(() => setReservationId(''))
-  }
-
   const nextStatus = (item) => {
     if (['ADMIN', 'MANAGER'].includes(role) && item.status === 'CONFIRMED') return 'PREPARING'
     if (['ADMIN', 'MANAGER'].includes(role) && item.status === 'PREPARING') return 'READY'
     if (['ADMIN', 'MANAGER', 'WAITER'].includes(role) && item.status === 'READY') return 'SERVED'
     return null
-  }
-
-  const copyQrLink = async () => {
-    if (!selected) return
-    await navigator.clipboard.writeText(`${window.location.origin}${selected.qrPath}`)
   }
 
   if (loading) return <div className="orders-loading">Loading order workspace...</div>
@@ -211,8 +202,10 @@ function OrdersServiceScreen() {
       <header className="orders-header">
         <div>
           <span className="orders-eyebrow"><ChefHat size={15} /> Orders &amp; Service</span>
-          <h1>Dining room orders</h1>
-          <p>Create an order from an assigned reservation and follow every dish to the table.</p>
+          <h1>{activeView ? 'Active orders' : 'Order management'}</h1>
+          <p>{activeView
+            ? 'Orders still being served or waiting for payment.'
+            : 'Create orders and manage the complete order history across every status.'}</p>
         </div>
         <button type="button" className="orders-button orders-button--secondary" onClick={load} disabled={busy}>
           <RefreshCw size={17} /> Refresh
@@ -221,7 +214,7 @@ function OrdersServiceScreen() {
 
       {error && <div className="orders-alert">{error}</div>}
 
-      <div className="orders-create-bar">
+      {!activeView && <div className="orders-create-bar">
         <label className="orders-reservation-field">
           <span>Assigned reservation</span>
           <select value={reservationId} onChange={(event) => setReservationId(event.target.value)}>
@@ -239,12 +232,14 @@ function OrdersServiceScreen() {
         {unusedReservations.length === 0 && (
           <small className="orders-no-reservation">No assigned reservation is waiting for an order.</small>
         )}
-      </div>
+      </div>}
 
       <div className="orders-workspace">
         <aside className="orders-list-panel">
-          <div className="orders-panel-title"><ClipboardList size={18} /> Active orders <span>{orders.length}</span></div>
-          {orders.length === 0 ? <p className="orders-empty">No active orders.</p> : orders.map((order) => (
+          <div className="orders-panel-title">
+            <ClipboardList size={18} /> {activeView ? 'Active orders' : 'All orders'} <span>{orders.length}</span>
+          </div>
+          {orders.length === 0 ? <p className="orders-empty">{activeView ? 'No active orders.' : 'No orders found.'}</p> : orders.map((order) => (
             <button
               type="button"
               key={order.id}
@@ -255,93 +250,103 @@ function OrdersServiceScreen() {
               <span className={`orders-service-badge orders-service-badge--${order.serviceStatus.toLowerCase()}`}>
                 {order.serviceStatus.replace('_', ' ')}
               </span>
+              <span className={`orders-payment-badge orders-payment-badge--${(order.paymentStatus || 'unpaid').toLowerCase()}`}>
+                {order.paymentStatus || 'UNPAID'}
+              </span>
               <b>{money(order.total)}</b>
             </button>
           ))}
         </aside>
 
         <main className="orders-detail-panel">
-          {!selected ? <div className="orders-empty orders-empty--large">Select or create an order to begin.</div> : (
+          {!selected ? <div className="orders-empty orders-empty--large">Select an order to view its details.</div> : (
             <>
               <div className="orders-detail-head">
                 <div>
                   <h2>{selected.orderCode}</h2>
                   <p>Reservation #{selected.reservationId} - {selected.reservationGuestName} - {tableLabel(selected)} - Waiter {selected.waiterName}</p>
+                  <div className="orders-detail-statuses">
+                    <span className={`orders-order-badge orders-order-badge--${selected.status.toLowerCase()}`}>{selected.status}</span>
+                    <span className={`orders-payment-badge orders-payment-badge--${(selected.paymentStatus || 'unpaid').toLowerCase()}`}>
+                      {selected.paymentStatus || 'UNPAID'}
+                    </span>
+                  </div>
                 </div>
                 <div className="orders-detail-actions">
-                  <button type="button" className="orders-button orders-button--secondary" onClick={copyQrLink}>
-                    <Copy size={16} /> Copy QR link
-                  </button>
-                  <button type="button" className="orders-button orders-button--danger" disabled={busy} onClick={() => run(
+                  {selected.status === 'OPEN' && <button type="button" className="orders-button orders-button--danger" disabled={busy} onClick={() => run(
                     () => orderApi.cancel(selected.id), 'Unable to cancel order.')}>
                     <XCircle size={16} /> Cancel
-                  </button>
+                  </button>}
                 </div>
               </div>
 
               <div className="orders-content-grid">
                 <div>
                   <div className="orders-section-title"><h3>Order items</h3><strong>{money(selected.total)}</strong></div>
-                  <div className="orders-promotion-box">
-                    <div className="orders-promotion-form">
-                      <Tag size={17} />
-                      <input
-                        value={promotionCode}
-                        onChange={(event) => setPromotionCode(event.target.value)}
-                        placeholder="Enter promotion code"
-                      />
-                      <button
-                        type="button"
-                        className="orders-button orders-button--secondary"
-                        disabled={busy || !promotionCode.trim()}
-                        onClick={applyPromotion}
-                      >
-                        Apply
-                      </button>
-                    </div>
-                    {selected.promotionCode ? (
-                      <div className="orders-applied-promo">
-                        <span>Applied: <strong>{selected.promotionCode}</strong> {selected.promotionName ? `- ${selected.promotionName}` : ''}</span>
-                        <button type="button" disabled={busy} onClick={removePromotion}>Remove</button>
+                  {selected.status === 'OPEN' && <>
+                    <div className="orders-promotion-box">
+                      <div className="orders-promotion-form">
+                        <Tag size={17} />
+                        <input
+                          value={promotionCode}
+                          onChange={(event) => setPromotionCode(event.target.value)}
+                          placeholder="Enter promotion code"
+                        />
+                        <button
+                          type="button"
+                          className="orders-button orders-button--secondary"
+                          disabled={busy || !promotionCode.trim()}
+                          onClick={applyPromotion}
+                        >
+                          Apply
+                        </button>
                       </div>
-                    ) : null}
-                    <div className="orders-bill-summary">
-                      <span>Subtotal <strong>{money(selected.subtotal ?? selected.total)}</strong></span>
-                      <span>Discount <strong>-{money(selected.discountAmount || 0)}</strong></span>
-                      <span>Total <strong>{money(selected.total)}</strong></span>
-                    </div>
-                  </div>
-                  <section className={`orders-payment-box ${paymentStatus === 'PAID' ? 'orders-payment-box--paid' : ''}`}>
-                    <div className="orders-payment-head">
-                      <span><CreditCard size={17} /> SePay payment</span>
-                      <strong>{paymentStatus.replace('_', ' ')}</strong>
-                    </div>
-                    {selected.paymentCode ? (
-                      <div className="orders-payment-info">
-                        <span>Transfer content: <strong>{selected.paymentCode}</strong></span>
-                        <span>Amount: <strong>{money(selected.total)}</strong></span>
+                      {selected.promotionCode ? (
+                        <div className="orders-applied-promo">
+                          <span>Applied: <strong>{selected.promotionCode}</strong> {selected.promotionName ? `- ${selected.promotionName}` : ''}</span>
+                          <button type="button" disabled={busy} onClick={removePromotion}>Remove</button>
+                        </div>
+                      ) : null}
+                      <div className="orders-bill-summary">
+                        <span>Subtotal <strong>{money(selected.subtotal ?? selected.total)}</strong></span>
+                        <span>Discount <strong>-{money(selected.discountAmount || 0)}</strong></span>
+                        <span>Total <strong>{money(selected.total)}</strong></span>
                       </div>
-                    ) : (
-                      <p className="orders-payment-note">The QR can be created after every dish has been served.</p>
-                    )}
-                    {selected.paymentQrImageUrl ? (
-                      <img className="orders-sepay-qr" src={selected.paymentQrImageUrl} alt="SePay payment QR" />
-                    ) : null}
-                    {paymentStatus === 'PAID' ? (
-                      <div className="orders-payment-paid">Payment received.</div>
-                    ) : (
-                      <button
-                        type="button"
-                        className="orders-button orders-button--primary"
-                        disabled={busy || !canCreatePayment}
-                        onClick={createPayment}
-                      >
-                        <QrCode size={17} /> Create SePay QR
-                      </button>
-                    )}
-                  </section>
+                    </div>
+                    <section className={`orders-payment-box ${paymentStatus === 'PAID' ? 'orders-payment-box--paid' : ''}`}>
+                      <div className="orders-payment-head">
+                        <span><CreditCard size={17} /> SePay payment</span>
+                        <strong>{paymentStatus.replace('_', ' ')}</strong>
+                      </div>
+                      {selected.paymentCode ? (
+                        <div className="orders-payment-info">
+                          <span>Transfer content: <strong>{selected.paymentCode}</strong></span>
+                          <span>Amount: <strong>{money(selected.total)}</strong></span>
+                        </div>
+                      ) : (
+                        <p className="orders-payment-note">The QR can be created after every dish has been served.</p>
+                      )}
+                      {selected.paymentQrImageUrl ? (
+                        <img className="orders-sepay-qr" src={selected.paymentQrImageUrl} alt="SePay payment QR" />
+                      ) : null}
+                      {paymentStatus === 'PAID' ? (
+                        <div className="orders-payment-paid">Payment received.</div>
+                      ) : (
+                        <button
+                          type="button"
+                          className="orders-button orders-button--primary"
+                          disabled={busy || !canCreatePayment}
+                          onClick={createPayment}
+                        >
+                          <QrCode size={17} /> Create SePay QR
+                        </button>
+                      )}
+                    </section>
+                  </>}
                   <div className="orders-items">
-                    {selected.items.length === 0 && <p className="orders-empty">Add dishes from the menu below.</p>}
+                    {selected.items.length === 0 && <p className="orders-empty">
+                      {selected.status === 'OPEN' ? 'Add dishes from the menu below.' : 'This order has no items.'}
+                    </p>}
                     {selected.items.map((item) => {
                       const target = nextStatus(item)
                       return (
@@ -349,7 +354,7 @@ function OrdersServiceScreen() {
                           <img src={item.menuItemImageUrl || '/favicon.svg'} alt="" />
                           <div className="orders-item-main">
                             <strong>{item.menuItemName}</strong>
-                            {['DRAFT', 'CONFIRMED'].includes(item.status) ? (
+                            {selected.status === 'OPEN' && ['DRAFT', 'CONFIRMED'].includes(item.status) ? (
                               <input
                                 className="orders-item-note"
                                 defaultValue={item.note || ''}
@@ -365,24 +370,24 @@ function OrdersServiceScreen() {
                             <span className="orders-item-status">{statusLabels[item.status]}</span>
                           </div>
                           <div className="orders-quantity">
-                            <button type="button" disabled={busy || !['DRAFT', 'CONFIRMED'].includes(item.status) || item.quantity <= 1}
+                            <button type="button" disabled={busy || selected.status !== 'OPEN' || !['DRAFT', 'CONFIRMED'].includes(item.status) || item.quantity <= 1}
                               onClick={() => run(() => orderApi.updateItem(selected.id, item.id, { quantity: item.quantity - 1, note: item.note }), 'Unable to update quantity.')}>
                               <Minus size={14} />
                             </button>
                             <b>{item.quantity}</b>
-                            <button type="button" disabled={busy || !['DRAFT', 'CONFIRMED'].includes(item.status)}
+                            <button type="button" disabled={busy || selected.status !== 'OPEN' || !['DRAFT', 'CONFIRMED'].includes(item.status)}
                               onClick={() => run(() => orderApi.updateItem(selected.id, item.id, { quantity: item.quantity + 1, note: item.note }), 'Unable to update quantity.')}>
                               <Plus size={14} />
                             </button>
                           </div>
                           <strong>{money(item.lineTotal)}</strong>
-                          {target ? (
+                          {selected.status === 'OPEN' && target ? (
                             <button type="button" className="orders-next-button" disabled={busy}
                               onClick={() => run(() => orderApi.updateItemStatus(selected.id, item.id, target), 'Unable to update item status.')}>
                               {target.replace('_', ' ')}
                             </button>
                           ) : (
-                            <button type="button" className="orders-trash-button" disabled={busy || !['DRAFT', 'CONFIRMED'].includes(item.status)}
+                            <button type="button" className="orders-trash-button" disabled={busy || selected.status !== 'OPEN' || !['DRAFT', 'CONFIRMED'].includes(item.status)}
                               onClick={() => run(() => orderApi.removeItem(selected.id, item.id), 'Unable to remove item.')}>
                               <Trash2 size={16} />
                             </button>
@@ -392,7 +397,7 @@ function OrdersServiceScreen() {
                     })}
                   </div>
 
-                  <div className="orders-primary-actions">
+                  {selected.status === 'OPEN' && <div className="orders-primary-actions">
                     <button type="button" className="orders-button orders-button--primary" disabled={busy || !selected.items.some((item) => item.status === 'DRAFT')}
                       onClick={() => run(() => orderApi.submit(selected.id), 'Unable to submit order.')}>
                       <Send size={17} /> Submit draft items
@@ -401,8 +406,9 @@ function OrdersServiceScreen() {
                       onClick={() => run(() => orderApi.close(selected.id), 'Unable to close order.')}>
                       <Check size={17} /> Close order
                     </button>
-                  </div>
+                  </div>}
 
+                  {selected.status === 'OPEN' && <>
                   <div className="orders-menu-toolbar">
                     <div className="orders-search"><Search size={16} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search dishes" /></div>
                     <div className="orders-categories">{categories.map((name) => (
@@ -413,20 +419,16 @@ function OrdersServiceScreen() {
                     {availableMenu.map((item) => (
                       <article key={item.id}>
                         <img src={item.imageUrl || '/favicon.svg'} alt="" />
-                        <div><small>{item.category}</small><strong>{item.name}</strong><span>{money(item.suggestedPrice)}</span></div>
+                        <div><small>{item.category}</small><strong>{item.name}</strong><span>{money(item.price)}</span></div>
                         <button type="button" disabled={busy} onClick={() => run(
                           () => orderApi.addItem(selected.id, { menuItemId: item.id, quantity: 1, note: null }),
                           'Unable to add dish.')}><Plus size={16} /> Add</button>
                       </article>
                     ))}
                   </div>
+                  </>}
                 </div>
 
-                <aside className="orders-qr-card">
-                  <span><QrCode size={17} /> Guest ordering QR</span>
-                  {qrDataUrl && <img src={qrDataUrl} alt="Guest order QR code" />}
-                  <p>Guests can scan this code to add and submit more dishes while the order is open.</p>
-                </aside>
               </div>
             </>
           )}

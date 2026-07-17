@@ -30,7 +30,6 @@ export default function QrMenuScreen() {
   const [cart, setCart] = useState(loadCart)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [stockAlert, setStockAlert] = useState({ itemId: null, msg: '' })
   const [activeCategory, setActiveCategory] = useState('')
 
   const stickyTopRef = useRef(null)   // wrapper chứa header + nav
@@ -114,17 +113,8 @@ export default function QrMenuScreen() {
 
   // ── Giỏ hàng ─────────────────────────────────────────────────────
   function addToCart(item) {
-    if (item.canServe <= 0) return
-
     setCart((prev) => {
       const existing = prev.find((c) => c.itemId === item.itemId)
-      const currentQty = existing ? existing.quantity : 0
-
-      if (currentQty >= item.canServe) {
-        setStockAlert({ itemId: item.itemId, msg: `Chỉ còn ${item.canServe} phần trong bếp` })
-        setTimeout(() => setStockAlert({ itemId: null, msg: '' }), 2500)
-        return prev
-      }
 
       let next
       if (existing) {
@@ -216,8 +206,6 @@ export default function QrMenuScreen() {
 
             {category.items.map((item) => {
               const inCart = cart.find((c) => c.itemId === item.itemId)
-              const soldOut = item.canServe <= 0
-              const showAlert = stockAlert.itemId === item.itemId
               return (
                 <div key={item.itemId} className="qr-menu__item">
                   {item.imageUrl ? (
@@ -235,20 +223,13 @@ export default function QrMenuScreen() {
                       <div className="qr-menu__item-desc">{item.description}</div>
                     )}
                     <div className="qr-menu__item-price">{formatPrice(item.price)}</div>
-                    {showAlert && (
-                      <div className="qr-menu__stock-alert">{stockAlert.msg}</div>
-                    )}
                   </div>
-                  {soldOut ? (
-                    <span className="qr-menu__sold-out">Hết món</span>
-                  ) : (
-                    <button
-                      className={`qr-menu__add-btn${inCart ? ' qr-menu__add-btn--added' : ''}`}
-                      onClick={() => addToCart(item)}
-                    >
-                      {inCart ? `+${inCart.quantity}` : '+ Thêm'}
-                    </button>
-                  )}
+                  <button
+                    className={`qr-menu__add-btn${inCart ? ' qr-menu__add-btn--added' : ''}`}
+                    onClick={() => addToCart(item)}
+                  >
+                    {inCart ? `+${inCart.quantity}` : '+ Thêm'}
+                  </button>
                 </div>
               )
             })}
