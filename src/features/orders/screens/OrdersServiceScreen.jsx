@@ -4,6 +4,7 @@ import {
   ChefHat,
   ClipboardList,
   Copy,
+  CreditCard,
   Minus,
   Plus,
   QrCode,
@@ -66,6 +67,12 @@ function OrdersServiceScreen() {
   const [promotionCode, setPromotionCode] = useState('')
 
   const selected = orders.find((order) => order.id === selectedId) || null
+  const paymentStatus = selected?.paymentStatus || 'NOT_CREATED'
+  const canCreatePayment = selected?.serviceStatus === 'SERVED'
+    && Number(selected?.total || 0) > 0
+    && paymentStatus !== 'PENDING'
+    && paymentStatus !== 'PAID'
+  const canCloseOrder = selected?.serviceStatus === 'SERVED' && paymentStatus === 'PAID'
   const role = sessionStorage.getItem('role')
   const categories = useMemo(
     () => ['All', ...new Set(menu.map((item) => item.category).filter(Boolean))],
@@ -172,6 +179,11 @@ function OrdersServiceScreen() {
   const removePromotion = () => {
     if (!selected) return
     run(() => orderApi.removePromotion(selected.id), 'Unable to remove promotion.')
+  }
+
+  const createPayment = () => {
+    if (!selected) return
+    run(() => orderApi.createPayment(selected.id), 'Unable to create SePay payment QR.')
   }
 
   const createOrder = () => {
@@ -299,6 +311,35 @@ function OrdersServiceScreen() {
                       <span>Total <strong>{money(selected.total)}</strong></span>
                     </div>
                   </div>
+                  <section className={`orders-payment-box ${paymentStatus === 'PAID' ? 'orders-payment-box--paid' : ''}`}>
+                    <div className="orders-payment-head">
+                      <span><CreditCard size={17} /> SePay payment</span>
+                      <strong>{paymentStatus.replace('_', ' ')}</strong>
+                    </div>
+                    {selected.paymentCode ? (
+                      <div className="orders-payment-info">
+                        <span>Transfer content: <strong>{selected.paymentCode}</strong></span>
+                        <span>Amount: <strong>{money(selected.total)}</strong></span>
+                      </div>
+                    ) : (
+                      <p className="orders-payment-note">The QR can be created after every dish has been served.</p>
+                    )}
+                    {selected.paymentQrImageUrl ? (
+                      <img className="orders-sepay-qr" src={selected.paymentQrImageUrl} alt="SePay payment QR" />
+                    ) : null}
+                    {paymentStatus === 'PAID' ? (
+                      <div className="orders-payment-paid">Payment received.</div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="orders-button orders-button--primary"
+                        disabled={busy || !canCreatePayment}
+                        onClick={createPayment}
+                      >
+                        <QrCode size={17} /> Create SePay QR
+                      </button>
+                    )}
+                  </section>
                   <div className="orders-items">
                     {selected.items.length === 0 && <p className="orders-empty">Add dishes from the menu below.</p>}
                     {selected.items.map((item) => {
@@ -356,7 +397,7 @@ function OrdersServiceScreen() {
                       onClick={() => run(() => orderApi.submit(selected.id), 'Unable to submit order.')}>
                       <Send size={17} /> Submit draft items
                     </button>
-                    <button type="button" className="orders-button orders-button--success" disabled={busy || selected.serviceStatus !== 'SERVED'}
+                    <button type="button" className="orders-button orders-button--success" disabled={busy || !canCloseOrder}
                       onClick={() => run(() => orderApi.close(selected.id), 'Unable to close order.')}>
                       <Check size={17} /> Close order
                     </button>

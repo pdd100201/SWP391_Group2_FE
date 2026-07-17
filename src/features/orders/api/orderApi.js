@@ -15,15 +15,11 @@ export const orderApi = {
   submit: (orderId) => axiosClient.post(`/orders/${orderId}/submit`),
   updateItemStatus: (orderId, itemId, status) =>
     axiosClient.patch(`/orders/${orderId}/items/${itemId}/status`, { status }),
+  applyPromotion: (orderId, code) => axiosClient.patch(`/orders/${orderId}/promotion`, { code }),
+  removePromotion: (orderId) => axiosClient.delete(`/orders/${orderId}/promotion`),
+  createPayment: (orderId) => axiosClient.post(`/orders/${orderId}/payment`),
   close: (orderId) => axiosClient.patch(`/orders/${orderId}/close`),
   cancel: (orderId) => axiosClient.patch(`/orders/${orderId}/cancel`),
-  // Payment/invoice calls are colocated because they operate on the selected order.
-  getInvoice: (orderId) => axiosClient.get(`/payments/orders/${orderId}/invoice`),
-  issueInvoice: (orderId) => axiosClient.post(`/payments/orders/${orderId}/invoice`),
-  getInvoiceById: (invoiceId) => axiosClient.get(`/payments/invoices/${invoiceId}`),
-  applyPromotion: (invoiceId, code) => axiosClient.post(`/payments/invoices/${invoiceId}/promotion`, { code }),
-  removePromotion: (invoiceId) => axiosClient.delete(`/payments/invoices/${invoiceId}/promotion`),
-  payInvoice: (invoiceId, payload) => axiosClient.post(`/payments/invoices/${invoiceId}/pay`, payload),
 }
 
 export const publicOrderApi = {
