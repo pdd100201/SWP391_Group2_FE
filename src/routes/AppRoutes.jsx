@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import HomeScreen from '../features/home/screens/HomeScreen'
 import QrMenuScreen from '../features/qr/screens/QrMenuScreen'
@@ -20,12 +21,13 @@ import DashboardReservationsScreen from '../features/reservations/screens/Dashbo
 import OrdersServiceScreen from '../features/orders/screens/OrdersServiceScreen'
 import OrderPaymentScreen from '../features/payment/screens/OrderPaymentScreen'
 import PublicOrderScreen from '../features/orders/screens/PublicOrderScreen'
-import TableManagementScreen from '../features/tables/screens/TableManagementScreen'
+const TableManagementScreen = lazy(() => import('../features/tables/screens/TableManagementScreen'))
 import CheckInScreen from '../features/checkin/screens/CheckInScreen'
 import MainLayout from '../shared/components/layout/MainLayout/MainLayout'
 import RequireAuth from '../shared/components/ui/RequireAuth'
 import RedirectByRole from '../shared/components/ui/RedirectByRole'
 import PromotionsScreen from '../features/promotions/screens/PromotionsScreen'
+import RevenueScreen from '../features/revenue/screens/RevenueScreen'
 
 function DashboardPage() {
   return <div className="dashboard-placeholder">Dashboard content goes here</div>
@@ -94,10 +96,26 @@ function AppRoutes() {
       >
         <Route index element={<DashboardPage />} />
         <Route path="check-in" element={<CheckInScreen />} />
-        <Route path="tables" element={<TableManagementScreen />} />
+        <Route
+          path="tables"
+          element={(
+            <Suspense fallback={<div className="dashboard-placeholder">Loading tables...</div>}>
+              <TableManagementScreen />
+            </Suspense>
+          )}
+        />
         <Route path="reservations" element={<DashboardReservationsScreen />} />
         <Route path="orders-service" element={<OrdersServiceScreen />} />
+        <Route path="orders-service/active" element={<OrdersServiceScreen activeView={true} />} />
         <Route path="orders-service/:orderId/payment" element={<OrderPaymentScreen />} />
+        <Route
+          path="revenue"
+          element={(
+            <RequireAuth allowedRoles={['ADMIN', 'MANAGER']}>
+              <RevenueScreen />
+            </RequireAuth>
+          )}
+        />
         <Route
           path="menu-management"
           element={(
