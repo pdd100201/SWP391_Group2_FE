@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   Check,
   ChefHat,
@@ -21,6 +20,7 @@ import {
 } from 'lucide-react'
 import { menuService } from '../../menu/services/menuService'
 import { getAllReservations } from '../../reservations/api/reservationApi'
+import { usePagination } from '../../../shared/hooks/usePagination'
 import { orderApi } from '../api/orderApi'
 import './OrdersServiceScreen.css'
 
@@ -107,7 +107,6 @@ function OrdersServiceScreen() {
   const pagination = usePagination(filteredOrders, ORDERS_PER_PAGE)
   const selected = filteredOrders.find((order) => order.id === selectedId) || null
   const activeOrderCount = useMemo(() => orders.filter(isActiveOrder).length, [orders])
-  const selected = orders.find((order) => order.id === selectedId) || null
   const paymentStatus = selected?.paymentStatus || 'NOT_CREATED'
   const canCreatePayment = selected?.serviceStatus === 'SERVED'
     && Number(selected?.total || 0) > 0
@@ -136,11 +135,11 @@ function OrdersServiceScreen() {
     try {
       const [ordersResponse, menuResponse, reservationsResponse] = await Promise.all([
         // Order Management lấy toàn bộ lịch sử; Active Orders yêu cầu backend lọc nghiệp vụ.
-        orderApi.getAll(activeView),
+        orderApi.getAll(false),
         menuService.getAll(),
         getAllReservations(),
       ])
-      const nextOrders = ordersResponse.data || []
+      const nextOrders = [...(ordersResponse.data || [])].sort(newestFirst)
       setOrders(nextOrders)
       setMenu(menuResponse.data || [])
       setReservations(reservationsResponse.data || [])
@@ -183,7 +182,6 @@ function OrdersServiceScreen() {
         : reservation
     )))
     setOrders((current) => {
-      if (activeView && !isActiveOrder(next)) return current.filter((order) => order.id !== next.id)
       const exists = current.some((order) => order.id === next.id)
       return exists ? current.map((order) => order.id === next.id ? next : order) : [next, ...current]
     })
