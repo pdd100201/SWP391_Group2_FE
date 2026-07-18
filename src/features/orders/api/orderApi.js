@@ -4,7 +4,7 @@ import axiosClient from '../../../shared/services/axiosClient'
 const PUBLIC_API = 'http://localhost:8080/api/order-access'
 
 export const orderApi = {
-  getAll: (active = true) => axiosClient.get('/orders', { params: { active } }),
+  getAll: (active = false) => axiosClient.get('/orders', { params: { active } }),
   getById: (orderId) => axiosClient.get(`/orders/${orderId}`),
   getByReservation: (reservationId) => axiosClient.get(`/orders/by-reservation/${reservationId}`),
   create: (payload) => axiosClient.post('/orders', payload),
