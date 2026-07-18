@@ -25,6 +25,7 @@ import MainLayout from '../shared/components/layout/MainLayout/MainLayout'
 import RequireAuth from '../shared/components/ui/RequireAuth'
 import RedirectByRole from '../shared/components/ui/RedirectByRole'
 import PromotionsScreen from '../features/promotions/screens/PromotionsScreen'
+import DashboardScreen from '../features/dashboard/screens/DashboardScreen'
 
 const TableManagementScreen = lazy(() => import('../features/tables/screens/TableManagementScreen'))
 
@@ -132,7 +133,14 @@ function AppRoutes() {
                   </RequireAuth>
               )}
           />
-        <Route path="reports" element={<DashboardPage />} />
+        <Route
+          path="reports"
+          element={(
+            <RequireAuth allowedRoles={['ADMIN', 'MANAGER']}>
+              <DashboardScreen />
+            </RequireAuth>
+          )}
+        />
         <Route path="account-management" element={<DashboardPage />} />
         <Route path="accounts/staff" element={<StaffAccountPage />} />
         <Route path="accounts/customer" element={<CustomerAccountPage />} />

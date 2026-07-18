@@ -31,7 +31,7 @@ export const dashboardNavItems = [
   },
   { label: 'Menu Management', to: '/dashboard/menu-management', icon: UtensilsCrossed },
   { label: 'Promotions', to: '/dashboard/promotions', icon: BadgePercent },
-  { label: 'Reports', to: '/dashboard/reports', icon: BarChart3 },
+  { label: 'Reports', to: '/dashboard/reports', icon: BarChart3, roles: ['ADMIN', 'MANAGER'] },
   {
     label: 'Account Management',
     icon: Users,
