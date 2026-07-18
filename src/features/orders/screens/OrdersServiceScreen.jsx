@@ -11,16 +11,17 @@ import {
   CreditCard,
   Minus,
   Plus,
+  QrCode,
   RefreshCw,
   Search,
   Send,
+  Tag,
   Trash2,
   XCircle,
 } from 'lucide-react'
 import { menuService } from '../../menu/services/menuService'
 import { getAllReservations } from '../../reservations/api/reservationApi'
 import { orderApi } from '../api/orderApi'
-import { usePagination } from '../../../shared/hooks/usePagination'
 import './OrdersServiceScreen.css'
 
 const money = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} ₫`
@@ -96,7 +97,7 @@ function OrdersServiceScreen() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const navigate = useNavigate()
+  const [promotionCode, setPromotionCode] = useState('')
 
   const sortedOrders = useMemo(() => [...orders].sort(newestFirst), [orders])
   const filteredOrders = useMemo(
@@ -106,6 +107,12 @@ function OrdersServiceScreen() {
   const pagination = usePagination(filteredOrders, ORDERS_PER_PAGE)
   const selected = filteredOrders.find((order) => order.id === selectedId) || null
   const activeOrderCount = useMemo(() => orders.filter(isActiveOrder).length, [orders])
+  const selected = orders.find((order) => order.id === selectedId) || null
+  const paymentStatus = selected?.paymentStatus || 'NOT_CREATED'
+  const canCreatePayment = selected?.serviceStatus === 'SERVED'
+    && Number(selected?.total || 0) > 0
+    && !['PENDING', 'PAID'].includes(paymentStatus)
+  const canCloseOrder = selected?.serviceStatus === 'SERVED' && paymentStatus === 'PAID'
   const role = sessionStorage.getItem('role')
   const categories = useMemo(
     () => ['All', ...new Set(menu.map((item) => item.category).filter(Boolean))],
@@ -128,12 +135,12 @@ function OrdersServiceScreen() {
     setError('')
     try {
       const [ordersResponse, menuResponse, reservationsResponse] = await Promise.all([
-        // The unified workspace loads full history, then applies status filters and pagination locally.
-        orderApi.getAll(false),
+        // Order Management lấy toàn bộ lịch sử; Active Orders yêu cầu backend lọc nghiệp vụ.
+        orderApi.getAll(activeView),
         menuService.getAll(),
         getAllReservations(),
       ])
-      const nextOrders = [...(ordersResponse.data || [])].sort(newestFirst)
+      const nextOrders = ordersResponse.data || []
       setOrders(nextOrders)
       setMenu(menuResponse.data || [])
       setReservations(reservationsResponse.data || [])
@@ -176,6 +183,7 @@ function OrdersServiceScreen() {
         : reservation
     )))
     setOrders((current) => {
+      if (activeView && !isActiveOrder(next)) return current.filter((order) => order.id !== next.id)
       const exists = current.some((order) => order.id === next.id)
       return exists ? current.map((order) => order.id === next.id ? next : order) : [next, ...current]
     })
@@ -212,6 +220,22 @@ function OrdersServiceScreen() {
     if (!reservationId) return
     run(() => orderApi.create({ reservationId: Number(reservationId) }), 'Unable to create order.')
       .then(() => setReservationId(''))
+  }
+
+  const applyPromotion = () => {
+    if (!selected || !promotionCode.trim()) return
+    run(() => orderApi.applyPromotion(selected.id, promotionCode.trim()), 'Unable to apply promotion.')
+      .then(() => setPromotionCode(''))
+  }
+
+  const removePromotion = () => {
+    if (!selected) return
+    run(() => orderApi.removePromotion(selected.id), 'Unable to remove promotion.')
+  }
+
+  const createPayment = () => {
+    if (!selected) return
+    run(() => orderApi.createPayment(selected.id), 'Unable to create SePay payment QR.')
   }
 
   const nextStatus = (item) => {
@@ -328,13 +352,6 @@ function OrdersServiceScreen() {
                   </div>
                 </div>
                 <div className="orders-detail-actions">
-                  {selected.status === 'OPEN' && selected.paymentStatus !== 'PAID' && <button
-                    type="button"
-                    className="orders-button orders-button--primary"
-                    onClick={() => navigate(`/dashboard/orders-service/${selected.id}/payment`)}
-                  >
-                    <CreditCard size={16} /> Payment
-                  </button>}
                   {selected.status === 'OPEN' && <button type="button" className="orders-button orders-button--danger" disabled={busy} onClick={() => run(
                     () => orderApi.cancel(selected.id), 'Unable to cancel order.')}>
                     <XCircle size={16} /> Cancel
@@ -345,6 +362,66 @@ function OrdersServiceScreen() {
               <div className="orders-content-grid">
                 <div>
                   <div className="orders-section-title"><h3>Order items</h3><strong>{money(selected.total)}</strong></div>
+                  {selected.status === 'OPEN' && <>
+                    <div className="orders-promotion-box">
+                      <div className="orders-promotion-form">
+                        <Tag size={17} />
+                        <input
+                          value={promotionCode}
+                          onChange={(event) => setPromotionCode(event.target.value)}
+                          placeholder="Enter promotion code"
+                        />
+                        <button
+                          type="button"
+                          className="orders-button orders-button--secondary"
+                          disabled={busy || !promotionCode.trim()}
+                          onClick={applyPromotion}
+                        >
+                          Apply
+                        </button>
+                      </div>
+                      {selected.promotionCode ? (
+                        <div className="orders-applied-promo">
+                          <span>Applied: <strong>{selected.promotionCode}</strong> {selected.promotionName ? `- ${selected.promotionName}` : ''}</span>
+                          <button type="button" disabled={busy} onClick={removePromotion}>Remove</button>
+                        </div>
+                      ) : null}
+                      <div className="orders-bill-summary">
+                        <span>Subtotal <strong>{money(selected.subtotal ?? selected.total)}</strong></span>
+                        <span>Discount <strong>-{money(selected.discountAmount || 0)}</strong></span>
+                        <span>Total <strong>{money(selected.total)}</strong></span>
+                      </div>
+                    </div>
+                    <section className={`orders-payment-box ${paymentStatus === 'PAID' ? 'orders-payment-box--paid' : ''}`}>
+                      <div className="orders-payment-head">
+                        <span><CreditCard size={17} /> SePay payment</span>
+                        <strong>{paymentStatus.replace('_', ' ')}</strong>
+                      </div>
+                      {selected.paymentCode ? (
+                        <div className="orders-payment-info">
+                          <span>Transfer content: <strong>{selected.paymentCode}</strong></span>
+                          <span>Amount: <strong>{money(selected.total)}</strong></span>
+                        </div>
+                      ) : (
+                        <p className="orders-payment-note">The QR can be created after every dish has been served.</p>
+                      )}
+                      {selected.paymentQrImageUrl ? (
+                        <img className="orders-sepay-qr" src={selected.paymentQrImageUrl} alt="SePay payment QR" />
+                      ) : null}
+                      {paymentStatus === 'PAID' ? (
+                        <div className="orders-payment-paid">Payment received.</div>
+                      ) : (
+                        <button
+                          type="button"
+                          className="orders-button orders-button--primary"
+                          disabled={busy || !canCreatePayment}
+                          onClick={createPayment}
+                        >
+                          <QrCode size={17} /> Create SePay QR
+                        </button>
+                      )}
+                    </section>
+                  </>}
                   <div className="orders-items">
                     {selected.items.length === 0 && <p className="orders-empty">
                       {selected.status === 'OPEN' ? 'Add dishes from the menu below.' : 'This order has no items.'}
@@ -404,7 +481,7 @@ function OrdersServiceScreen() {
                       onClick={() => run(() => orderApi.submit(selected.id), 'Unable to submit order.')}>
                       <Send size={17} /> Submit draft items
                     </button>
-                    <button type="button" className="orders-button orders-button--success" disabled={busy || selected.serviceStatus !== 'SERVED' || selected.paymentStatus !== 'PAID'}
+                    <button type="button" className="orders-button orders-button--success" disabled={busy || !canCloseOrder}
                       onClick={() => run(() => orderApi.close(selected.id), 'Unable to close order.')}>
                       <Check size={17} /> Close order
                     </button>
