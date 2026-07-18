@@ -1,3 +1,4 @@
+/* Layout and visual system for the public guest order page. */
 .public-order-screen { min-height: 100vh; padding: 30px clamp(16px, 4vw, 60px); color: #14211d; background: #f8faf9; }
 .public-order-header { max-width: 720px; margin: 0 auto 28px; text-align: center; }
 .public-order-header > span { display: inline-flex; align-items: center; gap: 7px; color: #075c46; font-weight: 850; text-transform: uppercase; letter-spacing: .08em; }

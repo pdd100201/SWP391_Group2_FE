@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { Minus, Plus, Send, ShoppingBag, Trash2, UtensilsCrossed } from 'lucide-react'
 import { useParams } from 'react-router-dom'
 import { publicOrderApi } from '../api/orderApi'
 import './PublicOrderScreen.css'
 
 const money = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} VND`
+// Trang gọi món công khai hiển thị tên bàn từ dữ liệu order lấy bằng token.
 const tableLabel = (order) => {
   const tableNames = Array.isArray(order?.tableNames) ? order.tableNames.filter(Boolean) : []
   const tableNumbers = Array.isArray(order?.tableNumbers) ? order.tableNumbers.filter(Boolean) : []
@@ -15,6 +16,7 @@ const tableLabel = (order) => {
 }
 
 function PublicOrderScreen() {
+  // Trang gọi món dành cho khách, mở từ /order-access/:token.
   const { token } = useParams()
   const [order, setOrder] = useState(null)
   const [menu, setMenu] = useState([])
@@ -27,6 +29,7 @@ function PublicOrderScreen() {
   const drafts = order?.items.filter((item) => item.status === 'DRAFT') || []
 
   useEffect(() => {
+    // Tải cả order hiện tại và menu công khai trước khi hiển thị trang cho khách.
     const load = async () => {
       try {
         const orderResponse = await publicOrderApi.getOrder(token)
@@ -45,6 +48,7 @@ function PublicOrderScreen() {
   }, [token])
 
   const run = async (action, fallback) => {
+    // Thực hiện thao tác order công khai rồi thay order trên màn hình bằng dữ liệu máy chủ trả về.
     setBusy(true)
     setError('')
     try {
@@ -128,3 +132,4 @@ function PublicOrderScreen() {
 }
 
 export default PublicOrderScreen
+
