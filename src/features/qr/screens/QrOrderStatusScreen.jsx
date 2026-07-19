@@ -108,7 +108,7 @@ export default function QrOrderStatusScreen() {
             <div className="qr-status__items-card">
               {Object.values(
                 order.items.reduce((acc, item) => {
-                  const key = `${item.itemName}-${item.itemStatus}`
+                  const key = `${item.itemName}-${item.itemStatus}-${item.note || ''}`
                   if (acc[key]) {
                     acc[key].quantity += item.quantity
                     acc[key].subtotal += item.subtotal
@@ -118,7 +118,7 @@ export default function QrOrderStatusScreen() {
                   return acc
                 }, {})
               ).map((item) => (
-                <div key={`${item.itemName}-${item.itemStatus}`} className="qr-status__order-item">
+                <div key={`${item.itemName}-${item.itemStatus}-${item.note || ''}`} className="qr-status__order-item">
                   <div className="qr-status__order-item-left">
                     <span className="qr-status__order-item-name">
                       {item.itemName || `Item #${item.itemId}`}

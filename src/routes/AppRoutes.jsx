@@ -5,7 +5,6 @@ import QrMenuScreen from '../features/qr/screens/QrMenuScreen'
 import QrCartScreen from '../features/qr/screens/QrCartScreen'
 import QrOrderStatusScreen from '../features/qr/screens/QrOrderStatusScreen'
 import QrOrderRedirect from '../features/qr/screens/QrOrderRedirect'
-import QrOrdersScreen from '../features/qr/screens/QrOrdersScreen'
 import AuthScreen from '../features/auth/screens/AuthScreen'
 import ForgotPasswordScreen from '../features/auth/screens/ForgotPasswordScreen'
 import VerifyOtpScreen from '../features/auth/screens/VerifyOtpScreen'
@@ -19,7 +18,6 @@ import CreateReservationScreen from '../features/reservations/screens/CreateRese
 import ReservationHistoryScreen from '../features/reservations/screens/ReservationHistoryScreen'
 import DashboardReservationsScreen from '../features/reservations/screens/DashboardReservationsScreen'
 import OrdersServiceScreen from '../features/orders/screens/OrdersServiceScreen'
-import OrderPaymentScreen from '../features/payment/screens/OrderPaymentScreen'
 import PublicOrderScreen from '../features/orders/screens/PublicOrderScreen'
 const TableManagementScreen = lazy(() => import('../features/tables/screens/TableManagementScreen'))
 import CheckInScreen from '../features/checkin/screens/CheckInScreen'
@@ -107,7 +105,6 @@ function AppRoutes() {
         <Route path="reservations" element={<DashboardReservationsScreen />} />
         <Route path="orders-service" element={<OrdersServiceScreen />} />
         <Route path="orders-service/active" element={<OrdersServiceScreen activeView />} />
-        <Route path="orders-service/:orderId/payment" element={<OrderPaymentScreen />} />
         <Route
           path="revenue"
           element={(
@@ -137,7 +134,6 @@ function AppRoutes() {
         <Route path="accounts/staff" element={<StaffAccountPage />} />
         <Route path="accounts/customer" element={<CustomerAccountPage />} />
         <Route path="profile" element={<DashboardProfileScreen />} />
-        <Route path="qr-orders" element={<QrOrdersScreen />} />
       </Route>
       <Route path="/order" element={<QrOrderRedirect />} />
       <Route path="/qr/table/:tableId" element={<QrMenuScreen />} />
