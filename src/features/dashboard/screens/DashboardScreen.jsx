@@ -93,35 +93,89 @@ function DashboardScreen({ isDashboardOnly = false }) {
     setTooltip((prev) => ({ ...prev, show: false }))
   }
 
-  // ── Hàm xuất báo cáo sang file CSV ──
-  // Giải thích: Trích xuất dữ liệu biểu đồ hiện tại để tạo file CSV tải xuống.
-  // Đầu vào: Không có. Đầu ra: Tải xuống tệp CSV.
-  const handleExportCSV = () => {
+  // ── Hàm xuất báo cáo sang file Excel có kiểu dáng (Styled Excel) ──
+  // Giải thích: Trích xuất dữ liệu biểu đồ hiện tại và xuất thành file Excel được thiết lập sẵn style, màu sắc cột và định dạng số.
+  // Đầu vào: Không có. Đầu ra: Tải xuống tệp Excel (.xls).
+  const handleExportExcel = () => {
     if (!chartData || chartData.length === 0) return
 
-    // Cấu hình tiêu đề cột
-    const headers = ['Time Period', 'Revenue (VND)', 'Transactions']
-    
-    // Định dạng dữ liệu từng dòng
-    const rows = chartData.map((item) => [
-      item.timeLabel,
-      Math.round(item.revenue || 0),
-      item.transactionCount
-    ])
-    
-    // Gộp dữ liệu theo định dạng CSV chuẩn, thêm dòng sep=, ở đầu để Excel nhận diện đúng phân tách cột
-    const csvContent = [
-      'sep=,',
-      headers.join(','),
-      ...rows.map((row) => row.join(','))
-    ].join('\n')
+    // Tạo các dòng dữ liệu dạng HTML tr
+    const rowsHtml = chartData.map((item) => `
+      <tr>
+        <td style="border: 1px solid #DDE5E3; text-align: left; font-family: Segoe UI, sans-serif; font-size: 10pt; height: 25px; padding: 4px 8px;">${item.timeLabel}</td>
+        <td style="border: 1px solid #DDE5E3; text-align: right; font-family: Segoe UI, sans-serif; font-size: 10pt; height: 25px; padding: 4px 8px; mso-number-format: '\\#,\\#\\#0';">${Math.round(item.revenue || 0)}</td>
+        <td style="border: 1px solid #DDE5E3; text-align: right; font-family: Segoe UI, sans-serif; font-size: 10pt; height: 25px; padding: 4px 8px; mso-number-format: '\\#,\\#\\#0';">${item.transactionCount}</td>
+      </tr>
+    `).join('')
 
-    // Thêm mã BOM UTF-8 để Microsoft Excel nhận diện kí tự chuẩn xác
-    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' })
+    // Tính toán tổng số lượng và tổng doanh thu kỳ lọc
+    const totalRev = chartData.reduce((acc, curr) => acc + (Number(curr.revenue) || 0), 0)
+    const totalTx = chartData.reduce((acc, curr) => acc + (Number(curr.transactionCount) || 0), 0)
+
+    const excelHtml = `
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+      <head>
+        <meta charset="utf-8">
+        <!--[if gte mso 9]>
+        <xml>
+          <x:ExcelWorkbook>
+            <x:ExcelWorksheets>
+              <x:ExcelWorksheet>
+                <x:Name>Revenue Report</x:Name>
+                <x:WorksheetOptions>
+                  <x:DisplayGridlines/>
+                </x:WorksheetOptions>
+              </x:ExcelWorksheet>
+            </x:ExcelWorksheets>
+          </x:ExcelWorkbook>
+        </xml>
+        <![endif]-->
+      </head>
+      <body style="font-family: Segoe UI, sans-serif; margin: 20px;">
+        <table cellspacing="0" cellpadding="0" style="border-collapse: collapse; width: 100%;">
+          <!-- Header Báo cáo thương hiệu -->
+          <tr>
+            <td colspan="3" style="font-size: 16pt; font-weight: bold; color: #0F5C49; font-family: Segoe UI, sans-serif; height: 40px; text-align: left; vertical-align: middle;">GOLDEN SPOON RESTAURANT</td>
+          </tr>
+          <tr>
+            <td colspan="3" style="font-size: 13pt; font-weight: 600; color: #1F2937; font-family: Segoe UI, sans-serif; height: 30px; text-align: left; vertical-align: middle;">CASH FLOW REVENUE REPORT</td>
+          </tr>
+          <tr>
+            <td colspan="3" style="font-size: 9.5pt; color: #64748B; font-family: Segoe UI, sans-serif; height: 24px; text-align: left; vertical-align: middle; padding-bottom: 15px;">
+              Filter Period: ${startDate} to ${endDate} | Grouped by: ${groupBy.toLowerCase()}
+            </td>
+          </tr>
+          <tr>
+            <td colspan="3" style="height: 10px;"></td>
+          </tr>
+          
+          <!-- Tiêu đề cột được tô màu xanh lá đậm thương hiệu và set độ rộng rộng rãi -->
+          <tr style="background-color: #0F5C49; color: #FFFFFF; font-weight: bold;">
+            <th style="border: 1px solid #DDE5E3; background-color: #0F5C49; color: #FFFFFF; font-family: Segoe UI, sans-serif; font-size: 11pt; font-weight: bold; text-align: left; width: 160px; height: 35px; padding: 4px 8px;">Time Period</th>
+            <th style="border: 1px solid #DDE5E3; background-color: #0F5C49; color: #FFFFFF; font-family: Segoe UI, sans-serif; font-size: 11pt; font-weight: bold; text-align: right; width: 200px; height: 35px; padding: 4px 8px;">Revenue (VND)</th>
+            <th style="border: 1px solid #DDE5E3; background-color: #0F5C49; color: #FFFFFF; font-family: Segoe UI, sans-serif; font-size: 11pt; font-weight: bold; text-align: right; width: 140px; height: 35px; padding: 4px 8px;">Transactions</th>
+          </tr>
+          
+          <!-- Các dòng dữ liệu -->
+          ${rowsHtml}
+          
+          <!-- Dòng Tổng cộng in đậm -->
+          <tr style="background-color: #F8FAFC; font-weight: bold;">
+            <td style="border: 1px solid #DDE5E3; font-family: Segoe UI, sans-serif; font-size: 10.5pt; font-weight: bold; height: 30px; padding: 4px 8px; text-align: left; background-color: #F1F5F9;">Total</td>
+            <td style="border: 1px solid #DDE5E3; font-family: Segoe UI, sans-serif; font-size: 10.5pt; font-weight: bold; height: 30px; padding: 4px 8px; text-align: right; background-color: #F1F5F9; mso-number-format: '\\#,\\#\\#0';">${totalRev}</td>
+            <td style="border: 1px solid #DDE5E3; font-family: Segoe UI, sans-serif; font-size: 10.5pt; font-weight: bold; height: 30px; padding: 4px 8px; text-align: right; background-color: #F1F5F9; mso-number-format: '\\#,\\#\\#0';">${totalTx}</td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    `
+
+    // Tải tệp tin Excel (.xls) có định dạng html
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), excelHtml], { type: 'application/vnd.ms-excel;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.setAttribute('href', url)
-    link.setAttribute('download', `revenue_report_${startDate}_to_${endDate}_by_${groupBy.toLowerCase()}.csv`)
+    link.setAttribute('download', `revenue_report_${startDate}_to_${endDate}_by_${groupBy.toLowerCase()}.xls`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -377,10 +431,10 @@ function DashboardScreen({ isDashboardOnly = false }) {
               type="button"
               className="dashboard-quick-btn"
               style={{ gap: 6 }}
-              onClick={handleExportCSV}
+              onClick={handleExportExcel}
               disabled={isAllZero}
             >
-              Export CSV
+              Export Excel
             </button>
           )}
           <button type="button" className="dashboard-quick-btn" style={{ gap: 6 }} onClick={fetchStats}>
