@@ -4,6 +4,10 @@ export const createReservation = (payload) => {
   return axiosClient.post('/reservations', payload)
 }
 
+export const createWalkInReservation = (payload) => {
+  return axiosClient.post('/reservations/walk-in', payload)
+}
+
 export const getMyReservations = () => {
   return axiosClient.get('/reservations/me')
 }

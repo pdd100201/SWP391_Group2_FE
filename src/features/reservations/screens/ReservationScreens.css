@@ -433,6 +433,27 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.dashboard-btn-primary {
+  border: 1px solid #0f766e;
+  border-radius: 8px;
+  background-color: #0f766e;
+  color: #ffffff;
+  min-height: 42px;
+  padding: 0 16px;
+  font-size: 0.9rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+
+.dashboard-btn-primary:hover {
+  background-color: #0d5f59;
+  box-shadow: 0 8px 18px rgba(15, 118, 110, 0.18);
+  transform: translateY(-1px);
 }
 
 .dashboard-filter-label {
@@ -764,6 +785,14 @@
     flex: 1;
     max-width: 200px;
   }
+
+  .walk-in-form {
+    grid-template-columns: 1fr;
+  }
+
+  .walk-in-form__actions {
+    flex-direction: column-reverse;
+  }
 }
 
 /* --------------------------------------------------------------------------
@@ -894,6 +923,132 @@
 
 .dashboard-reservations-container .custom-confirm-modal__btn--confirm:hover {
   background-color: #15803d;
+}
+
+.walk-in-modal {
+  width: min(760px, calc(100% - 32px));
+  max-height: min(760px, calc(100vh - 40px));
+  overflow: auto;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 24px;
+  color: #0f172a;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+  box-sizing: border-box;
+}
+
+.walk-in-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.walk-in-modal__title {
+  margin: 0 0 6px;
+  color: #0f172a;
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.walk-in-modal__subtitle {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.92rem;
+}
+
+.walk-in-modal__close {
+  width: 38px;
+  height: 38px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background-color: #f8fafc;
+  color: #334155;
+  font-size: 1rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.walk-in-modal__close:hover {
+  background-color: #e2e8f0;
+}
+
+.walk-in-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.walk-in-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: #334155;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.walk-in-form__field--full {
+  grid-column: 1 / -1;
+}
+
+.walk-in-form__field input,
+.walk-in-form__field textarea {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background-color: #ffffff;
+  color: #0f172a;
+  font: inherit;
+  font-weight: 500;
+  padding: 11px 12px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.walk-in-form__field textarea {
+  resize: vertical;
+}
+
+.walk-in-form__field input:focus,
+.walk-in-form__field textarea:focus {
+  border-color: #0f766e;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+}
+
+.walk-in-form__actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.walk-in-confirm-summary {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background-color: #eff6ff;
+  color: #334155;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 640px) {
+  .walk-in-form {
+    grid-template-columns: 1fr;
+  }
+
+  .walk-in-form__actions {
+    flex-direction: column-reverse;
+  }
 }
 
 /* --------------------------------------------------------------------------
