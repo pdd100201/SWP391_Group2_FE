@@ -67,7 +67,8 @@ export default function QrCartScreen() {
     }
     setSubmitting(true)
     try {
-      const payload = cart.map((c) => ({ itemId: c.itemId, quantity: c.quantity, note: c.note || null }))
+      const freshCart = loadCart()
+      const payload = freshCart.map((c) => ({ itemId: c.itemId, quantity: c.quantity, note: c.note || null }))
       const result = await createOrder(sessionToken, payload)
       sessionStorage.removeItem(CART_KEY)
       navigate(`/qr/table/${tableId}/status`)
@@ -124,7 +125,8 @@ export default function QrCartScreen() {
             <input
               className="qr-cart__item-note"
               defaultValue={item.note || ''}
-              placeholder="Special request"
+              placeholder="Special request (max 150 characters)"
+              maxLength={150}
               onBlur={(e) => updateNote(item.itemId, e.target.value.trim() || null)}
             />
             <div className="qr-cart__item-bottom">
