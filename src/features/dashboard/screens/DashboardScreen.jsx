@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { BarChart2, RefreshCw } from 'lucide-react'
+import { BarChart2, RefreshCw, DollarSign, CreditCard, Layers, Calendar, UtensilsCrossed, Users } from 'lucide-react'
 import { dashboardApi } from '../api/dashboardApi'
 import './DashboardScreen.css'
 
@@ -85,16 +85,14 @@ function DashboardScreen({ isDashboardOnly = false }) {
   }
 
   // ── Hàm xử lý sự kiện di chuột hiển thị tooltip ──
-  const handleMouseEnter = (event, item) => {
-    const rect = event.target.getBoundingClientRect()
-    const container = event.target.closest('.svg-chart-container').getBoundingClientRect()
+  const handleMouseEnter = (event, item, x, y) => {
     setTooltip({
       show: true,
-      x: rect.left - container.left + rect.width / 2,
-      y: rect.top - container.top,
+      x: x,
+      y: y,
       label: item.timeLabel,
-      value: item.revenue,
-      txCount: item.transactionCount,
+      value: item.revenue || 0,
+      txCount: item.transactionCount || 0,
     })
   }
 
@@ -293,34 +291,64 @@ function DashboardScreen({ isDashboardOnly = false }) {
   )
 
   // ── HÀM CON 2: Render các thẻ KPI ──
-  // Giải thích: Vẽ các thẻ chỉ số KPI hoạt động. Nếu là trang chủ Dashboard, vẽ 6 thẻ tổng hợp. Nếu là Báo cáo, vẽ 2 thẻ doanh thu.
+  // Giải thích: Vẽ các thẻ chỉ số KPI hoạt động. Nếu là trang chủ Dashboard, vẽ 6 thẻ tổng hợp kèm Icon. Nếu là Báo cáo, vẽ 2 thẻ doanh thu kèm Icon.
   // Đầu vào: Không có. Đầu ra: JSX lưới các thẻ KPI.
   const renderKpiCards = () => {
     if (isDashboardOnly && overview) {
       return (
         <div className="dashboard-kpis dashboard-kpis--6cols">
           <article className="dashboard-card">
-            <div className="dashboard-card__title">Total Revenue (30 Days)</div>
+            <div className="dashboard-card__header">
+              <div className="dashboard-card__title">Total Revenue (30 Days)</div>
+              <div className="dashboard-card__icon" style={{ backgroundColor: 'rgba(5, 150, 105, 0.1)', color: '#059669' }}>
+                <DollarSign size={18} />
+              </div>
+            </div>
             <div className="dashboard-card__value">{formatVND(overview.totalRevenue)}</div>
           </article>
           <article className="dashboard-card">
-            <div className="dashboard-card__title">Successful Transactions</div>
+            <div className="dashboard-card__header">
+              <div className="dashboard-card__title">Successful Transactions</div>
+              <div className="dashboard-card__icon" style={{ backgroundColor: 'rgba(15, 92, 73, 0.1)', color: '#0F5C49' }}>
+                <CreditCard size={18} />
+              </div>
+            </div>
             <div className="dashboard-card__value">{overview.successfulTransactions} txs</div>
           </article>
           <article className="dashboard-card">
-            <div className="dashboard-card__title">Total Tables</div>
+            <div className="dashboard-card__header">
+              <div className="dashboard-card__title">Total Tables</div>
+              <div className="dashboard-card__icon" style={{ backgroundColor: 'rgba(100, 116, 139, 0.1)', color: '#64748B' }}>
+                <Layers size={18} />
+              </div>
+            </div>
             <div className="dashboard-card__value">{overview.totalTables} tables</div>
           </article>
           <article className="dashboard-card">
-            <div className="dashboard-card__title">Reservations</div>
+            <div className="dashboard-card__header">
+              <div className="dashboard-card__title">Reservations</div>
+              <div className="dashboard-card__icon" style={{ backgroundColor: 'rgba(37, 99, 235, 0.1)', color: '#2563EB' }}>
+                <Calendar size={18} />
+              </div>
+            </div>
             <div className="dashboard-card__value">{overview.totalReservations} booking</div>
           </article>
           <article className="dashboard-card">
-            <div className="dashboard-card__title">Menu Items</div>
+            <div className="dashboard-card__header">
+              <div className="dashboard-card__title">Menu Items</div>
+              <div className="dashboard-card__icon" style={{ backgroundColor: 'rgba(217, 119, 6, 0.1)', color: '#D97706' }}>
+                <UtensilsCrossed size={18} />
+              </div>
+            </div>
             <div className="dashboard-card__value">{overview.totalMenuItems} dishes</div>
           </article>
           <article className="dashboard-card">
-            <div className="dashboard-card__title">Active Staff</div>
+            <div className="dashboard-card__header">
+              <div className="dashboard-card__title">Active Staff</div>
+              <div className="dashboard-card__icon" style={{ backgroundColor: 'rgba(124, 58, 237, 0.1)', color: '#7C3AED' }}>
+                <Users size={18} />
+              </div>
+            </div>
             <div className="dashboard-card__value">{overview.totalStaff} staff</div>
           </article>
         </div>
@@ -330,20 +358,30 @@ function DashboardScreen({ isDashboardOnly = false }) {
     return (
       <div className="dashboard-kpis">
         <article className="dashboard-card">
-          <div className="dashboard-card__title">Total Revenue (Period)</div>
+          <div className="dashboard-card__header">
+            <div className="dashboard-card__title">Total Revenue (Period)</div>
+            <div className="dashboard-card__icon" style={{ backgroundColor: 'rgba(5, 150, 105, 0.1)', color: '#059669' }}>
+              <DollarSign size={18} />
+            </div>
+          </div>
           <div className="dashboard-card__value">{formatVND(stats?.totalRevenuePeriod)}</div>
         </article>
         <article className="dashboard-card">
-          <div className="dashboard-card__title">Successful Transactions</div>
+          <div className="dashboard-card__header">
+            <div className="dashboard-card__title">Successful Transactions</div>
+            <div className="dashboard-card__icon" style={{ backgroundColor: 'rgba(15, 92, 73, 0.1)', color: '#0F5C49' }}>
+              <CreditCard size={18} />
+            </div>
+          </div>
           <div className="dashboard-card__value">{stats?.transactionCountPeriod} transactions</div>
         </article>
       </div>
     )
   }
 
-  // ── HÀM CON 3: Render Biểu đồ cột SVG ──
-  // Giải thích: Tính toán tọa độ và vẽ các cột biểu đồ SVG, hỗ trợ căn giữa cột khi danh sách ngắn.
-  // Đầu vào: Không có. Đầu ra: JSX chứa biểu đồ cột SVG hoặc thông báo rỗng.
+  // ── HÀM CON 3: Render Biểu đồ miền SVG (Area Chart) ──
+  // Giải thích: Vẽ biểu đồ miền xu hướng doanh thu dòng tiền dạng đường cong nối điểm kèm dải chuyển sắc gradient fill.
+  // Đầu vào: Không có. Đầu ra: JSX chứa biểu đồ miền SVG hoặc thông báo rỗng.
   const renderSvgChart = () => {
     if (isAllZero) {
       return (
@@ -354,72 +392,184 @@ function DashboardScreen({ isDashboardOnly = false }) {
       )
     }
 
-    const plotWidth = chartWidth - chartPadding.left - chartPadding.right
-    const count = chartData.length
-    const barSpacing = count > 15 ? 6 : 16
-    
-    // Giới hạn độ rộng cột tối đa là 40px và căn giữa các cột trên biểu đồ
-    const maxBarWidth = count < 6 ? 40 : (plotWidth - barSpacing * (count - 1)) / count
-    const barWidth = Math.max(Math.min(maxBarWidth, 40), 4)
-    const totalWidth = count * barWidth + (count - 1) * barSpacing
-    const startX = chartPadding.left + (plotWidth - totalWidth) / 2
+    const chartWidth = 900
+    const chartHeight = 320
+    const paddingLeft = 65
+    const paddingRight = 30
+    const paddingTop = 30
+    const paddingBottom = 45
+
+    // Tính toán tọa độ phân phối đều cho từng điểm dữ liệu xu hướng
+    const points = chartData.map((item, idx) => {
+      const x = paddingLeft + (idx / (chartData.length - 1 || 1)) * (chartWidth - paddingLeft - paddingRight)
+      const ratio = maxRevenue > 0 ? (item.revenue || 0) / maxRevenue : 0
+      const y = chartHeight - paddingBottom - ratio * (chartHeight - paddingTop - paddingBottom)
+      return { x, y, item, idx }
+    })
+
+    // Xây dựng chuỗi path nối các điểm dữ liệu và chuỗi path khép kín để đổ màu gradient
+    const linePath = points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
+    const areaPath = points.length > 0 
+      ? `${linePath} L ${points[points.length - 1].x} ${chartHeight - paddingBottom} L ${points[0].x} ${chartHeight - paddingBottom} Z`
+      : ''
+
+    const gridlineValues = [0, 0.25, 0.5, 0.75, 1]
 
     return (
-      <div className="svg-chart-container">
-        <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} width="100%" height={chartHeight} style={{ overflow: 'visible' }}>
-          {/* Trục hoành và trục tung */}
-          {[0, 0.5, 1].map((ratio, index) => {
-            const y = chartHeight - chartPadding.bottom - ratio * (chartHeight - chartPadding.top - chartPadding.bottom)
-            return (
-              <g key={index}>
-                <line x1={chartPadding.left} y1={y} x2={chartWidth - chartPadding.right} y2={y} className="svg-chart-grid-line" />
-                <text x={chartPadding.left - 10} y={y + 4} textAnchor="end" className="svg-chart-axis-text">{formatVND(ratio * maxRevenue)}</text>
-              </g>
-            )
-          })}
-          
-          {/* Vẽ cột */}
-          {chartData.map((item, i) => {
-            const x = startX + i * (barWidth + barSpacing)
-            const barHeightVal = ((item.revenue || 0) / maxRevenue) * (chartHeight - chartPadding.top - chartPadding.bottom)
-            const y = chartHeight - chartPadding.bottom - barHeightVal
-            const showLabel = count <= 12 || i % Math.ceil(count / 10) === 0
+      <div className="svg-chart-container" style={{ position: 'relative', width: '100%' }}>
+        <svg
+          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+          width="100%"
+          height={chartHeight}
+          style={{ overflow: 'visible', display: 'block' }}
+          onMouseLeave={handleMouseLeave}
+        >
+          <defs>
+            {/* Tạo dải màu chuyển sắc từ xanh thương hiệu xuống trong suốt cho biểu đồ miền */}
+            <linearGradient id="area-gradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#0F5C49" stopOpacity="0.25" />
+              <stop offset="100%" stopColor="#0F5C49" stopOpacity="0.01" />
+            </linearGradient>
+          </defs>
 
+          {/* Đường lưới gióng ngang nét đứt */}
+          {gridlineValues.map((ratio, idx) => {
+            const y = chartHeight - paddingBottom - ratio * (chartHeight - paddingTop - paddingBottom)
             return (
-              <g key={item.timeLabel}>
-                <rect
-                  x={x}
-                  y={y}
-                  width={barWidth}
-                  height={Math.max(barHeightVal, 2)}
-                  rx={barWidth > 6 ? 2 : 0}
-                  className="svg-chart-bar"
-                  onMouseEnter={(e) => handleMouseEnter(e, item)}
-                  onMouseLeave={handleMouseLeave}
+              <line
+                key={`grid-${idx}`}
+                x1={paddingLeft}
+                y1={y}
+                x2={chartWidth - paddingRight}
+                y2={y}
+                stroke="#E2E8F0"
+                strokeWidth="1"
+                strokeDasharray="4 4"
+              />
+            )
+          })}
+
+          {/* Đường gióng dọc khi di chuột qua điểm (Crosshair) */}
+          {tooltip.show && (
+            <line
+              x1={tooltip.x}
+              y1={paddingTop}
+              x2={tooltip.x}
+              y2={chartHeight - paddingBottom}
+              stroke="#0F5C49"
+              strokeWidth="1.2"
+              strokeDasharray="3 3"
+            />
+          )}
+
+          {/* Nhãn thang đo trục Y */}
+          {gridlineValues.map((ratio, idx) => {
+            const val = ratio * maxRevenue
+            const y = chartHeight - paddingBottom - ratio * (chartHeight - paddingTop - paddingBottom)
+            return (
+              <text
+                key={`y-label-${idx}`}
+                x={paddingLeft - 12}
+                y={y + 4}
+                textAnchor="end"
+                style={{ fontSize: 11, fill: 'var(--sb-text-muted)', fontFamily: 'system-ui, sans-serif', fontWeight: 500 }}
+              >
+                {val >= 1000000 ? `${(val / 1000000).toFixed(1)}M` : val.toLocaleString('vi-VN')}
+              </text>
+            )
+          })}
+
+          {/* Vẽ vùng tô màu Gradient mờ */}
+          {areaPath && (
+            <path
+              d={areaPath}
+              fill="url(#area-gradient)"
+            />
+          )}
+
+          {/* Vẽ đường xu hướng chính */}
+          {linePath && (
+            <path
+              d={linePath}
+              fill="none"
+              stroke="#0F5C49"
+              strokeWidth="3.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          )}
+
+          {/* Nhãn mốc thời gian trục X */}
+          {points.map((p, idx) => {
+            const step = Math.ceil(chartData.length / 8) || 1
+            if (idx % step !== 0 && idx !== chartData.length - 1) return null
+            return (
+              <text
+                key={`x-label-${idx}`}
+                x={p.x}
+                y={chartHeight - paddingBottom + 22}
+                textAnchor="middle"
+                style={{ fontSize: 11, fill: 'var(--sb-text-muted)', fontFamily: 'system-ui, sans-serif', fontWeight: 500 }}
+              >
+                {groupBy === 'DAY' ? p.item.timeLabel.slice(5) : p.item.timeLabel}
+              </text>
+            )
+          })}
+
+          {/* Các điểm tròn giao điểm dữ liệu tương tác */}
+          {points.map((p) => {
+            const isHovered = tooltip.show && tooltip.label === p.item.timeLabel
+            return (
+              <g key={`point-${p.idx}`}>
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={isHovered ? 6 : 4}
+                  fill={isHovered ? '#0F5C49' : '#FFFFFF'}
+                  stroke="#0F5C49"
+                  strokeWidth={isHovered ? 3 : 2}
+                  style={{ transition: 'all 0.12s ease' }}
                 />
-                {showLabel && (
-                  <text
-                    x={x + barWidth / 2}
-                    y={chartHeight - chartPadding.bottom + 18}
-                    textAnchor="middle"
-                    className="svg-chart-axis-text"
-                    transform={count > 8 ? `rotate(-20, ${x + barWidth / 2}, ${chartHeight - chartPadding.bottom + 18})` : ''}
-                  >
-                    {groupBy === 'DAY' ? item.timeLabel.slice(5) : item.timeLabel}
-                  </text>
-                )}
+                {/* Vùng vô hình lớn để bắt sự kiện hover nhạy bén hơn */}
+                <circle
+                  cx={p.x}
+                  cy={p.y}
+                  r={20}
+                  fill="transparent"
+                  style={{ cursor: 'pointer' }}
+                  onMouseEnter={(e) => handleMouseEnter(e, p.item, p.x, p.y)}
+                  onMouseMove={(e) => handleMouseEnter(e, p.item, p.x, p.y)}
+                />
               </g>
             )
           })}
-          <line x1={chartPadding.left} y1={chartHeight - chartPadding.bottom} x2={chartWidth - chartPadding.right} y2={chartHeight - chartPadding.bottom} className="svg-chart-axis-line" />
         </svg>
 
+        {/* Khối tooltip nổi định vị động */}
         {tooltip.show && (
-          <div className="chart-tooltip" style={{ left: `${tooltip.x}px`, top: `${tooltip.y}px` }}>
-            <strong>{tooltip.label}</strong>
-            Revenue: {formatVND(tooltip.value)}
-            <br />
-            Transactions: {tooltip.txCount} txs
+          <div
+            className="chart-tooltip"
+            style={{
+              position: 'absolute',
+              left: `${tooltip.x}px`,
+              top: `${tooltip.y - 12}px`,
+              transform: 'translate(-50%, -100%)',
+              pointerEvents: 'none',
+              zIndex: 10,
+              backgroundColor: '#1E293B',
+              color: '#FFFFFF',
+              padding: '8px 12px',
+              borderRadius: '6px',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+              fontSize: '0.8rem',
+              lineHeight: 1.4,
+              minWidth: 150,
+              border: '1px solid #475569'
+            }}
+          >
+            <div style={{ fontWeight: 600, color: '#94A3B8', marginBottom: 2 }}>{tooltip.label}</div>
+            <div style={{ color: '#10B981', fontWeight: 700 }}>Revenue: {formatVND(tooltip.value)}</div>
+            <div style={{ color: '#38BDF8', fontSize: '0.75rem' }}>Transactions: {tooltip.txCount} txs</div>
           </div>
         )}
       </div>
