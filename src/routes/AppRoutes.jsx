@@ -36,7 +36,7 @@ function DashboardPage() {
 function DashboardIndex() {
   const role = sessionStorage.getItem('role')
   if (role === 'ADMIN' || role === 'MANAGER') {
-    return <DashboardScreen />
+    return <DashboardScreen isDashboardOnly={true} />
   }
   if (role === 'RECEPTIONIST') {
     return <Navigate to="/dashboard/check-in" replace />

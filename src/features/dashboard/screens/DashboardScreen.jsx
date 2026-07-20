@@ -23,7 +23,7 @@ const getPastDateString = (daysAgo) => {
   return offset.toISOString().slice(0, 10)
 }
 
-function DashboardScreen() {
+function DashboardScreen({ isDashboardOnly = false }) {
   // ── Các State quản lý dữ liệu (Giữ nguyên cấu trúc logic gốc) ──
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -109,8 +109,9 @@ function DashboardScreen() {
       item.transactionCount
     ])
     
-    // Gộp dữ liệu theo định dạng CSV chuẩn
+    // Gộp dữ liệu theo định dạng CSV chuẩn, thêm dòng sep=, ở đầu để Excel nhận diện đúng phân tách cột
     const csvContent = [
+      'sep=,',
       headers.join(','),
       ...rows.map((row) => row.join(','))
     ].join('\n')
@@ -363,19 +364,25 @@ function DashboardScreen() {
     <section className="dashboard-screen">
       <header className="dashboard-header">
         <div>
-          <h1>Cash Flow Revenue Report</h1>
-          <p>Statistics of cash inflow from fully completed transactions.</p>
+          <h1>{isDashboardOnly ? 'Restaurant Dashboard Overview' : 'Cash Flow Revenue Report'}</h1>
+          <p>
+            {isDashboardOnly
+              ? 'Key performance statistics and revenue overview for the last 30 days.'
+              : 'Statistics of cash inflow from fully completed transactions.'}
+          </p>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
-          <button
-            type="button"
-            className="dashboard-quick-btn"
-            style={{ gap: 6 }}
-            onClick={handleExportCSV}
-            disabled={isAllZero}
-          >
-            Export CSV
-          </button>
+          {!isDashboardOnly && (
+            <button
+              type="button"
+              className="dashboard-quick-btn"
+              style={{ gap: 6 }}
+              onClick={handleExportCSV}
+              disabled={isAllZero}
+            >
+              Export CSV
+            </button>
+          )}
           <button type="button" className="dashboard-quick-btn" style={{ gap: 6 }} onClick={fetchStats}>
             <RefreshCw size={13} /> Refresh
           </button>
@@ -383,7 +390,7 @@ function DashboardScreen() {
       </header>
 
       {/* Lọc điều khiển */}
-      {renderFilters()}
+      {!isDashboardOnly && renderFilters()}
 
       {/* Hiển thị thông báo lỗi từ backend nếu khoảng ngày không hợp lệ */}
       {error && (
@@ -410,7 +417,7 @@ function DashboardScreen() {
               </div>
 
               {/* Bảng chi tiết 3 cột */}
-              {renderSummaryTable()}
+              {!isDashboardOnly && renderSummaryTable()}
             </>
           )}
         </>
