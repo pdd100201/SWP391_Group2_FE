@@ -26,6 +26,7 @@ const getPastDateString = (daysAgo) => {
 function DashboardScreen({ isDashboardOnly = false }) {
   // ── Các State quản lý dữ liệu (Giữ nguyên cấu trúc logic gốc) ──
   const [stats, setStats] = useState(null)
+  const [overview, setOverview] = useState(null) // Thống kê tổng hợp hoạt động
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -42,15 +43,23 @@ function DashboardScreen({ isDashboardOnly = false }) {
     setLoading(true)
     setError('')
     try {
+      // 1. Lấy dữ liệu thống kê doanh thu vẽ biểu đồ
       const response = await dashboardApi.getRevenueStats({
         startDate,
         endDate,
         groupBy: groupBy.toLowerCase(),
       })
       setStats(response.data)
+
+      // 2. Nếu ở trang chủ Dashboard, lấy thêm số liệu hoạt động tổng quan
+      if (isDashboardOnly) {
+        const overviewRes = await dashboardApi.getDashboardOverview()
+        setOverview(overviewRes.data)
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to retrieve statistical data.')
       setStats(null) // Xóa dữ liệu cũ khi gặp lỗi bộ lọc
+      setOverview(null)
     } finally {
       setLoading(false)
     }
@@ -283,21 +292,54 @@ function DashboardScreen({ isDashboardOnly = false }) {
     </div>
   )
 
-  // ── HÀM CON 2: Render 2 thẻ KPI đơn giản ──
-  // Giải thích: Vẽ hai thẻ thể hiện Tổng doanh thu trong khoảng chọn và Số giao dịch thành công.
-  // Đầu vào: totalRevenue (Tổng tiền), txCount (Số đơn). Đầu ra: JSX hai cột KPI.
-  const renderKpiCards = (totalRevenue, txCount) => (
-    <div className="dashboard-kpis">
-      <article className="dashboard-card">
-        <div className="dashboard-card__title">Total Revenue (Period)</div>
-        <div className="dashboard-card__value">{formatVND(totalRevenue)}</div>
-      </article>
-      <article className="dashboard-card">
-        <div className="dashboard-card__title">Successful Transactions</div>
-        <div className="dashboard-card__value">{txCount} transactions</div>
-      </article>
-    </div>
-  )
+  // ── HÀM CON 2: Render các thẻ KPI ──
+  // Giải thích: Vẽ các thẻ chỉ số KPI hoạt động. Nếu là trang chủ Dashboard, vẽ 6 thẻ tổng hợp. Nếu là Báo cáo, vẽ 2 thẻ doanh thu.
+  // Đầu vào: Không có. Đầu ra: JSX lưới các thẻ KPI.
+  const renderKpiCards = () => {
+    if (isDashboardOnly && overview) {
+      return (
+        <div className="dashboard-kpis dashboard-kpis--6cols">
+          <article className="dashboard-card">
+            <div className="dashboard-card__title">Total Revenue (30 Days)</div>
+            <div className="dashboard-card__value">{formatVND(overview.totalRevenue)}</div>
+          </article>
+          <article className="dashboard-card">
+            <div className="dashboard-card__title">Successful Transactions</div>
+            <div className="dashboard-card__value">{overview.successfulTransactions} txs</div>
+          </article>
+          <article className="dashboard-card">
+            <div className="dashboard-card__title">Total Tables</div>
+            <div className="dashboard-card__value">{overview.totalTables} tables</div>
+          </article>
+          <article className="dashboard-card">
+            <div className="dashboard-card__title">Reservations</div>
+            <div className="dashboard-card__value">{overview.totalReservations} booking</div>
+          </article>
+          <article className="dashboard-card">
+            <div className="dashboard-card__title">Menu Items</div>
+            <div className="dashboard-card__value">{overview.totalMenuItems} dishes</div>
+          </article>
+          <article className="dashboard-card">
+            <div className="dashboard-card__title">Active Staff</div>
+            <div className="dashboard-card__value">{overview.totalStaff} staff</div>
+          </article>
+        </div>
+      )
+    }
+
+    return (
+      <div className="dashboard-kpis">
+        <article className="dashboard-card">
+          <div className="dashboard-card__title">Total Revenue (Period)</div>
+          <div className="dashboard-card__value">{formatVND(stats?.totalRevenuePeriod)}</div>
+        </article>
+        <article className="dashboard-card">
+          <div className="dashboard-card__title">Successful Transactions</div>
+          <div className="dashboard-card__value">{stats?.transactionCountPeriod} transactions</div>
+        </article>
+      </div>
+    )
+  }
 
   // ── HÀM CON 3: Render Biểu đồ cột SVG ──
   // Giải thích: Tính toán tọa độ và vẽ các cột biểu đồ SVG, hỗ trợ căn giữa cột khi danh sách ngắn.
@@ -461,8 +503,8 @@ function DashboardScreen({ isDashboardOnly = false }) {
           {/* Chỉ render số liệu và biểu đồ khi có dữ liệu stats hợp lệ */}
           {stats && (
             <>
-              {/* 2 Thẻ KPI chính */}
-              {renderKpiCards(stats.totalRevenuePeriod, stats.transactionCountPeriod)}
+              {/* Các Thẻ KPI chỉ số */}
+              {renderKpiCards()}
 
               {/* Biểu đồ cột SVG */}
               <div className="dashboard-chart-card">

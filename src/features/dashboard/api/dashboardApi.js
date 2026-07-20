@@ -17,5 +17,12 @@ export const dashboardApi = {
     return axiosClient.get('/dashboard/revenue', {
       params: { startDate, endDate, groupBy }
     })
+  },
+
+  /**
+   * Lấy số liệu thống kê hoạt động tổng hợp cho trang chủ Dashboard.
+   */
+  getDashboardOverview: () => {
+    return axiosClient.get('/dashboard/overview')
   }
 }

@@ -236,13 +236,30 @@
 }
 
 /* Thẻ tổng doanh thu dùng màu xanh lá sáng dễ chịu #059669 */
-.dashboard-card:first-child .dashboard-card__value {
+.dashboard-card:nth-child(1) .dashboard-card__value {
   color: var(--sb-revenue);
 }
 
 /* Thẻ số giao dịch thành công dùng màu xanh đậm #0F5C49 */
-.dashboard-card:last-child .dashboard-card__value {
+.dashboard-card:nth-child(2) .dashboard-card__value {
   color: var(--sb-text-title);
+}
+
+/* Cấu trúc lưới 3 cột cho 6 thẻ tổng hợp trang Dashboard */
+.dashboard-kpis--6cols {
+  grid-template-columns: repeat(3, 1fr) !important;
+}
+
+@media (max-width: 992px) {
+  .dashboard-kpis--6cols {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-kpis--6cols {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 /* ── Biểu đồ cột SVG ── */
