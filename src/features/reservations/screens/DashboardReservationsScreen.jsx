@@ -7,10 +7,22 @@ const displayValue = (value) => {
   return value
 }
 
-const canCancelReservation = (status) => status === 'PENDING'
+const canCancelReservation = (status, role) => status === 'PENDING'
+  || (status === 'ARRIVED' && ['ADMIN', 'MANAGER'].includes(role))
 const canConfirmReservation = (status) => status === 'PENDING'
+const reservationOrders = (reservation) => {
+  if (Array.isArray(reservation.orders) && reservation.orders.length) return reservation.orders
+  if (!reservation.orderId) return []
+  return [{
+    id: reservation.orderId,
+    orderCode: reservation.orderCode,
+    status: reservation.orderStatus,
+    tableNumber: reservation.tableNumber,
+  }]
+}
 
 function DashboardReservationsScreen() {
+  const role = String(sessionStorage.getItem('role') || '').replace('ROLE_', '')
   const [reservations, setReservations] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -231,25 +243,32 @@ function DashboardReservationsScreen() {
                         </span>
                       </td>
                       <td className="status-cell">
-                        {reservation.orderId ? (
-                          <span title={`Order status: ${reservation.orderStatus}`}>
-                            {reservation.orderCode || `#${reservation.orderId}`} · {reservation.orderStatus}
-                          </span>
+                        {reservationOrders(reservation).length ? (
+                          <div className="reservation-order-list">
+                            {reservationOrders(reservation).map((order) => (
+                              <span key={order.id} title={`Order status: ${order.status}`}>
+                                <strong>{order.tableNumber || `Table ${order.tableId || '-'}`}</strong>
+                                {order.orderCode || `#${order.id}`} - {order.status}
+                              </span>
+                            ))}
+                          </div>
                         ) : <span className="dashboard-no-action">Not opened</span>}
                       </td>
                       <td className="actions-cell">
-                        {canConfirmReservation(reservation.status) ? (
+                        {canConfirmReservation(reservation.status) || canCancelReservation(reservation.status, role) ? (
                           <div className="dashboard-action-buttons">
-                            <button
-                              type="button"
-                              className="dashboard-btn-confirm"
-                              disabled={confirmingId === reservation.reservationId || cancelingId === reservation.reservationId}
-                              onClick={() => triggerModal('confirm', reservation.reservationId, reservation.fullName)}
-                            >
-                              {confirmingId === reservation.reservationId ? 'Confirming...' : 'Confirm'}
-                            </button>
+                            {canConfirmReservation(reservation.status) && (
+                              <button
+                                type="button"
+                                className="dashboard-btn-confirm"
+                                disabled={confirmingId === reservation.reservationId || cancelingId === reservation.reservationId}
+                                onClick={() => triggerModal('confirm', reservation.reservationId, reservation.fullName)}
+                              >
+                                {confirmingId === reservation.reservationId ? 'Confirming...' : 'Confirm'}
+                              </button>
+                            )}
 
-                            {canCancelReservation(reservation.status) && (
+                            {canCancelReservation(reservation.status, role) && (
                               <button
                                 type="button"
                                 className="dashboard-btn-cancel"

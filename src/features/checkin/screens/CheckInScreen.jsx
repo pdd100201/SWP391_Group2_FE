@@ -743,7 +743,14 @@ function CheckInScreen() {
                       type="button"
                       className="custom-btn-confirm"
                       style={{ background: '#3b82f6' }}
-                      onClick={() => navigate('/dashboard/orders-service')}
+                      onClick={() => {
+                        const guest = occupiedTableDetails.guest || {}
+                        const params = new URLSearchParams()
+                        if (guest.reservationId) params.set('reservationId', guest.reservationId)
+                        if (guest.orderId) params.set('orderId', guest.orderId)
+                        params.set('tableId', guest.tableId || occupiedTableDetails.table.id)
+                        navigate(`/dashboard/orders-service?${params.toString()}`)
+                      }}
                   >
                     {occupiedTableDetails.guest?.orderId ? 'Manage Order' : 'Create Order'}
                   </button>

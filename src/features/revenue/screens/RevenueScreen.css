@@ -368,6 +368,38 @@
   font-size: 1rem;
 }
 
+.revenue-table-order {
+  padding: 12px;
+  border: 1px solid #d1fae5;
+  border-radius: 12px;
+  background: #fbfffd;
+}
+
+.revenue-table-order + .revenue-table-order {
+  margin-top: 10px;
+}
+
+.revenue-table-order > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 9px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid #d1fae5;
+  color: #064e3b;
+}
+
+.revenue-table-order > header span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.revenue-table-order > header small {
+  color: #64748b;
+}
+
 .revenue-detail-items article {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;

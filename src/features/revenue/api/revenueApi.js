@@ -1,5 +1,6 @@
 import axiosClient from '../../../shared/services/axiosClient'
 
 export const revenueApi = {
-  getPaidOrders: () => axiosClient.get('/orders', { params: { active: false } }),
+  getPaidBills: () => axiosClient.get('/payments/bills', { params: { status: 'PAID' } }),
+  getOrderGroups: () => axiosClient.get('/orders/groups', { params: { active: false } }),
 }

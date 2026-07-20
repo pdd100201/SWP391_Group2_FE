@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
 /**
  * Hook phân trang phía frontend.
@@ -17,21 +17,31 @@ export function usePagination(items, pageSize) {
   // Tổng số phần tử và số trang
   const totalElements = items.length
   const totalPages = Math.ceil(totalElements / pageSize) || 0
+  const lastAvailablePage = Math.max(totalPages - 1, 0)
+  const currentPage = Math.min(page, lastAvailablePage)
+
+  useEffect(() => {
+    if (page > lastAvailablePage) {
+      // Keep mutations and filter changes from leaving the list on an empty page.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPage(lastAvailablePage)
+    }
+  }, [lastAvailablePage, page])
 
   // Danh sách phần tử của trang hiện tại
   const currentItems = useMemo(
-    () => items.slice(page * pageSize, (page + 1) * pageSize),
-    [items, page, pageSize]
+    () => items.slice(currentPage * pageSize, (currentPage + 1) * pageSize),
+    [currentPage, items, pageSize]
   )
 
   // Chỉ số hiển thị "Showing X–Y of Z"
-  const startIdx = totalElements === 0 ? 0 : page * pageSize + 1
-  const endIdx = Math.min((page + 1) * pageSize, totalElements)
+  const startIdx = totalElements === 0 ? 0 : currentPage * pageSize + 1
+  const endIdx = Math.min((currentPage + 1) * pageSize, totalElements)
 
   // Danh sách số trang hiển thị trên thanh phân trang
   const getPageNumbers = (maxVisible = 5) => {
     const pages = []
-    let start = Math.max(0, page - Math.floor(maxVisible / 2))
+    let start = Math.max(0, currentPage - Math.floor(maxVisible / 2))
     let end = Math.min(totalPages, start + maxVisible)
     if (end - start < maxVisible) start = Math.max(0, end - maxVisible)
     for (let i = start; i < end; i++) pages.push(i)
@@ -42,7 +52,7 @@ export function usePagination(items, pageSize) {
   const reset = () => setPage(0)
 
   return {
-    page,
+    page: currentPage,
     setPage,
     totalPages,
     totalElements,
@@ -51,7 +61,7 @@ export function usePagination(items, pageSize) {
     endIdx,
     getPageNumbers,
     reset,
-    isFirst: page === 0,
-    isLast: page >= totalPages - 1,
+    isFirst: currentPage === 0,
+    isLast: currentPage >= totalPages - 1,
   }
 }

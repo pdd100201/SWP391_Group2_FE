@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useParams } from 'react-router-dom'
 import HomeScreen from '../features/home/screens/HomeScreen'
 import QrMenuScreen from '../features/qr/screens/QrMenuScreen'
 import QrCartScreen from '../features/qr/screens/QrCartScreen'
@@ -30,6 +30,15 @@ const TableManagementScreen = lazy(() => import('../features/tables/screens/Tabl
 
 function DashboardPage() {
   return <div className="dashboard-placeholder">Dashboard content goes here</div>
+}
+
+function LegacyActiveOrdersRedirect() {
+  return <Navigate to="/dashboard/orders-service?filter=ACTIVE" replace />
+}
+
+function LegacyOrderPaymentRedirect() {
+  const { orderId } = useParams()
+  return <Navigate to={`/dashboard/orders-service?orderId=${encodeURIComponent(orderId || '')}`} replace />
 }
 
 function AppRoutes() {
@@ -105,9 +114,8 @@ function AppRoutes() {
         />
         <Route path="reservations" element={<DashboardReservationsScreen />} />
         <Route path="orders-service" element={<OrdersServiceScreen />} />
-        <Route path="orders-service/active" element={<Navigate to="/dashboard/orders-service" replace />} />
-        <Route path="orders-service/:orderId/payment" element={<Navigate to="/dashboard/orders-service" replace />} />
-        <Route path="orders-service/active" element={<OrdersServiceScreen activeView />} />
+        <Route path="orders-service/active" element={<LegacyActiveOrdersRedirect />} />
+        <Route path="orders-service/:orderId/payment" element={<LegacyOrderPaymentRedirect />} />
         <Route
           path="revenue"
           element={(

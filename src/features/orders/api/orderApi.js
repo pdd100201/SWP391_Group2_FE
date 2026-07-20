@@ -4,8 +4,11 @@ import axiosClient from '../../../shared/services/axiosClient'
 const PUBLIC_API = 'http://localhost:8080/api/order-access'
 
 export const orderApi = {
-  // Staff order workspace endpoints. axiosClient attaches the JWT automatically.
+  // Order Management reads reservation groups, while dish mutations stay scoped
+  // to the exact table order selected by the waiter.
   getAll: (active = true) => axiosClient.get('/orders', { params: { active } }),
+  getGroups: (active = false) => axiosClient.get('/orders/groups', { params: { active } }),
+  getGroup: (reservationId) => axiosClient.get(`/orders/groups/${reservationId}`),
   getById: (orderId) => axiosClient.get(`/orders/${orderId}`),
   getByReservation: (reservationId) => axiosClient.get(`/orders/by-reservation/${reservationId}`),
   create: (payload) => axiosClient.post('/orders', payload),
@@ -15,11 +18,25 @@ export const orderApi = {
   submit: (orderId) => axiosClient.post(`/orders/${orderId}/submit`),
   updateItemStatus: (orderId, itemId, status) =>
     axiosClient.patch(`/orders/${orderId}/items/${itemId}/status`, { status }),
-  applyPromotion: (orderId, code) => axiosClient.patch(`/orders/${orderId}/promotion`, { code }),
-  removePromotion: (orderId) => axiosClient.delete(`/orders/${orderId}/promotion`),
-  createPayment: (orderId) => axiosClient.post(`/orders/${orderId}/payment`),
-  close: (orderId) => axiosClient.patch(`/orders/${orderId}/close`),
+  transferTable: (orderId, targetTableId) =>
+    axiosClient.patch(`/orders/${orderId}/transfer-table`, { targetTableId }),
   cancel: (orderId) => axiosClient.patch(`/orders/${orderId}/cancel`),
+  completeReservation: (reservationId) =>
+    axiosClient.patch(`/orders/reservations/${reservationId}/complete`),
+
+  // Promotion and payment belong to the single bill shared by every table order
+  // in the reservation.
+  getBill: (reservationId) => axiosClient.get(`/payments/bills/reservations/${reservationId}`),
+  applyPromotion: (reservationId, code) =>
+    axiosClient.patch(`/payments/bills/reservations/${reservationId}/promotion`, { code }),
+  removePromotion: (reservationId) =>
+    axiosClient.delete(`/payments/bills/reservations/${reservationId}/promotion`),
+  createSepayPayment: (reservationId) =>
+    axiosClient.post(`/payments/bills/reservations/${reservationId}/sepay`),
+  createCashPayment: (reservationId) =>
+    axiosClient.post(`/payments/bills/reservations/${reservationId}/cash`),
+  cancelPayment: (reservationId) =>
+    axiosClient.post(`/payments/bills/reservations/${reservationId}/cancel-payment`),
 }
 
 export const publicOrderApi = {
