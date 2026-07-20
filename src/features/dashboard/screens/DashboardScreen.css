@@ -177,6 +177,13 @@
   border-color: #CBD5E1;
 }
 
+.dashboard-quick-btn:disabled {
+  background-color: #F8FAFC;
+  color: #94A3B8;
+  cursor: not-allowed;
+  border-color: var(--sb-border);
+}
+
 /* Cấu hình hiển thị nút lọc nhanh đang chọn */
 .dashboard-quick-btn--active {
   background-color: var(--sb-accent) !important;

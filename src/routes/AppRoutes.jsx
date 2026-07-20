@@ -33,6 +33,20 @@ function DashboardPage() {
   return <div className="dashboard-placeholder">Dashboard content goes here</div>
 }
 
+function DashboardIndex() {
+  const role = sessionStorage.getItem('role')
+  if (role === 'ADMIN' || role === 'MANAGER') {
+    return <DashboardScreen />
+  }
+  if (role === 'RECEPTIONIST') {
+    return <Navigate to="/dashboard/check-in" replace />
+  }
+  if (role === 'WAITER') {
+    return <Navigate to="/dashboard/orders-service" replace />
+  }
+  return <div className="dashboard-placeholder">Welcome to the Dashboard</div>
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -94,7 +108,7 @@ function AppRoutes() {
           </RequireAuth>
         )}
       >
-        <Route index element={<DashboardPage />} />
+        <Route index element={<DashboardIndex />} />
         <Route path="check-in" element={<CheckInScreen />} />
         <Route
           path="tables"

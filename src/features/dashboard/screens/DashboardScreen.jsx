@@ -93,6 +93,39 @@ function DashboardScreen() {
     setTooltip((prev) => ({ ...prev, show: false }))
   }
 
+  // ── Hàm xuất báo cáo sang file CSV ──
+  // Giải thích: Trích xuất dữ liệu biểu đồ hiện tại để tạo file CSV tải xuống.
+  // Đầu vào: Không có. Đầu ra: Tải xuống tệp CSV.
+  const handleExportCSV = () => {
+    if (!chartData || chartData.length === 0) return
+
+    // Cấu hình tiêu đề cột
+    const headers = ['Time Period', 'Revenue (VND)', 'Transactions']
+    
+    // Định dạng dữ liệu từng dòng
+    const rows = chartData.map((item) => [
+      item.timeLabel,
+      Math.round(item.revenue || 0),
+      item.transactionCount
+    ])
+    
+    // Gộp dữ liệu theo định dạng CSV chuẩn
+    const csvContent = [
+      headers.join(','),
+      ...rows.map((row) => row.join(','))
+    ].join('\n')
+
+    // Thêm mã BOM UTF-8 để Microsoft Excel nhận diện kí tự chuẩn xác
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', `revenue_report_${startDate}_to_${endDate}_by_${groupBy.toLowerCase()}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   // ── Tính toán số liệu vẽ SVG ──
   const chartWidth = 800
   const chartHeight = 300
@@ -333,9 +366,20 @@ function DashboardScreen() {
           <h1>Cash Flow Revenue Report</h1>
           <p>Statistics of cash inflow from fully completed transactions.</p>
         </div>
-        <button type="button" className="dashboard-quick-btn" style={{ gap: 6 }} onClick={fetchStats}>
-          <RefreshCw size={13} /> Refresh
-        </button>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button
+            type="button"
+            className="dashboard-quick-btn"
+            style={{ gap: 6 }}
+            onClick={handleExportCSV}
+            disabled={isAllZero}
+          >
+            Export CSV
+          </button>
+          <button type="button" className="dashboard-quick-btn" style={{ gap: 6 }} onClick={fetchStats}>
+            <RefreshCw size={13} /> Refresh
+          </button>
+        </div>
       </header>
 
       {/* Lọc điều khiển */}
