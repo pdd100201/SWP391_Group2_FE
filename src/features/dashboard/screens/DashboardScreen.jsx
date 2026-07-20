@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { BarChart2, RefreshCw, DollarSign, CreditCard, Layers, Calendar, UtensilsCrossed, Users } from 'lucide-react'
 import { dashboardApi } from '../api/dashboardApi'
 import './DashboardScreen.css'
@@ -24,6 +25,7 @@ const getPastDateString = (daysAgo) => {
 }
 
 function DashboardScreen({ isDashboardOnly = false }) {
+  const navigate = useNavigate()
   // ── Các State quản lý dữ liệu (Giữ nguyên cấu trúc logic gốc) ──
   const [stats, setStats] = useState(null)
   const [overview, setOverview] = useState(null) // Thống kê tổng hợp hoạt động
@@ -297,7 +299,7 @@ function DashboardScreen({ isDashboardOnly = false }) {
     if (isDashboardOnly && overview) {
       return (
         <div className="dashboard-kpis dashboard-kpis--6cols">
-          <article className="dashboard-card">
+          <article className="dashboard-card" onClick={() => navigate('/dashboard/reports')}>
             <div className="dashboard-card__header">
               <div className="dashboard-card__title">Total Revenue (30 Days)</div>
               <div className="dashboard-card__icon" style={{ backgroundColor: 'rgba(5, 150, 105, 0.1)', color: '#059669' }}>
@@ -306,7 +308,7 @@ function DashboardScreen({ isDashboardOnly = false }) {
             </div>
             <div className="dashboard-card__value">{formatVND(overview.totalRevenue)}</div>
           </article>
-          <article className="dashboard-card">
+          <article className="dashboard-card" onClick={() => navigate('/dashboard/reports')}>
             <div className="dashboard-card__header">
               <div className="dashboard-card__title">Successful Transactions</div>
               <div className="dashboard-card__icon" style={{ backgroundColor: 'rgba(15, 92, 73, 0.1)', color: '#0F5C49' }}>
@@ -315,7 +317,7 @@ function DashboardScreen({ isDashboardOnly = false }) {
             </div>
             <div className="dashboard-card__value">{overview.successfulTransactions} txs</div>
           </article>
-          <article className="dashboard-card">
+          <article className="dashboard-card" onClick={() => navigate('/dashboard/tables')}>
             <div className="dashboard-card__header">
               <div className="dashboard-card__title">Total Tables</div>
               <div className="dashboard-card__icon" style={{ backgroundColor: 'rgba(100, 116, 139, 0.1)', color: '#64748B' }}>
@@ -324,7 +326,7 @@ function DashboardScreen({ isDashboardOnly = false }) {
             </div>
             <div className="dashboard-card__value">{overview.totalTables} tables</div>
           </article>
-          <article className="dashboard-card">
+          <article className="dashboard-card" onClick={() => navigate('/dashboard/reservations')}>
             <div className="dashboard-card__header">
               <div className="dashboard-card__title">Reservations</div>
               <div className="dashboard-card__icon" style={{ backgroundColor: 'rgba(37, 99, 235, 0.1)', color: '#2563EB' }}>
@@ -333,7 +335,7 @@ function DashboardScreen({ isDashboardOnly = false }) {
             </div>
             <div className="dashboard-card__value">{overview.totalReservations} booking</div>
           </article>
-          <article className="dashboard-card">
+          <article className="dashboard-card" onClick={() => navigate('/dashboard/menu-management')}>
             <div className="dashboard-card__header">
               <div className="dashboard-card__title">Menu Items</div>
               <div className="dashboard-card__icon" style={{ backgroundColor: 'rgba(217, 119, 6, 0.1)', color: '#D97706' }}>
@@ -342,7 +344,7 @@ function DashboardScreen({ isDashboardOnly = false }) {
             </div>
             <div className="dashboard-card__value">{overview.totalMenuItems} dishes</div>
           </article>
-          <article className="dashboard-card">
+          <article className="dashboard-card" onClick={() => navigate('/dashboard/accounts/staff')}>
             <div className="dashboard-card__header">
               <div className="dashboard-card__title">Active Staff</div>
               <div className="dashboard-card__icon" style={{ backgroundColor: 'rgba(124, 58, 237, 0.1)', color: '#7C3AED' }}>
@@ -357,7 +359,7 @@ function DashboardScreen({ isDashboardOnly = false }) {
 
     return (
       <div className="dashboard-kpis">
-        <article className="dashboard-card">
+        <article className="dashboard-card" onClick={() => navigate('/dashboard/reports')}>
           <div className="dashboard-card__header">
             <div className="dashboard-card__title">Total Revenue (Period)</div>
             <div className="dashboard-card__icon" style={{ backgroundColor: 'rgba(5, 150, 105, 0.1)', color: '#059669' }}>
@@ -366,7 +368,7 @@ function DashboardScreen({ isDashboardOnly = false }) {
           </div>
           <div className="dashboard-card__value">{formatVND(stats?.totalRevenuePeriod)}</div>
         </article>
-        <article className="dashboard-card">
+        <article className="dashboard-card" onClick={() => navigate('/dashboard/reports')}>
           <div className="dashboard-card__header">
             <div className="dashboard-card__title">Successful Transactions</div>
             <div className="dashboard-card__icon" style={{ backgroundColor: 'rgba(15, 92, 73, 0.1)', color: '#0F5C49' }}>

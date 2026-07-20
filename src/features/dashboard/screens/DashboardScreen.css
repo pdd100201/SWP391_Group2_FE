@@ -218,6 +218,7 @@
   border-radius: 8px;
   padding: 20px 24px;
   box-shadow: var(--sb-shadow);
+  cursor: pointer;
   transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.22s ease, border-color 0.22s ease;
 }
 
