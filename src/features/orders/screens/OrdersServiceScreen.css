@@ -38,16 +38,26 @@
 .orders-create-bar select { min-width: 430px; min-height: 42px; padding: 8px 36px 8px 12px; border: 1px solid #cbd5e1; border-radius: 9px; background: white; color: #14211d; color-scheme: light; font: inherit; }
 .orders-create-bar select option { color: #14211d; background: white; }
 .orders-no-reservation { color: var(--order-muted); }
-.orders-workspace { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 18px; min-height: 650px; align-items: start; }
+.orders-workspace { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 18px; min-height: 650px; align-items: start; }
 .orders-list-panel, .orders-detail-panel { background: white; border: 1px solid var(--order-border); border-radius: 16px; box-shadow: 0 8px 28px rgba(15, 23, 42, .04); }
 .orders-list-panel { padding: 12px; }
 .orders-panel-title { display: flex; align-items: center; gap: 8px; padding: 8px; font-weight: 800; color: var(--order-green-dark); }
 .orders-panel-title span { margin-left: auto; background: #ecfdf5; border-radius: 99px; padding: 2px 8px; }
-.orders-list-card { width: 100%; border: 1px solid transparent; border-radius: 12px; padding: 12px; margin-top: 7px; background: #f8fafc; text-align: left; cursor: pointer; }
+.orders-filter-tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 8px 8px; }
+.orders-filter-tabs button { border: 1px solid #dbe3ec; border-radius: 99px; padding: 5px 9px; background: white; color: #475569; font: inherit; font-size: .72rem; font-weight: 750; cursor: pointer; }
+.orders-filter-tabs button.is-active { border-color: var(--order-green); background: var(--order-green); color: white; }
+.orders-list-cards { display: grid; gap: 7px; }
+.orders-list-card { width: 100%; border: 1px solid transparent; border-radius: 12px; padding: 12px; background: #f8fafc; text-align: left; cursor: pointer; }
 .orders-list-card.is-active { border-color: #6ee7b7; background: #ecfdf5; }
 .orders-list-card > span:first-child { display: flex; flex-direction: column; gap: 3px; }
 .orders-list-card small { color: var(--order-muted); }
 .orders-list-card b { display: block; margin-top: 8px; color: var(--order-green-dark); }
+.orders-pagination { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; padding: 10px 4px 2px; border-top: 1px solid var(--order-border); }
+.orders-pagination small { color: var(--order-muted); white-space: nowrap; }
+.orders-pagination > div { display: flex; gap: 3px; }
+.orders-pagination button { min-width: 27px; height: 27px; padding: 0 5px; display: grid; place-items: center; border: 1px solid #dbe3ec; border-radius: 7px; background: white; color: #475569; font: inherit; font-size: .75rem; cursor: pointer; }
+.orders-pagination button.is-active { border-color: var(--order-green); background: var(--order-green); color: white; }
+.orders-pagination button:disabled { opacity: .35; cursor: not-allowed; }
 .orders-service-badge, .orders-item-status { display: inline-flex; width: fit-content; margin-top: 7px; padding: 3px 7px; border-radius: 99px; background: #e2e8f0; color: #475569; font-size: .68rem; font-weight: 800; text-transform: uppercase; }
 .orders-service-badge--preparing { background: #fff7ed; color: #c2410c; }
 .orders-service-badge--ready, .orders-service-badge--served { background: #dcfce7; color: #166534; }
@@ -263,8 +273,7 @@
 
 @media (max-width: 1050px) {
   .orders-workspace { grid-template-columns: 1fr; }
-  .orders-list-panel { display: flex; overflow-x: auto; gap: 8px; }
-  .orders-panel-title { min-width: 140px; }
+  .orders-list-cards { display: flex; overflow-x: auto; gap: 8px; padding-bottom: 4px; }
   .orders-list-card { min-width: 210px; }
 }
 
@@ -272,6 +281,7 @@
   .orders-header, .orders-create-bar, .orders-detail-head, .orders-menu-toolbar { align-items: stretch; flex-direction: column; }
   .orders-create-bar select { min-width: 0; width: 100%; }
   .orders-detail-actions { flex-wrap: wrap; }
+  .orders-pagination { align-items: flex-start; flex-direction: column; }
   .orders-item { grid-template-columns: 48px 1fr auto; }
   .orders-item > strong { grid-column: 2; }
   .orders-next-button, .orders-trash-button { grid-column: 3; grid-row: 1 / span 2; }

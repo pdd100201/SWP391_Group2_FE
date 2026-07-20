@@ -4,6 +4,7 @@ import axiosClient from '../../../shared/services/axiosClient'
 const PUBLIC_API = 'http://localhost:8080/api/order-access'
 
 export const orderApi = {
+  // Staff order workspace endpoints. axiosClient attaches the JWT automatically.
   getAll: (active = true) => axiosClient.get('/orders', { params: { active } }),
   getById: (orderId) => axiosClient.get(`/orders/${orderId}`),
   getByReservation: (reservationId) => axiosClient.get(`/orders/by-reservation/${reservationId}`),
@@ -14,11 +15,15 @@ export const orderApi = {
   submit: (orderId) => axiosClient.post(`/orders/${orderId}/submit`),
   updateItemStatus: (orderId, itemId, status) =>
     axiosClient.patch(`/orders/${orderId}/items/${itemId}/status`, { status }),
+  applyPromotion: (orderId, code) => axiosClient.patch(`/orders/${orderId}/promotion`, { code }),
+  removePromotion: (orderId) => axiosClient.delete(`/orders/${orderId}/promotion`),
+  createPayment: (orderId) => axiosClient.post(`/orders/${orderId}/payment`),
   close: (orderId) => axiosClient.patch(`/orders/${orderId}/close`),
   cancel: (orderId) => axiosClient.patch(`/orders/${orderId}/cancel`),
 }
 
 export const publicOrderApi = {
+  // Guest endpoints use a public order token instead of staff authentication.
   getOrder: (token) => axios.get(`${PUBLIC_API}/${token}`),
   getMenu: (token) => axios.get(`${PUBLIC_API}/${token}/menu`),
   addItem: (token, payload) => axios.post(`${PUBLIC_API}/${token}/items`, payload),

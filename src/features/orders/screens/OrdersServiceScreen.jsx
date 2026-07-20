@@ -1,20 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import {
   Check,
   ChefHat,
+  ChevronFirst,
+  ChevronLast,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   CreditCard,
   Minus,
   Plus,
+  QrCode,
   RefreshCw,
   Search,
   Send,
+  Tag,
   Trash2,
   XCircle,
 } from 'lucide-react'
 import { menuService } from '../../menu/services/menuService'
 import { getAllReservations } from '../../reservations/api/reservationApi'
+import { usePagination } from '../../../shared/hooks/usePagination'
 import { orderApi } from '../api/orderApi'
 import './OrdersServiceScreen.css'
 
@@ -49,6 +55,15 @@ const statusLabels = {
   CANCELLED: 'Cancelled',
 }
 
+const ORDERS_PER_PAGE = 6
+const ORDER_FILTERS = [
+  { value: 'ALL', label: 'All' },
+  { value: 'ACTIVE', label: 'Active' },
+  { value: 'OPEN', label: 'Open' },
+  { value: 'CLOSED', label: 'Closed' },
+  { value: 'CANCELLED', label: 'Cancelled' },
+]
+
 // Đồng bộ với điều kiện Active Orders ở backend để cập nhật UI ngay sau mỗi thao tác.
 const isActiveOrder = (order) => {
   if (order.status !== 'OPEN') return false
@@ -57,7 +72,20 @@ const isActiveOrder = (order) => {
   return serviceInProgress || paymentOutstanding
 }
 
-function OrdersServiceScreen({ activeView = false }) {
+const matchesOrderFilter = (order, filter) => {
+  if (filter === 'ALL') return true
+  if (filter === 'ACTIVE') return isActiveOrder(order)
+  return order.status === filter
+}
+
+const newestFirst = (left, right) => {
+  const leftTime = Date.parse(left.createdAt || left.createdDate || '') || 0
+  const rightTime = Date.parse(right.createdAt || right.createdDate || '') || 0
+  if (leftTime !== rightTime) return rightTime - leftTime
+  return Number(right.id || 0) - Number(left.id || 0)
+}
+
+function OrdersServiceScreen() {
   const [orders, setOrders] = useState([])
   const [selectedId, setSelectedId] = useState(null)
   const [menu, setMenu] = useState([])
@@ -65,12 +93,25 @@ function OrdersServiceScreen({ activeView = false }) {
   const [reservationId, setReservationId] = useState('')
   const [category, setCategory] = useState('All')
   const [search, setSearch] = useState('')
+  const [orderFilter, setOrderFilter] = useState('ALL')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const navigate = useNavigate()
+  const [promotionCode, setPromotionCode] = useState('')
 
-  const selected = orders.find((order) => order.id === selectedId) || null
+  const sortedOrders = useMemo(() => [...orders].sort(newestFirst), [orders])
+  const filteredOrders = useMemo(
+    () => sortedOrders.filter((order) => matchesOrderFilter(order, orderFilter)),
+    [sortedOrders, orderFilter]
+  )
+  const pagination = usePagination(filteredOrders, ORDERS_PER_PAGE)
+  const selected = filteredOrders.find((order) => order.id === selectedId) || null
+  const activeOrderCount = useMemo(() => orders.filter(isActiveOrder).length, [orders])
+  const paymentStatus = selected?.paymentStatus || 'NOT_CREATED'
+  const canCreatePayment = selected?.serviceStatus === 'SERVED'
+    && Number(selected?.total || 0) > 0
+    && !['PENDING', 'PAID'].includes(paymentStatus)
+  const canCloseOrder = selected?.serviceStatus === 'SERVED' && paymentStatus === 'PAID'
   const role = sessionStorage.getItem('role')
   const categories = useMemo(
     () => ['All', ...new Set(menu.map((item) => item.category).filter(Boolean))],
@@ -94,11 +135,11 @@ function OrdersServiceScreen({ activeView = false }) {
     try {
       const [ordersResponse, menuResponse, reservationsResponse] = await Promise.all([
         // Order Management lấy toàn bộ lịch sử; Active Orders yêu cầu backend lọc nghiệp vụ.
-        orderApi.getAll(activeView),
+        orderApi.getAll(false),
         menuService.getAll(),
         getAllReservations(),
       ])
-      const nextOrders = ordersResponse.data || []
+      const nextOrders = [...(ordersResponse.data || [])].sort(newestFirst)
       setOrders(nextOrders)
       setMenu(menuResponse.data || [])
       setReservations(reservationsResponse.data || [])
@@ -110,7 +151,7 @@ function OrdersServiceScreen({ activeView = false }) {
     } finally {
       setLoading(false)
     }
-  }, [activeView])
+  }, [])
 
   useEffect(() => {
     // Initial data synchronization with the API.
@@ -119,6 +160,8 @@ function OrdersServiceScreen({ activeView = false }) {
   }, [load])
 
   const applyOrder = (next) => {
+    const isNewOrder = !orders.some((order) => order.id === next.id)
+    const remainsVisible = matchesOrderFilter(next, orderFilter)
     setReservations((current) => current.map((reservation) => (
       reservation.reservationId === next.reservationId
         ? {
@@ -139,12 +182,23 @@ function OrdersServiceScreen({ activeView = false }) {
         : reservation
     )))
     setOrders((current) => {
-      if (activeView && !isActiveOrder(next)) return current.filter((order) => order.id !== next.id)
       const exists = current.some((order) => order.id === next.id)
       return exists ? current.map((order) => order.id === next.id ? next : order) : [next, ...current]
     })
-    if (!activeView || isActiveOrder(next)) setSelectedId(next.id)
-    else setSelectedId(null)
+    if (remainsVisible) setSelectedId(next.id)
+    else setSelectedId((current) => current === next.id ? null : current)
+    if (isNewOrder || !remainsVisible) pagination.setPage(0)
+  }
+
+  const changeOrderFilter = (nextFilter) => {
+    setOrderFilter(nextFilter)
+    pagination.setPage(0)
+    setSelectedId(sortedOrders.find((order) => matchesOrderFilter(order, nextFilter))?.id || null)
+  }
+
+  const changePage = (nextPage) => {
+    pagination.setPage(nextPage)
+    setSelectedId(filteredOrders[nextPage * ORDERS_PER_PAGE]?.id || null)
   }
 
   const run = async (action, fallback) => {
@@ -166,10 +220,27 @@ function OrdersServiceScreen({ activeView = false }) {
       .then(() => setReservationId(''))
   }
 
+  const applyPromotion = () => {
+    if (!selected || !promotionCode.trim()) return
+    run(() => orderApi.applyPromotion(selected.id, promotionCode.trim()), 'Unable to apply promotion.')
+      .then(() => setPromotionCode(''))
+  }
+
+  const removePromotion = () => {
+    if (!selected) return
+    run(() => orderApi.removePromotion(selected.id), 'Unable to remove promotion.')
+  }
+
+  const createPayment = () => {
+    if (!selected) return
+    run(() => orderApi.createPayment(selected.id), 'Unable to create SePay payment QR.')
+  }
+
   const nextStatus = (item) => {
-    if (['ADMIN', 'MANAGER'].includes(role) && item.status === 'CONFIRMED') return 'PREPARING'
-    if (['ADMIN', 'MANAGER'].includes(role) && item.status === 'PREPARING') return 'READY'
-    if (['ADMIN', 'MANAGER', 'WAITER'].includes(role) && item.status === 'READY') return 'SERVED'
+    if (!['ADMIN', 'MANAGER', 'WAITER'].includes(role)) return null
+    if (item.status === 'CONFIRMED') return 'PREPARING'
+    if (item.status === 'PREPARING') return 'READY'
+    if (item.status === 'READY') return 'SERVED'
     return null
   }
 
@@ -180,10 +251,8 @@ function OrdersServiceScreen({ activeView = false }) {
       <header className="orders-header">
         <div>
           <span className="orders-eyebrow"><ChefHat size={15} /> Orders &amp; Service</span>
-          <h1>{activeView ? 'Active orders' : 'Order management'}</h1>
-          <p>{activeView
-            ? 'Orders still being served or waiting for payment.'
-            : 'Create orders and manage the complete order history across every status.'}</p>
+          <h1>Order management</h1>
+          <p>Create orders and manage the complete order history across every status.</p>
         </div>
         <button type="button" className="orders-button orders-button--secondary" onClick={load} disabled={busy}>
           <RefreshCw size={17} /> Refresh
@@ -192,7 +261,7 @@ function OrdersServiceScreen({ activeView = false }) {
 
       {error && <div className="orders-alert">{error}</div>}
 
-      {!activeView && <div className="orders-create-bar">
+      <div className="orders-create-bar">
         <label className="orders-reservation-field">
           <span>Assigned reservation</span>
           <select value={reservationId} onChange={(event) => setReservationId(event.target.value)}>
@@ -210,30 +279,60 @@ function OrdersServiceScreen({ activeView = false }) {
         {unusedReservations.length === 0 && (
           <small className="orders-no-reservation">No assigned reservation is waiting for an order.</small>
         )}
-      </div>}
+      </div>
 
       <div className="orders-workspace">
         <aside className="orders-list-panel">
           <div className="orders-panel-title">
-            <ClipboardList size={18} /> {activeView ? 'Active orders' : 'All orders'} <span>{orders.length}</span>
+            <ClipboardList size={18} /> Orders <span>{filteredOrders.length}</span>
           </div>
-          {orders.length === 0 ? <p className="orders-empty">{activeView ? 'No active orders.' : 'No orders found.'}</p> : orders.map((order) => (
-            <button
-              type="button"
-              key={order.id}
-              className={`orders-list-card ${selectedId === order.id ? 'is-active' : ''}`}
-              onClick={() => setSelectedId(order.id)}
-            >
-              <span><strong>{order.orderCode}</strong><small>{order.reservationGuestName} - {tableLabel(order)}</small></span>
-              <span className={`orders-service-badge orders-service-badge--${order.serviceStatus.toLowerCase()}`}>
-                {order.serviceStatus.replace('_', ' ')}
-              </span>
-              <span className={`orders-payment-badge orders-payment-badge--${(order.paymentStatus || 'unpaid').toLowerCase()}`}>
-                {order.paymentStatus || 'UNPAID'}
-              </span>
-              <b>{money(order.total)}</b>
-            </button>
-          ))}
+          <div className="orders-filter-tabs" aria-label="Order filters">
+            {ORDER_FILTERS.map((filter) => (
+              <button
+                type="button"
+                key={filter.value}
+                className={orderFilter === filter.value ? 'is-active' : ''}
+                onClick={() => changeOrderFilter(filter.value)}
+              >
+                {filter.label}{filter.value === 'ACTIVE' ? ` (${activeOrderCount})` : ''}
+              </button>
+            ))}
+          </div>
+          <div className="orders-list-cards">
+            {filteredOrders.length === 0 ? <p className="orders-empty">No orders found.</p> : pagination.currentItems.map((order) => (
+              <button
+                type="button"
+                key={order.id}
+                className={`orders-list-card ${selectedId === order.id ? 'is-active' : ''}`}
+                onClick={() => setSelectedId(order.id)}
+              >
+                <span><strong>{order.orderCode}</strong><small>{order.reservationGuestName} - {tableLabel(order)}</small></span>
+                <span className={`orders-service-badge orders-service-badge--${order.serviceStatus.toLowerCase()}`}>
+                  {order.serviceStatus.replace('_', ' ')}
+                </span>
+                <span className={`orders-payment-badge orders-payment-badge--${(order.paymentStatus || 'unpaid').toLowerCase()}`}>
+                  {order.paymentStatus || 'UNPAID'}
+                </span>
+                <b>{money(order.total)}</b>
+              </button>
+            ))}
+          </div>
+          {pagination.totalPages > 1 && (
+            <nav className="orders-pagination" aria-label="Order pages">
+              <small>{pagination.startIdx}-{pagination.endIdx} of {pagination.totalElements}</small>
+              <div>
+                <button type="button" disabled={pagination.isFirst} onClick={() => changePage(0)} aria-label="First page"><ChevronFirst size={15} /></button>
+                <button type="button" disabled={pagination.isFirst} onClick={() => changePage(pagination.page - 1)} aria-label="Previous page"><ChevronLeft size={15} /></button>
+                {pagination.getPageNumbers().map((pageNumber) => (
+                  <button type="button" key={pageNumber} className={pagination.page === pageNumber ? 'is-active' : ''} onClick={() => changePage(pageNumber)}>
+                    {pageNumber + 1}
+                  </button>
+                ))}
+                <button type="button" disabled={pagination.isLast} onClick={() => changePage(pagination.page + 1)} aria-label="Next page"><ChevronRight size={15} /></button>
+                <button type="button" disabled={pagination.isLast} onClick={() => changePage(pagination.totalPages - 1)} aria-label="Last page"><ChevronLast size={15} /></button>
+              </div>
+            </nav>
+          )}
         </aside>
 
         <main className="orders-detail-panel">
@@ -251,13 +350,6 @@ function OrdersServiceScreen({ activeView = false }) {
                   </div>
                 </div>
                 <div className="orders-detail-actions">
-                  {selected.status === 'OPEN' && selected.paymentStatus !== 'PAID' && <button
-                    type="button"
-                    className="orders-button orders-button--primary"
-                    onClick={() => navigate(`/dashboard/orders-service/${selected.id}/payment`)}
-                  >
-                    <CreditCard size={16} /> Payment
-                  </button>}
                   {selected.status === 'OPEN' && <button type="button" className="orders-button orders-button--danger" disabled={busy} onClick={() => run(
                     () => orderApi.cancel(selected.id), 'Unable to cancel order.')}>
                     <XCircle size={16} /> Cancel
@@ -268,6 +360,66 @@ function OrdersServiceScreen({ activeView = false }) {
               <div className="orders-content-grid">
                 <div>
                   <div className="orders-section-title"><h3>Order items</h3><strong>{money(selected.total)}</strong></div>
+                  {selected.status === 'OPEN' && <>
+                    <div className="orders-promotion-box">
+                      <div className="orders-promotion-form">
+                        <Tag size={17} />
+                        <input
+                          value={promotionCode}
+                          onChange={(event) => setPromotionCode(event.target.value)}
+                          placeholder="Enter promotion code"
+                        />
+                        <button
+                          type="button"
+                          className="orders-button orders-button--secondary"
+                          disabled={busy || !promotionCode.trim()}
+                          onClick={applyPromotion}
+                        >
+                          Apply
+                        </button>
+                      </div>
+                      {selected.promotionCode ? (
+                        <div className="orders-applied-promo">
+                          <span>Applied: <strong>{selected.promotionCode}</strong> {selected.promotionName ? `- ${selected.promotionName}` : ''}</span>
+                          <button type="button" disabled={busy} onClick={removePromotion}>Remove</button>
+                        </div>
+                      ) : null}
+                      <div className="orders-bill-summary">
+                        <span>Subtotal <strong>{money(selected.subtotal ?? selected.total)}</strong></span>
+                        <span>Discount <strong>-{money(selected.discountAmount || 0)}</strong></span>
+                        <span>Total <strong>{money(selected.total)}</strong></span>
+                      </div>
+                    </div>
+                    <section className={`orders-payment-box ${paymentStatus === 'PAID' ? 'orders-payment-box--paid' : ''}`}>
+                      <div className="orders-payment-head">
+                        <span><CreditCard size={17} /> SePay payment</span>
+                        <strong>{paymentStatus.replace('_', ' ')}</strong>
+                      </div>
+                      {selected.paymentCode ? (
+                        <div className="orders-payment-info">
+                          <span>Transfer content: <strong>{selected.paymentCode}</strong></span>
+                          <span>Amount: <strong>{money(selected.total)}</strong></span>
+                        </div>
+                      ) : (
+                        <p className="orders-payment-note">The QR can be created after every dish has been served.</p>
+                      )}
+                      {selected.paymentQrImageUrl ? (
+                        <img className="orders-sepay-qr" src={selected.paymentQrImageUrl} alt="SePay payment QR" />
+                      ) : null}
+                      {paymentStatus === 'PAID' ? (
+                        <div className="orders-payment-paid">Payment received.</div>
+                      ) : (
+                        <button
+                          type="button"
+                          className="orders-button orders-button--primary"
+                          disabled={busy || !canCreatePayment}
+                          onClick={createPayment}
+                        >
+                          <QrCode size={17} /> Create SePay QR
+                        </button>
+                      )}
+                    </section>
+                  </>}
                   <div className="orders-items">
                     {selected.items.length === 0 && <p className="orders-empty">
                       {selected.status === 'OPEN' ? 'Add dishes from the menu below.' : 'This order has no items.'}
@@ -327,7 +479,7 @@ function OrdersServiceScreen({ activeView = false }) {
                       onClick={() => run(() => orderApi.submit(selected.id), 'Unable to submit order.')}>
                       <Send size={17} /> Submit draft items
                     </button>
-                    <button type="button" className="orders-button orders-button--success" disabled={busy || selected.serviceStatus !== 'SERVED' || selected.paymentStatus !== 'PAID'}
+                    <button type="button" className="orders-button orders-button--success" disabled={busy || !canCloseOrder}
                       onClick={() => run(() => orderApi.close(selected.id), 'Unable to close order.')}>
                       <Check size={17} /> Close order
                     </button>
