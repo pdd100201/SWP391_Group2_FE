@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BarChart2, RefreshCw, DollarSign, CreditCard, Layers, Calendar, UtensilsCrossed, Users } from 'lucide-react'
 import { dashboardApi } from '../api/dashboardApi'
 import './DashboardScreen.css'
+
+const EMPTY_CHART_DATA = []
 
 // Helper chuyển đổi số tiền sang dạng hiển thị VND
 const formatVND = (value) => {
@@ -41,7 +43,7 @@ function DashboardScreen({ isDashboardOnly = false }) {
   const [tooltip, setTooltip] = useState({ show: false, x: 0, y: 0, label: '', value: 0, txCount: 0 })
 
   // ── Hàm gọi API tải dữ liệu ──
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
@@ -65,12 +67,16 @@ function DashboardScreen({ isDashboardOnly = false }) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [endDate, groupBy, isDashboardOnly, startDate])
 
   // Tự động tải lại dữ liệu khi các bộ lọc thay đổi
   useEffect(() => {
-    fetchStats()
-  }, [startDate, endDate, groupBy])
+    const timer = window.setTimeout(() => {
+      void fetchStats()
+    }, 0)
+
+    return () => window.clearTimeout(timer)
+  }, [fetchStats])
 
   // ── Hàm xử lý nút lọc nhanh (7 ngày, 30 ngày, tháng này) ──
   const handleQuickFilter = (days) => {
@@ -191,10 +197,7 @@ function DashboardScreen({ isDashboardOnly = false }) {
   }
 
   // ── Tính toán số liệu vẽ SVG ──
-  const chartWidth = 800
-  const chartHeight = 300
-  const chartPadding = { top: 30, right: 30, bottom: 50, left: 80 }
-  const chartData = stats?.chartData || []
+  const chartData = stats?.chartData || EMPTY_CHART_DATA
 
   // Kiểm tra bộ lọc nhanh nào đang khớp với khoảng ngày hiện tại
   const activeQuickFilter = useMemo(() => {
