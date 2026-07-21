@@ -27,6 +27,7 @@ import RequireAuth from '../shared/components/ui/RequireAuth'
 import RedirectByRole from '../shared/components/ui/RedirectByRole'
 import PromotionsScreen from '../features/promotions/screens/PromotionsScreen'
 import RevenueScreen from '../features/revenue/screens/RevenueScreen'
+import DashboardScreen from '../features/dashboard/screens/DashboardScreen'
 
 function DashboardPage() {
   return <div className="dashboard-placeholder">Dashboard content goes here</div>
@@ -34,6 +35,20 @@ function DashboardPage() {
 
 function LegacyActiveOrdersRedirect() {
   return <Navigate to="/dashboard/orders-service?filter=ACTIVE" replace />
+}
+
+function DashboardIndex() {
+  const role = sessionStorage.getItem('role')
+  if (role === 'ADMIN' || role === 'MANAGER') {
+    return <DashboardScreen isDashboardOnly={true} />
+  }
+  if (role === 'RECEPTIONIST') {
+    return <Navigate to="/dashboard/check-in" replace />
+  }
+  if (role === 'WAITER') {
+    return <Navigate to="/dashboard/orders-service" replace />
+  }
+  return <div className="dashboard-placeholder">Welcome to the Dashboard</div>
 }
 
 function AppRoutes() {
@@ -97,7 +112,7 @@ function AppRoutes() {
           </RequireAuth>
         )}
       >
-        <Route index element={<DashboardPage />} />
+        <Route index element={<DashboardIndex />} />
         <Route path="check-in" element={<CheckInScreen />} />
         <Route
           path="tables"
@@ -135,7 +150,14 @@ function AppRoutes() {
                   </RequireAuth>
               )}
           />
-        <Route path="reports" element={<DashboardPage />} />
+        <Route
+          path="reports"
+          element={(
+            <RequireAuth allowedRoles={['ADMIN', 'MANAGER']}>
+              <DashboardScreen />
+            </RequireAuth>
+          )}
+        />
         <Route path="account-management" element={<DashboardPage />} />
         <Route path="accounts/staff" element={<StaffAccountPage />} />
         <Route path="accounts/customer" element={<CustomerAccountPage />} />

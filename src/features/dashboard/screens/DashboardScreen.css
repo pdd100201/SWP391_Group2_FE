@@ -1,0 +1,514 @@
+/* ── Hệ màu Sáng (Đồng bộ trang Check-in của dự án) ── */
+:root {
+  --sb-bg: #F4F7F6;            /* Nền trang xám nhạt mát mẻ */
+  --sb-card-bg: #FFFFFF;       /* Nền card trắng tinh */
+  --sb-border: #DDE5E3;        /* Viền xám nhạt hơi ánh xanh */
+  
+  --sb-text: #1F2937;          /* Chữ chính (xanh đen/đen) */
+  --sb-text-title: #0F5C49;    /* Tiêu đề chính xanh đậm Check-in */
+  --sb-text-muted: #64748B;    /* Chữ phụ xám */
+  
+  --sb-accent: #2563EB;        /* Màu nhấn xanh dương nút đang chọn (blue-600) */
+  --sb-hover: rgba(37, 99, 235, 0.04); /* Nền hover nhẹ xanh dương */
+  --sb-revenue: #059669;       /* Màu doanh thu xanh lá cây sáng (emerald-600) */
+  --sb-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* Shadow cực kỳ nhẹ */
+}
+
+/* Cấu hình chung */
+.dashboard-screen {
+  background-color: var(--sb-bg);
+  color: var(--sb-text);
+  padding: 32px;
+  font-family: system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+}
+
+/* ── Tiêu đề chính ── */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 28px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.dashboard-header h1 {
+  font-size: 1.8rem;
+  color: var(--sb-text-title); /* Màu xanh đậm #0F5C49 */
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.dashboard-header p {
+  color: var(--sb-text-muted);
+  margin: 6px 0 0 0;
+  font-size: 0.9rem;
+}
+
+/* ── Bộ lọc (Toolbar) ── */
+.dashboard-toolbar {
+  display: grid;
+  grid-template-columns: auto 1fr auto; /* Chia thành 3 cột trái - giữa - phải */
+  align-items: end; /* Căn đáy đều nhau cho các cột */
+  gap: 24px;
+  background-color: var(--sb-card-bg);
+  border: 1px solid var(--sb-border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 36px;
+  width: 100%;
+  box-sizing: border-box;
+  box-shadow: var(--sb-shadow);
+}
+
+.dashboard-toolbar__left {
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.dashboard-toolbar__center {
+  justify-self: center; /* Căn giữa cột chính giữa */
+}
+
+.dashboard-toolbar__right {
+  justify-self: end; /* Căn sát mép bên phải */
+}
+
+.dashboard-toolbar__group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dashboard-toolbar__group label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--sb-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dashboard-toolbar__input {
+  background-color: #FFFFFF;
+  border: 1px solid var(--sb-border);
+  color: var(--sb-text);
+  border-radius: 6px;
+  padding: 0 12px;
+  font-size: 0.88rem;
+  outline: none;
+  height: 38px;
+  width: 160px; /* Tăng lên 160px để hiển thị thoải mái cả ngày tháng và icon lịch */
+  box-sizing: border-box;
+  transition: all 0.15s ease-in-out;
+}
+
+/* Đảm bảo biểu tượng lịch (calendar picker icon) luôn hiển thị rõ ràng và có thể click */
+.dashboard-toolbar__input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.75;
+  filter: invert(25%) sepia(8%) saturate(900%) hue-rotate(170deg); /* Chuyển icon màu trắng sang màu xám sẫm để nổi bật trên nền trắng */
+  transition: opacity 0.15s ease-in-out;
+}
+
+.dashboard-toolbar__input::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+.dashboard-toolbar__input:focus {
+  border-color: var(--sb-accent);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+/* Segmented Control hiện đại */
+.dashboard-toggle-group {
+  display: flex;
+  background-color: #F8FAFC;
+  border: 1px solid var(--sb-border);
+  border-radius: 6px;
+  padding: 2px;
+  height: 38px;
+  box-sizing: border-box;
+}
+
+.dashboard-toggle-btn {
+  background: none;
+  border: none;
+  color: var(--sb-text-muted);
+  padding: 0 16px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border-radius: 4px;
+  cursor: pointer;
+  height: 100%;
+  transition: all 0.15s ease-in-out;
+}
+
+.dashboard-toggle-btn:hover {
+  color: var(--sb-text);
+}
+
+.dashboard-toggle-btn--active {
+  background-color: var(--sb-accent); /* Màu xanh dương #2563EB */
+  color: #FFFFFF !important;
+}
+
+/* Nút tải lại / Nút lọc nhanh */
+.dashboard-quick-btn {
+  background-color: #FFFFFF;
+  border: 1px solid var(--sb-border);
+  color: var(--sb-text);
+  padding: 0 16px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  transition: all 0.15s ease-in-out;
+}
+
+.dashboard-quick-btn:hover {
+  background-color: #F1F5F9;
+  border-color: #CBD5E1;
+}
+
+.dashboard-quick-btn:disabled {
+  background-color: #F8FAFC;
+  color: #94A3B8;
+  cursor: not-allowed;
+  border-color: var(--sb-border);
+}
+
+/* Cấu hình hiển thị nút lọc nhanh đang chọn */
+.dashboard-quick-btn--active {
+  background-color: var(--sb-accent) !important;
+  color: #FFFFFF !important;
+  border-color: var(--sb-accent) !important;
+}
+
+/* Nhóm nút lọc nhanh nằm ngang */
+.dashboard-quick-filters {
+  display: flex;
+  gap: 8px; /* Khoảng cách nằm ngang 8px */
+}
+
+/* ── Thẻ chỉ số (KPIs) ── */
+.dashboard-kpis {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  margin-bottom: 36px;
+}
+
+@media (max-width: 768px) {
+  .dashboard-kpis {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}
+
+.dashboard-card {
+  background-color: var(--sb-card-bg);
+  border: 1px solid var(--sb-border);
+  border-radius: 8px;
+  padding: 20px 24px;
+  box-shadow: var(--sb-shadow);
+  cursor: pointer;
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px -5px rgba(15, 92, 73, 0.06), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+  border-color: #A3B8B3;
+}
+
+.dashboard-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.dashboard-card__title {
+  font-size: 0.82rem;
+  color: var(--sb-text-muted);
+  text-transform: uppercase;
+  margin-bottom: 0;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.dashboard-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.dashboard-card__value {
+  font-size: 2.2rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+/* Thẻ tổng doanh thu dùng màu xanh lá sáng dễ chịu #059669 */
+.dashboard-card:nth-child(1) .dashboard-card__value {
+  color: var(--sb-revenue);
+}
+
+/* Thẻ số giao dịch thành công dùng màu xanh đậm #0F5C49 */
+.dashboard-card:nth-child(2) .dashboard-card__value {
+  color: var(--sb-text-title);
+}
+
+/* Cấu trúc lưới 3 cột cho 6 thẻ tổng hợp trang Dashboard */
+.dashboard-kpis--6cols {
+  grid-template-columns: repeat(3, 1fr) !important;
+}
+
+@media (max-width: 992px) {
+  .dashboard-kpis--6cols {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-kpis--6cols {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ── Biểu đồ cột SVG ── */
+.dashboard-chart-card {
+  background-color: var(--sb-card-bg);
+  border: 1px solid var(--sb-border);
+  border-radius: 8px;
+  padding: 28px 32px;
+  margin-bottom: 36px;
+  box-shadow: var(--sb-shadow);
+}
+
+.dashboard-chart-card h2 {
+  font-size: 1.2rem;
+  color: var(--sb-text);
+  margin: 0 0 24px 0;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.svg-chart-container {
+  position: relative;
+  width: 100%;
+}
+
+.svg-chart-bar {
+  fill: var(--sb-accent); /* Màu cột xanh dương */
+  cursor: pointer;
+  opacity: 0.85;
+  transition: all 0.15s ease-in-out;
+}
+
+.svg-chart-bar:hover {
+  fill: #1D4ED8; /* Màu hover xanh dương sẫm hơn */
+  opacity: 1;
+}
+
+.svg-chart-axis-line {
+  stroke: var(--sb-border);
+  stroke-width: 1;
+}
+
+.svg-chart-axis-text {
+  fill: var(--sb-text-muted);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.svg-chart-grid-line {
+  stroke: #E2E8F0; /* Grid kẻ mờ sáng */
+  stroke-width: 1;
+}
+
+/* Tooltip nổi nền trắng viền nhạt */
+.chart-tooltip {
+  position: absolute;
+  background-color: #FFFFFF;
+  border: 1px solid var(--sb-border);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 0.8rem;
+  color: var(--sb-text);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  pointer-events: none;
+  z-index: 10;
+  transform: translate(-50%, -100%);
+  margin-top: -8px;
+  line-height: 1.4;
+}
+
+.chart-tooltip strong {
+  display: block;
+  color: var(--sb-text-title);
+  margin-bottom: 4px;
+}
+
+/* ── Bảng số liệu chi tiết ── */
+.dashboard-table-card {
+  background-color: var(--sb-card-bg);
+  border: 1px solid var(--sb-border);
+  border-radius: 8px;
+  padding: 28px 32px;
+  box-shadow: var(--sb-shadow);
+}
+
+.dashboard-table-card h2 {
+  font-size: 1.2rem;
+  color: var(--sb-text);
+  margin: 0 0 24px 0;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.dashboard-table-wrap {
+  overflow-x: auto;
+}
+
+.dashboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+/* Header nền xám rất nhạt hoặc xanh nhạt */
+.dashboard-table th {
+  padding: 14px 18px;
+  font-size: 0.8rem;
+  color: var(--sb-text-title);       /* Màu chữ đậm xanh Check-in */
+  background-color: #EBF4F1;         /* Nền xanh nhạt đồng bộ Check-in */
+  border-bottom: 2px solid var(--sb-border);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+}
+
+.dashboard-table td {
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--sb-border);
+  font-size: 0.9rem;
+  color: var(--sb-text);
+}
+
+.dashboard-table tr:hover td {
+  background-color: #F8FAFC; /* Hover nhẹ nhàng */
+}
+
+/* Trạng thái trống và tải trang */
+.dashboard-loading {
+  text-align: center;
+  padding: 60px;
+  color: var(--sb-text-muted);
+  font-size: 0.95rem;
+}
+
+.dashboard-empty {
+  text-align: center;
+  padding: 60px 40px;
+  color: var(--sb-text-muted);
+  font-size: 0.95rem;
+  background-color: #F8FAFC;
+  border: 1px dashed var(--sb-border);
+  border-radius: 8px;
+}
+
+.dashboard-error {
+  background-color: #FEF2F2;
+  color: #991B1B;
+  border: 1px solid #FCA5A5;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.dashboard-error button {
+  background-color: #EF4444;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.15s ease-in-out;
+}
+
+.dashboard-error button:hover {
+  background-color: #DC2626;
+}
+
+/* Responsive cho toolbar */
+@media (max-width: 992px) {
+  .dashboard-toolbar {
+    display: flex;
+    flex-wrap: wrap; /* Bọc hàng trên tablet */
+    justify-content: space-between;
+    gap: 16px;
+  }
+  
+  .dashboard-toolbar__left,
+  .dashboard-toolbar__center,
+  .dashboard-toolbar__right {
+    justify-self: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-toolbar {
+    flex-direction: column;
+    align-items: stretch; /* Chiếm toàn bộ chiều ngang trên mobile */
+    gap: 16px;
+  }
+  
+  .dashboard-toolbar__left {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  .dashboard-toolbar__group {
+    width: 100%;
+  }
+
+  .dashboard-toolbar__input {
+    width: 100%; /* Input full width */
+  }
+
+  .dashboard-quick-filters {
+    width: 100%;
+  }
+  
+  .dashboard-quick-btn {
+    flex: 1; /* Nút lọc nhanh chia đều width */
+    justify-content: center;
+  }
+  
+  .dashboard-toggle-group {
+    width: 100%;
+  }
+  
+  .dashboard-toggle-btn {
+    flex: 1; /* Nút segmented control chia đều width */
+    justify-content: center;
+  }
+}
