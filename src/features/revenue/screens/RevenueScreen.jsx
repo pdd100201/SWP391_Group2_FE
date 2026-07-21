@@ -133,7 +133,6 @@ function RevenueScreen() {
             <option value="ALL">All methods</option>
             <option value="CASH">Cash</option>
             <option value="SEPAY">SePay</option>
-            <option value="COMPLIMENTARY">Complimentary</option>
           </select>
         </label>
         <label className="revenue-search">
