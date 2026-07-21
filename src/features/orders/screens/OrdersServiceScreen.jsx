@@ -26,10 +26,6 @@ import './OrdersServiceScreen.css'
 const GROUPS_PER_PAGE = 6
 const GROUP_FILTERS = [
   { value: 'ACTIVE', label: 'Current' },
-  { value: 'OPEN', label: 'Open' },
-  { value: 'COMPLETED', label: 'Completed' },
-  { value: 'CANCELLED', label: 'Cancelled' },
-  { value: 'ALL', label: 'All history' },
 ]
 
 const itemStatusLabels = {
@@ -454,12 +450,12 @@ function OrdersServiceScreen() {
               type="search"
               value={orderSearch}
               onChange={(event) => changeOrderSearch(event.target.value)}
-              placeholder="Search all orders"
-              aria-label="Search all orders, including paid orders"
+              placeholder="Search active orders"
+              aria-label="Search active reservation orders"
             />
           </label>
           <small className="orders-search-hint">
-            Paid orders are hidden from Current, but remain searchable.
+            Paid, completed, and cancelled orders are handled in Revenue.
           </small>
           <div className="orders-filter-tabs" aria-label="Reservation order filters">
             {GROUP_FILTERS.map((filter) => (

@@ -1,6 +1,15 @@
 import axiosClient from '../../../shared/services/axiosClient'
 
 export const checkinApi = {
+    getReservations: async (date, search = '') => {
+        return axiosClient.get('/check-in/reservations', {
+            params: {
+                date,
+                ...(search ? { search } : {}),
+            },
+        })
+    },
+
     assignTable: async (data) => {
         return axiosClient.post('/check-in/assign', data)
     },

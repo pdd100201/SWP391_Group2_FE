@@ -129,7 +129,7 @@ function AppRoutes() {
         <Route
           path="revenue"
           element={(
-            <RequireAuth allowedRoles={['ADMIN', 'MANAGER']}>
+            <RequireAuth allowedRoles={['ADMIN', 'MANAGER', 'RECEPTIONIST']}>
               <RevenueScreen />
             </RequireAuth>
           )}
@@ -137,19 +137,19 @@ function AppRoutes() {
         <Route
           path="menu-management"
           element={(
-            <RequireAuth allowedRoles={['ADMIN', 'MANAGER', 'RECEPTIONIST', 'WAITER']}>
+            <RequireAuth allowedRoles={['ADMIN', 'MANAGER']}>
               <MenuManagementScreen />
             </RequireAuth>
           )}
         />
-          <Route
-              path="promotions"
-              element={(
-                  <RequireAuth allowedRoles={['ADMIN', 'MANAGER']}>
-                      <PromotionsScreen />
-                  </RequireAuth>
-              )}
-          />
+        <Route
+          path="promotions"
+          element={(
+            <RequireAuth allowedRoles={['ADMIN', 'MANAGER']}>
+              <PromotionsScreen />
+            </RequireAuth>
+          )}
+        />
         <Route
           path="reports"
           element={(

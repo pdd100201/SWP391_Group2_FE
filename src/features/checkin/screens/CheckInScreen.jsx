@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CalendarDays, Clock, Search, UsersRound, CheckCircle2, HelpCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { checkinApi } from '../api/checkinApi'
-import { getAllReservations } from "../../reservations/api/reservationApi.js"
 import { tableApi } from "../../tables/api/tableApi.js"
 import './CheckInScreen.css'
 
@@ -90,7 +89,7 @@ function CheckInScreen() {
     setError('')
     try {
       const [reservationResponse, tableResponse] = await Promise.all([
-        getAllReservations(),
+        checkinApi.getReservations(selectedDate),
         tableApi.getStatusNow(),
       ])
 
@@ -114,7 +113,7 @@ function CheckInScreen() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [selectedDate])
 
   useEffect(() => {
     const timer = window.setTimeout(loadCheckInData, 0)
