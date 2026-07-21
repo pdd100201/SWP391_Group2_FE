@@ -1,0 +1,17 @@
+import axiosClient from '../../../shared/services/axiosClient'
+
+export const paymentApi = {
+  getGroup: (reservationId) => axiosClient.get(`/orders/groups/${reservationId}`),
+  applyPromotion: (reservationId, code) =>
+    axiosClient.patch(`/payments/bills/reservations/${reservationId}/promotion`, { code }),
+  removePromotion: (reservationId) =>
+    axiosClient.delete(`/payments/bills/reservations/${reservationId}/promotion`),
+  createSepayPayment: (reservationId) =>
+    axiosClient.post(`/payments/bills/reservations/${reservationId}/sepay`),
+  createCashPayment: (reservationId) =>
+    axiosClient.post(`/payments/bills/reservations/${reservationId}/cash`),
+  cancelPayment: (reservationId) =>
+    axiosClient.post(`/payments/bills/reservations/${reservationId}/cancel-payment`),
+  completeReservation: (reservationId) =>
+    axiosClient.patch(`/orders/reservations/${reservationId}/complete`),
+}

@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowRightLeft,
-  Banknote,
   Check,
   ChefHat,
   ChevronFirst,
@@ -13,11 +12,9 @@ import {
   CreditCard,
   Minus,
   Plus,
-  QrCode,
   RefreshCw,
   Search,
   Send,
-  Tag,
   Trash2,
   XCircle,
 } from 'lucide-react'
@@ -151,6 +148,7 @@ const matchesGroupSearch = (group, rawTerm) => {
 }
 
 function OrdersServiceScreen() {
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [routeTarget] = useState(() => ({
     reservationId: Number(searchParams.get('reservationId')) || null,
@@ -171,7 +169,6 @@ function OrdersServiceScreen() {
   const [dishSearch, setDishSearch] = useState('')
   const [orderSearch, setOrderSearch] = useState('')
   const [groupFilter, setGroupFilter] = useState(routeTarget.filter)
-  const [promotionCode, setPromotionCode] = useState('')
   const [transferTarget, setTransferTarget] = useState('')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
@@ -200,14 +197,6 @@ function OrdersServiceScreen() {
   const bill = selectedGroup?.bill || null
   const billStatus = bill?.status || 'DRAFT'
   const billEditable = billStatus === 'DRAFT'
-  const canPay = Boolean(selectedGroup)
-    && billEditable
-    && (groupSubtotal(selectedGroup) > 0 || activeItems(selectedGroup).length > 0)
-    && allItemsServed(selectedGroup)
-  const isComplimentaryPayment = canPay
-    && groupSubtotal(selectedGroup) > 0
-    && groupTotal(selectedGroup) === 0
-    && Boolean(bill?.promotionId)
   const canComplete = selectedGroup?.reservationStatus === 'ARRIVED'
     && billStatus === 'PAID'
     && allItemsServed(selectedGroup)
@@ -364,7 +353,6 @@ function OrdersServiceScreen() {
   const selectGroup = (group) => {
     setSelectedReservationId(group.reservationId)
     setSelectedOrderId(group.orders[0]?.id || null)
-    setPromotionCode('')
     setTransferTarget('')
   }
 
@@ -414,15 +402,6 @@ function OrdersServiceScreen() {
     if (item.status === 'PREPARING') return 'READY'
     if (item.status === 'READY') return 'SERVED'
     return null
-  }
-
-  const applyPromotion = async () => {
-    if (!selectedGroup || !promotionCode.trim()) return
-    const succeeded = await run(
-      () => orderApi.applyPromotion(selectedGroup.reservationId, promotionCode.trim()),
-      'Unable to apply the promotion.'
-    )
-    if (succeeded) setPromotionCode('')
   }
 
   const transferOrder = async () => {
@@ -798,123 +777,25 @@ function OrdersServiceScreen() {
                 <aside className="orders-bill-panel">
                   <div className="orders-bill-title">
                     <CreditCard size={18} />
-                    <div><strong>{bill?.billCode || 'Shared bill'}</strong><small>One bill for all tables</small></div>
+                    <div><strong>Payment</strong><small>Manage bill, discount, cash, and SePay QR on the payment page.</small></div>
                   </div>
 
-                  <div className="orders-bill-summary">
-                    <span>Subtotal <strong>{money(bill?.subtotal ?? selectedGroup.subtotal)}</strong></span>
-                    <span>Discount <strong>-{money(bill?.discountAmount || 0)}</strong></span>
-                    <span>Total <strong>{money(bill?.total ?? selectedGroup.subtotal)}</strong></span>
-                  </div>
-
-                  {billEditable ? (
-                    <div className="orders-promotion-box">
-                      <label className="orders-promotion-form">
-                        <Tag size={17} />
-                        <input value={promotionCode} onChange={(event) => setPromotionCode(event.target.value)} placeholder="Promotion code" />
-                        <button type="button" className="orders-button orders-button--secondary" disabled={busy || !promotionCode.trim()} onClick={applyPromotion}>
-                          Apply
-                        </button>
-                      </label>
-                      {bill?.promotionCode ? (
-                        <div className="orders-applied-promo">
-                          <span><strong>{bill.promotionCode}</strong>{bill.promotionName ? ` · ${bill.promotionName}` : ''}</span>
-                          <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() => run(
-                              () => orderApi.removePromotion(selectedGroup.reservationId),
-                              'Unable to remove the promotion.'
-                            )}
-                          >Remove</button>
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : bill?.promotionCode ? (
-                    <div className="orders-applied-promo orders-applied-promo--locked">
-                      Promotion: <strong>{bill.promotionCode}</strong>
-                    </div>
-                  ) : null}
-
-                  <section className={`orders-payment-box ${billStatus === 'PAID' ? 'orders-payment-box--paid' : ''}`}>
+                  <div className={`orders-payment-box ${billStatus === 'PAID' ? 'orders-payment-box--paid' : ''}`}>
                     <div className="orders-payment-head">
-                      <span><CreditCard size={17} /> Payment</span>
+                      <span><CreditCard size={17} /> {bill?.billCode || 'Shared bill'}</span>
                       <strong>{bill?.paymentStatus || billStatus}</strong>
                     </div>
-                    {bill?.paymentCode ? (
-                      <div className="orders-payment-info">
-                        <span>Method: <strong>{bill.paymentProvider || '-'}</strong></span>
-                        <span>Transfer content: <strong>{bill.paymentCode}</strong></span>
-                      </div>
-                    ) : null}
-                    {bill?.paymentQrImageUrl ? (
-                      <img className="orders-sepay-qr" src={bill.paymentQrImageUrl} alt="SePay payment QR" />
-                    ) : null}
-                    {bill?.paymentCheckoutUrl ? (
-                      <a className="orders-checkout-link" href={bill.paymentCheckoutUrl} target="_blank" rel="noreferrer">Open payment page</a>
-                    ) : null}
-                    {billStatus === 'PAID' ? (
-                      <div className="orders-payment-paid"><Check size={16} /> Payment received</div>
-                    ) : billStatus === 'PENDING' ? (
-                      <button
-                        type="button"
-                        className="orders-button orders-button--danger"
-                        disabled={busy}
-                        onClick={() => run(
-                          () => orderApi.cancelPayment(selectedGroup.reservationId),
-                          'Unable to cancel the pending payment.'
-                        )}
-                      >
-                        <XCircle size={16} /> Cancel pending payment
-                      </button>
-                    ) : (
-                      <>
-                        <p className="orders-payment-note">
-                          Payment is available after every non-cancelled dish from every table is served.
-                        </p>
-                        {isComplimentaryPayment ? (
-                          <button
-                            type="button"
-                            className="orders-button orders-button--primary"
-                            disabled={busy}
-                            onClick={() => run(
-                              () => orderApi.createSepayPayment(selectedGroup.reservationId),
-                              'Unable to complete the complimentary payment.'
-                            )}
-                          >
-                            <Check size={17} /> Complete complimentary payment
-                          </button>
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              className="orders-button orders-button--primary"
-                              disabled={busy || !canPay}
-                              onClick={() => run(
-                                () => orderApi.createSepayPayment(selectedGroup.reservationId),
-                                'Unable to create the SePay payment.'
-                              )}
-                            >
-                              <QrCode size={17} /> Create SePay QR
-                            </button>
-                            {['ADMIN', 'MANAGER'].includes(role) ? (
-                              <button
-                                type="button"
-                                className="orders-button orders-button--secondary"
-                                disabled={busy || !canPay}
-                                onClick={() => run(
-                                  () => orderApi.createCashPayment(selectedGroup.reservationId),
-                                  'Unable to record the cash payment.'
-                                )}
-                              >
-                                <Banknote size={17} /> Record cash payment
-                              </button>
-                            ) : null}
-                          </>
-                        )}
-                      </>
-                    )}
-                  </section>
+                    <p className="orders-payment-note">
+                      Open the payment page to apply promotion codes, review totals, create SePay QR, or record cash payment.
+                    </p>
+                    <button
+                      type="button"
+                      className="orders-button orders-button--primary"
+                      onClick={() => navigate(`/dashboard/orders-service/${selectedGroup.reservationId}/payment`)}
+                    >
+                      <CreditCard size={17} /> Open payment
+                    </button>
+                  </div>
                 </aside>
               </div>
             </>
