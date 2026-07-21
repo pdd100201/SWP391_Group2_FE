@@ -19,15 +19,14 @@ import ReservationHistoryScreen from '../features/reservations/screens/Reservati
 import DashboardReservationsScreen from '../features/reservations/screens/DashboardReservationsScreen'
 import OrdersServiceScreen from '../features/orders/screens/OrdersServiceScreen'
 import OrderPaymentScreen from '../features/payment/screens/OrderPaymentScreen'
-import RevenueScreen from '../features/revenue/screens/RevenueScreen'
 import PublicOrderScreen from '../features/orders/screens/PublicOrderScreen'
+const TableManagementScreen = lazy(() => import('../features/tables/screens/TableManagementScreen'))
 import CheckInScreen from '../features/checkin/screens/CheckInScreen'
 import MainLayout from '../shared/components/layout/MainLayout/MainLayout'
 import RequireAuth from '../shared/components/ui/RequireAuth'
 import RedirectByRole from '../shared/components/ui/RedirectByRole'
 import PromotionsScreen from '../features/promotions/screens/PromotionsScreen'
-
-const TableManagementScreen = lazy(() => import('../features/tables/screens/TableManagementScreen'))
+import RevenueScreen from '../features/revenue/screens/RevenueScreen'
 
 function DashboardPage() {
   return <div className="dashboard-placeholder">Dashboard content goes here</div>
@@ -145,7 +144,7 @@ function AppRoutes() {
       <Route path="/order" element={<QrOrderRedirect />} />
       <Route path="/qr/table/:tableId" element={<QrMenuScreen />} />
       <Route path="/qr/table/:tableId/cart" element={<QrCartScreen />} />
-      <Route path="/qr/order/:orderId/status" element={<QrOrderStatusScreen />} />
+      <Route path="/qr/table/:tableId/status" element={<QrOrderStatusScreen />} />
       <Route path="*" element={<Navigate to="/home" replace />} />
     </Routes>
   )

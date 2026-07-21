@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { createSession, getMenu } from '../api/qrApi'
+import { createSession, getMenu, getActiveOrder } from '../api/qrApi'
 import './QrMenuScreen.css'
 
 const CART_KEY = 'qr_cart'
@@ -30,7 +30,10 @@ export default function QrMenuScreen() {
   const [cart, setCart] = useState(loadCart)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [notCheckedIn, setNotCheckedIn] = useState(false)
+  const [stockAlert, setStockAlert] = useState({ itemId: null, msg: '' })
   const [activeCategory, setActiveCategory] = useState('')
+  const [activeOrder, setActiveOrder] = useState(null)
 
   const stickyTopRef = useRef(null)   // wrapper chứa header + nav
   const navInnerRef = useRef(null)    // scrollable nav bar inner
@@ -45,9 +48,10 @@ export default function QrMenuScreen() {
       setLoading(true)
       setError(null)
       try {
-        const [sessionData, menuData] = await Promise.all([
+        const [sessionData, menuData, orderData] = await Promise.all([
           createSession(tableId),
           getMenu(),
+          getActiveOrder(tableId),
         ])
         if (cancelled) return
 
@@ -55,8 +59,15 @@ export default function QrMenuScreen() {
         sessionStorage.setItem('qr_table_id', sessionData.tableId)
         setTableNumber(sessionData.tableNumber || `Bàn ${tableId}`)
         setCategories(menuData.categories || [])
-      } catch {
-        if (!cancelled) setError('Không thể tải menu. Vui lòng thử lại.')
+        setActiveOrder(orderData || null)
+      } catch (err) {
+        if (!cancelled) {
+          if (err?.response?.status === 409) {
+            setNotCheckedIn(true)
+          } else {
+            setError('Không thể tải menu. Vui lòng thử lại.')
+          }
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -113,8 +124,17 @@ export default function QrMenuScreen() {
 
   // ── Giỏ hàng ─────────────────────────────────────────────────────
   function addToCart(item) {
+    if (item.canServe <= 0) return
+
     setCart((prev) => {
       const existing = prev.find((c) => c.itemId === item.itemId)
+      const currentQty = existing ? existing.quantity : 0
+
+      if (currentQty >= item.canServe) {
+        setStockAlert({ itemId: item.itemId, msg: `Only ${item.canServe} serving(s) available` })
+        setTimeout(() => setStockAlert({ itemId: null, msg: '' }), 2500)
+        return prev
+      }
 
       let next
       if (existing) {
@@ -131,18 +151,47 @@ export default function QrMenuScreen() {
 
   const totalItems = cart.reduce((sum, c) => sum + c.quantity, 0)
 
+  const itemStatusLabel = {
+    DRAFT: 'Draft',
+    CONFIRMED: 'Confirmed',
+    PREPARING: 'Preparing',
+    READY: 'Ready',
+    SERVED: 'Served',
+    CANCELLED: 'Cancelled',
+  }
+
   // ── Loading ───────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="qr-menu">
         <div className="qr-menu__sticky-top">
           <div className="qr-menu__header">
-            <h1>Thực đơn</h1>
+            <h1>Menu</h1>
           </div>
         </div>
         <div className="qr-menu__loading">
           <div className="qr-menu__spinner" />
-          <span>Đang tải menu...</span>
+          <span>Loading menu...</span>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Bàn chưa check-in ────────────────────────────────────────────
+  if (notCheckedIn) {
+    return (
+      <div className="qr-menu">
+        <div className="qr-menu__sticky-top">
+          <div className="qr-menu__header">
+            <h1>Menu</h1>
+          </div>
+        </div>
+        <div className="qr-menu__error" style={{ textAlign: 'center', padding: '48px 24px' }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🪑</div>
+          <div style={{ fontWeight: 600, fontSize: 18, marginBottom: 8 }}>Table not checked in</div>
+          <div style={{ color: '#666', fontSize: 14 }}>
+            Please contact a staff member for assistance.
+          </div>
         </div>
       </div>
     )
@@ -154,13 +203,13 @@ export default function QrMenuScreen() {
       <div className="qr-menu">
         <div className="qr-menu__sticky-top">
           <div className="qr-menu__header">
-            <h1>Thực đơn</h1>
+            <h1>Menu</h1>
           </div>
         </div>
         <div className="qr-menu__error">
           <span>{error}</span>
           <button className="qr-menu__retry-btn" onClick={() => window.location.reload()}>
-            Thử lại
+            Retry
           </button>
         </div>
       </div>
@@ -173,7 +222,7 @@ export default function QrMenuScreen() {
       {/* Sticky: header + category nav */}
       <div className="qr-menu__sticky-top" ref={stickyTopRef}>
         <div className="qr-menu__header">
-          <h1>Thực đơn</h1>
+          <h1>Menu</h1>
           <span className="qr-menu__table-badge">{tableNumber}</span>
         </div>
 
@@ -193,6 +242,47 @@ export default function QrMenuScreen() {
         </nav>
       </div>
 
+      {/* Active order banner */}
+      {activeOrder && (
+        <div className="qr-active-order">
+          <div className="qr-active-order__header">
+            <span className="qr-active-order__title">Current order</span>
+            <span className="qr-active-order__id">{activeOrder.orderCode || `#${activeOrder.orderId}`}</span>
+          </div>
+          <ul className="qr-active-order__list">
+            {Object.values(
+              (activeOrder.items || [])
+                .filter((item) => item.itemStatus !== 'CANCELLED')
+                .reduce((acc, item) => {
+                  const key = `${item.itemName}-${item.itemStatus}`
+                  if (acc[key]) {
+                    acc[key].quantity += item.quantity
+                  } else {
+                    acc[key] = { ...item }
+                  }
+                  return acc
+                }, {})
+            ).map((item) => (
+              <li key={`${item.itemName}-${item.itemStatus}`} className="qr-active-order__row">
+                <span className="qr-active-order__item-name">{item.itemName}</span>
+                <span className="qr-active-order__item-qty">x{item.quantity}</span>
+                <span className={`qr-active-order__status qr-active-order__status--${(item.itemStatus || 'confirmed').toLowerCase()}`}>
+                  {itemStatusLabel[item.itemStatus] || item.itemStatus}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div className="qr-active-order__footer">
+            <button
+              className="qr-active-order__view-btn"
+              onClick={() => navigate(`/qr/table/${tableId}/status`)}
+            >
+              View details
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Menu body */}
       <div className="qr-menu__body">
         {categories.map((category) => (
@@ -206,6 +296,8 @@ export default function QrMenuScreen() {
 
             {category.items.map((item) => {
               const inCart = cart.find((c) => c.itemId === item.itemId)
+              const soldOut = item.canServe <= 0
+              const showAlert = stockAlert.itemId === item.itemId
               return (
                 <div key={item.itemId} className="qr-menu__item">
                   {item.imageUrl ? (
@@ -223,13 +315,20 @@ export default function QrMenuScreen() {
                       <div className="qr-menu__item-desc">{item.description}</div>
                     )}
                     <div className="qr-menu__item-price">{formatPrice(item.price)}</div>
+                    {showAlert && (
+                      <div className="qr-menu__stock-alert">{stockAlert.msg}</div>
+                    )}
                   </div>
-                  <button
-                    className={`qr-menu__add-btn${inCart ? ' qr-menu__add-btn--added' : ''}`}
-                    onClick={() => addToCart(item)}
-                  >
-                    {inCart ? `+${inCart.quantity}` : '+ Thêm'}
-                  </button>
+                  {soldOut ? (
+                    <span className="qr-menu__sold-out">Sold out</span>
+                  ) : (
+                    <button
+                      className={`qr-menu__add-btn${inCart ? ' qr-menu__add-btn--added' : ''}`}
+                      onClick={() => addToCart(item)}
+                    >
+                      {inCart ? `+${inCart.quantity}` : '+ Add'}
+                    </button>
+                  )}
                 </div>
               )
             })}
@@ -242,7 +341,7 @@ export default function QrMenuScreen() {
           className="qr-menu__cart-fab"
           onClick={() => navigate(`/qr/table/${tableId}/cart`)}
         >
-          <span>Xem giỏ hàng</span>
+          <span>View cart</span>
           <span className="qr-menu__cart-fab-badge">{totalItems}</span>
         </button>
       )}

@@ -47,6 +47,14 @@ export default function QrCartScreen() {
     })
   }
 
+  function updateNote(itemId, note) {
+    setCart((prev) => {
+      const next = prev.map((c) => c.itemId === itemId ? { ...c, note } : c)
+      saveCart(next)
+      return next
+    })
+  }
+
   const totalAmount = cart.reduce((sum, c) => sum + c.price * c.quantity, 0)
   const totalItems = cart.reduce((sum, c) => sum + c.quantity, 0)
 
@@ -54,17 +62,18 @@ export default function QrCartScreen() {
     setError(null)
     const sessionToken = sessionStorage.getItem('qr_session_token')
     if (!sessionToken) {
-      setError('Phiên làm việc hết hạn. Vui lòng quét lại mã QR.')
+      setError('Session expired. Please scan the QR code again.')
       return
     }
     setSubmitting(true)
     try {
-      const payload = cart.map((c) => ({ itemId: c.itemId, quantity: c.quantity }))
-      const result = await createOrder(sessionToken, payload)
+      const freshCart = loadCart()
+      const payload = freshCart.map((c) => ({ itemId: c.itemId, quantity: c.quantity, note: c.note || null }))
+      await createOrder(sessionToken, payload)
       sessionStorage.removeItem(CART_KEY)
-      navigate(`/qr/order/${result.orderId}/status`)
+      navigate(`/qr/table/${tableId}/status`)
     } catch {
-      setError('Đặt món thất bại. Vui lòng thử lại.')
+      setError('Order failed. Please try again.')
     } finally {
       setSubmitting(false)
     }
@@ -75,16 +84,16 @@ export default function QrCartScreen() {
       <div className="qr-cart">
         <div className="qr-cart__header">
           <button className="qr-cart__back-btn" onClick={() => navigate(-1)}>←</button>
-          <h1>Giỏ hàng</h1>
+          <h1>Cart</h1>
         </div>
         <div className="qr-cart__empty">
           <div className="qr-cart__empty-icon">🛒</div>
-          <p>Giỏ hàng trống</p>
+          <p>Your cart is empty</p>
           <button
             className="qr-cart__empty-back-btn"
             onClick={() => navigate(`/qr/table/${tableId}`)}
           >
-            Xem thực đơn
+            View menu
           </button>
         </div>
       </div>
@@ -95,7 +104,7 @@ export default function QrCartScreen() {
     <div className="qr-cart">
       <div className="qr-cart__header">
         <button className="qr-cart__back-btn" onClick={() => navigate(-1)}>←</button>
-        <h1>Giỏ hàng ({totalItems} món)</h1>
+        <h1>Cart ({totalItems} item{totalItems !== 1 ? 's' : ''})</h1>
       </div>
 
       <div className="qr-cart__body">
@@ -108,11 +117,18 @@ export default function QrCartScreen() {
               <button
                 className="qr-cart__delete-btn"
                 onClick={() => removeItem(item.itemId)}
-                aria-label="Xóa"
+                aria-label="Remove"
               >
                 ✕
               </button>
             </div>
+            <input
+              className="qr-cart__item-note"
+              defaultValue={item.note || ''}
+              placeholder="Special request (max 150 characters)"
+              maxLength={150}
+              onBlur={(e) => updateNote(item.itemId, e.target.value.trim() || null)}
+            />
             <div className="qr-cart__item-bottom">
               <span className="qr-cart__item-subtotal">
                 {formatPrice(item.price * item.quantity)}
@@ -138,12 +154,12 @@ export default function QrCartScreen() {
 
         <div className="qr-cart__summary">
           <div className="qr-cart__summary-row">
-            <span className="qr-cart__summary-label">Số món</span>
+            <span className="qr-cart__summary-label">Items</span>
             <span className="qr-cart__summary-value">{totalItems}</span>
           </div>
           <hr className="qr-cart__summary-divider" />
           <div className="qr-cart__summary-row">
-            <span className="qr-cart__summary-total-label">Tổng cộng</span>
+            <span className="qr-cart__summary-total-label">Total</span>
             <span className="qr-cart__summary-total-value">{formatPrice(totalAmount)}</span>
           </div>
         </div>
@@ -155,7 +171,7 @@ export default function QrCartScreen() {
           onClick={handleOrder}
           disabled={submitting}
         >
-          {submitting ? 'Đang đặt món...' : 'Đặt món ngay'}
+          {submitting ? 'Placing order...' : 'Place order'}
         </button>
       </div>
     </div>

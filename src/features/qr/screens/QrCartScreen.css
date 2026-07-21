@@ -114,6 +114,23 @@
   line-height: 1;
 }
 
+.qr-cart__item-note {
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 13px;
+  color: #374151;
+  background: #f9fafb;
+  outline: none;
+  margin-bottom: 10px;
+}
+
+.qr-cart__item-note:focus {
+  border-color: #10b981;
+  background: #fff;
+}
+
 .qr-cart__item-bottom {
   display: flex;
   align-items: center;
