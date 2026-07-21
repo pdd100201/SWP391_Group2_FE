@@ -29,11 +29,11 @@ import './OrdersServiceScreen.css'
 
 const GROUPS_PER_PAGE = 6
 const GROUP_FILTERS = [
-  { value: 'ALL', label: 'All' },
-  { value: 'ACTIVE', label: 'Active' },
+  { value: 'ACTIVE', label: 'Current' },
   { value: 'OPEN', label: 'Open' },
   { value: 'COMPLETED', label: 'Completed' },
   { value: 'CANCELLED', label: 'Cancelled' },
+  { value: 'ALL', label: 'All history' },
 ]
 
 const itemStatusLabels = {
@@ -111,6 +111,45 @@ const matchesFilter = (group, filter) => {
     || ((group.orders || []).length > 0 && group.orders.every((order) => order.status === 'CANCELLED'))
 }
 
+const normalizeSearchTerm = (value) => String(value ?? '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+
+const matchesGroupSearch = (group, rawTerm) => {
+  const term = normalizeSearchTerm(rawTerm).trim()
+  if (!term) return true
+
+  const searchableValues = [
+    group.reservationId,
+    group.reservationGuestName,
+    group.reservationStatus,
+    group.bill?.id,
+    group.bill?.billCode,
+    group.bill?.status,
+    group.bill?.paymentCode,
+    group.bill?.paymentStatus,
+    group.bill?.paymentProvider,
+    ...(group.orders || []).flatMap((order) => [
+      order.id,
+      order.orderCode,
+      order.tableId,
+      order.tableNumber,
+      order.tableName,
+      order.waiterName,
+      order.status,
+      order.serviceStatus,
+      ...(order.items || []).flatMap((item) => [
+        item.menuItemName,
+        item.category,
+        item.status,
+      ]),
+    ]),
+  ]
+
+  return normalizeSearchTerm(searchableValues.join(' ')).includes(term)
+}
+
 function OrdersServiceScreen() {
   const [searchParams] = useSearchParams()
   const [routeTarget] = useState(() => ({
@@ -119,7 +158,7 @@ function OrdersServiceScreen() {
     tableId: Number(searchParams.get('tableId')) || null,
     filter: GROUP_FILTERS.some(({ value }) => value === String(searchParams.get('filter') || '').toUpperCase())
       ? String(searchParams.get('filter')).toUpperCase()
-      : 'ALL',
+      : 'ACTIVE',
   }))
   const [groups, setGroups] = useState([])
   const [activeReservationIds, setActiveReservationIds] = useState(() => new Set())
@@ -130,6 +169,7 @@ function OrdersServiceScreen() {
   const [reservationId, setReservationId] = useState('')
   const [category, setCategory] = useState('All')
   const [dishSearch, setDishSearch] = useState('')
+  const [orderSearch, setOrderSearch] = useState('')
   const [groupFilter, setGroupFilter] = useState(routeTarget.filter)
   const [promotionCode, setPromotionCode] = useState('')
   const [transferTarget, setTransferTarget] = useState('')
@@ -144,11 +184,12 @@ function OrdersServiceScreen() {
   )
   const filteredGroups = useMemo(
     () => sortedGroups.filter((group) => (
-      groupFilter === 'ACTIVE'
+      matchesGroupSearch(group, orderSearch)
+      && (groupFilter === 'ACTIVE'
         ? activeReservationIds.has(Number(group.reservationId))
-        : matchesFilter(group, groupFilter)
+        : matchesFilter(group, groupFilter))
     )),
-    [activeReservationIds, groupFilter, sortedGroups]
+    [activeReservationIds, groupFilter, orderSearch, sortedGroups]
   )
   const pagination = usePagination(filteredGroups, GROUPS_PER_PAGE)
   const setOrdersPage = pagination.setPage
@@ -310,7 +351,8 @@ function OrdersServiceScreen() {
       const response = await orderApi.create({ reservationId: Number(reservationId) })
       upsertGroup(response.data)
       setReservationId('')
-      setGroupFilter('ALL')
+      setOrderSearch('')
+      setGroupFilter('ACTIVE')
       pagination.setPage(0)
     } catch (actionError) {
       setError(errorMessage(actionError, 'Unable to create table orders.'))
@@ -335,6 +377,25 @@ function OrdersServiceScreen() {
         : matchesFilter(group, nextFilter)
     ))
     if (first) selectGroup(first)
+    else {
+      setSelectedReservationId(null)
+      setSelectedOrderId(null)
+    }
+  }
+
+  const changeOrderSearch = (value) => {
+    const nextFilter = value.trim() ? 'ALL' : 'ACTIVE'
+    const nextGroups = sortedGroups.filter((group) => (
+      matchesGroupSearch(group, value)
+      && (nextFilter === 'ACTIVE'
+        ? activeReservationIds.has(Number(group.reservationId))
+        : matchesFilter(group, nextFilter))
+    ))
+
+    setOrderSearch(value)
+    setGroupFilter(nextFilter)
+    pagination.setPage(0)
+    if (nextGroups[0]) selectGroup(nextGroups[0])
     else {
       setSelectedReservationId(null)
       setSelectedOrderId(null)
@@ -406,9 +467,14 @@ function OrdersServiceScreen() {
         <button type="button" className="orders-button orders-button--primary" onClick={createOrders} disabled={!reservationId || busy}>
           <Plus size={17} /> Create / sync table orders
         </button>
-        {reservationsNeedingOrders.length === 0 ? (
-          <small className="orders-no-reservation">Every checked-in reservation already has its table orders.</small>
-        ) : null}
+        <div className={`orders-create-status ${reservationsNeedingOrders.length === 0 ? 'is-complete' : ''}`}>
+          {reservationsNeedingOrders.length === 0 ? <Check size={17} /> : <ClipboardList size={17} />}
+          <small>
+            {reservationsNeedingOrders.length === 0
+              ? 'Every checked-in reservation already has its table orders.'
+              : `${reservationsNeedingOrders.length} checked-in reservation(s) still need table orders.`}
+          </small>
+        </div>
       </div>
 
       <div className="orders-workspace">
@@ -416,6 +482,19 @@ function OrdersServiceScreen() {
           <div className="orders-panel-title">
             <ClipboardList size={18} /> Reservations <span>{filteredGroups.length}</span>
           </div>
+          <label className="orders-search orders-group-search">
+            <Search size={16} />
+            <input
+              type="search"
+              value={orderSearch}
+              onChange={(event) => changeOrderSearch(event.target.value)}
+              placeholder="Search all orders"
+              aria-label="Search all orders, including paid orders"
+            />
+          </label>
+          <small className="orders-search-hint">
+            Paid orders are hidden from Current, but remain searchable.
+          </small>
           <div className="orders-filter-tabs" aria-label="Reservation order filters">
             {GROUP_FILTERS.map((filter) => (
               <button
