@@ -114,11 +114,6 @@
 .orders-next-button { border: 0; border-radius: 8px; padding: 8px 10px; background: #ecfdf5; color: #047857; font-weight: 800; cursor: pointer; text-transform: capitalize; }
 .orders-item-actions { display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
 .orders-primary-actions { justify-content: flex-start; margin: 14px 0 22px; }
-.orders-transfer-box { display: grid; grid-template-columns: minmax(0, 1fr) 150px auto; align-items: center; gap: 10px; padding: 12px; border: 1px solid #dbeafe; border-radius: 12px; background: #f8fbff; }
-.orders-transfer-box > div { display: flex; align-items: center; gap: 10px; color: #1d4ed8; }
-.orders-transfer-box span { display: flex; flex-direction: column; gap: 2px; }
-.orders-transfer-box small { color: var(--order-muted); }
-.orders-transfer-box input { min-height: 40px; min-width: 0; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 9px; background: white; color: #14211d; font: inherit; }
 .orders-menu-section { padding-top: 4px; }
 .orders-menu-section .orders-section-title { align-items: flex-end; }
 .orders-menu-section .orders-section-title h3 { margin-bottom: 3px; color: var(--order-green-dark); }
@@ -343,5 +338,4 @@
   .orders-item > strong { grid-column: 2; }
   .orders-item-actions { grid-column: 3; grid-row: 1 / span 2; align-items: flex-end; flex-direction: column; }
   .orders-categories { justify-content: flex-start; }
-  .orders-transfer-box { grid-template-columns: 1fr; }
 }

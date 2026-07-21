@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  ArrowRightLeft,
   Check,
   ChefHat,
   ChevronFirst,
@@ -169,7 +168,6 @@ function OrdersServiceScreen() {
   const [dishSearch, setDishSearch] = useState('')
   const [orderSearch, setOrderSearch] = useState('')
   const [groupFilter, setGroupFilter] = useState(routeTarget.filter)
-  const [transferTarget, setTransferTarget] = useState('')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -353,7 +351,6 @@ function OrdersServiceScreen() {
   const selectGroup = (group) => {
     setSelectedReservationId(group.reservationId)
     setSelectedOrderId(group.orders[0]?.id || null)
-    setTransferTarget('')
   }
 
   const changeFilter = (nextFilter) => {
@@ -402,16 +399,6 @@ function OrdersServiceScreen() {
     if (item.status === 'PREPARING') return 'READY'
     if (item.status === 'READY') return 'SERVED'
     return null
-  }
-
-  const transferOrder = async () => {
-    const targetTableId = Number(transferTarget)
-    if (!selectedOrder || !Number.isInteger(targetTableId) || targetTableId <= 0) return
-    const succeeded = await run(
-      () => orderApi.transferTable(selectedOrder.id, targetTableId),
-      'Unable to transfer this order.'
-    )
-    if (succeeded) setTransferTarget('')
   }
 
   if (loading) return <div className="orders-loading">Loading order workspace...</div>
@@ -705,28 +692,6 @@ function OrdersServiceScreen() {
                       </section>
                     )
                   })}
-
-                  {selectedOrder && billEditable && selectedOrder.status === 'OPEN' ? (
-                    <section className="orders-transfer-box">
-                      <div>
-                        <ArrowRightLeft size={18} />
-                        <span>
-                          <strong>Transfer {selectedOrder.orderCode}</strong>
-                          <small>Enter the target table ID. A table with another order cannot be selected.</small>
-                        </span>
-                      </div>
-                      <input
-                        type="number"
-                        min="1"
-                        value={transferTarget}
-                        onChange={(event) => setTransferTarget(event.target.value)}
-                        placeholder="Target table ID"
-                      />
-                      <button type="button" className="orders-button orders-button--secondary" disabled={busy || !transferTarget} onClick={transferOrder}>
-                        Transfer
-                      </button>
-                    </section>
-                  ) : null}
 
                   {selectedOrder && billEditable && selectedOrder.status === 'OPEN' ? (
                     <section className="orders-menu-section">

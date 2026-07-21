@@ -18,8 +18,6 @@ export const orderApi = {
   submit: (orderId) => axiosClient.post(`/orders/${orderId}/submit`),
   updateItemStatus: (orderId, itemId, status) =>
     axiosClient.patch(`/orders/${orderId}/items/${itemId}/status`, { status }),
-  transferTable: (orderId, targetTableId) =>
-    axiosClient.patch(`/orders/${orderId}/transfer-table`, { targetTableId }),
   cancel: (orderId) => axiosClient.patch(`/orders/${orderId}/cancel`),
   completeReservation: (reservationId) =>
     axiosClient.patch(`/orders/reservations/${reservationId}/complete`),
