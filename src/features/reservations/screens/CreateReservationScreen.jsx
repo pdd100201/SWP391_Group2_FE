@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { CheckCircle } from 'lucide-react'
 import Navbar from '../../../shared/components/layout/Navbar/Navbar'
 import Footer from '../../../shared/components/layout/Footer/Footer'
 import { createReservation } from '../api/reservationApi'
@@ -22,6 +24,7 @@ function getStoredGuest() {
 }
 
 function CreateReservationScreen() {
+  const navigate = useNavigate()
   const [formData, setFormData] = useState(() => {
     const storedGuest = getStoredGuest()
     return {
@@ -31,7 +34,7 @@ function CreateReservationScreen() {
     }
   })
   const [submitting, setSubmitting] = useState(false)
-  const [message, setMessage] = useState('')
+  const [successOpen, setSuccessOpen] = useState(false)
   const [error, setError] = useState('')
 
   const todayStr = useMemo(() => {
@@ -76,18 +79,11 @@ function CreateReservationScreen() {
     //   return
     // }
     setSubmitting(true)
-    setMessage('')
     setError('')
 
     try {
       await createReservation(formData)
-      setMessage('Reservation created successfully. Your request is pending confirmation.')
-      setFormData((prev) => ({
-        ...initialForm,
-        fullName: prev.fullName,
-        phone: prev.phone,
-        email: prev.email,
-      }))
+      setSuccessOpen(true)
     } catch (err) {
       setError(err.response?.data?.message || 'Could not create reservation. Please try again.')
     } finally {
@@ -109,7 +105,6 @@ function CreateReservationScreen() {
         </section>
 
         <form className="reservation-form" onSubmit={handleSubmit}>
-          {message && <div className="reservation-alert reservation-alert--success">{message}</div>}
           {error && <div className="reservation-alert reservation-alert--error">{error}</div>}
 
           <div className="reservation-form__grid">
@@ -219,6 +214,27 @@ function CreateReservationScreen() {
       </main>
 
       <Footer />
+
+      {successOpen && (
+        <div className="custom-confirm-modal-overlay">
+          <div className="custom-confirm-modal reservation-success-modal" role="alertdialog" aria-modal="true" aria-labelledby="reservation-success-title">
+            <CheckCircle size={42} className="reservation-success-modal__icon" />
+            <h2 id="reservation-success-title" className="custom-confirm-modal__title">Reservation Created</h2>
+            <p className="custom-confirm-modal__message">
+              Your reservation has been created successfully and is pending staff confirmation.
+            </p>
+            <div className="custom-confirm-modal__actions">
+              <button
+                type="button"
+                className="custom-confirm-modal__btn custom-confirm-modal__btn--confirm"
+                onClick={() => navigate('/reservation-history', { replace: true })}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

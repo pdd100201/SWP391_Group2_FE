@@ -889,6 +889,19 @@
   transform: translateY(-1px);
 }
 
+.reservation-success-modal {
+  text-align: center;
+}
+
+.reservation-success-modal__icon {
+  color: #4ade80;
+  margin-bottom: 14px;
+}
+
+.reservation-success-modal .custom-confirm-modal__actions {
+  justify-content: center;
+}
+
 /* Modal styles overrides for light-themed Admin Dashboard context */
 .dashboard-reservations-container .custom-confirm-modal {
   background-color: #ffffff;

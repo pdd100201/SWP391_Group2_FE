@@ -70,7 +70,6 @@ const groupItems = (group) => (group?.orders || [])
   .flatMap((order) => order.items || [])
 const activeItems = (group) => groupItems(group).filter((item) => item.status !== 'CANCELLED')
 const allItemsServed = (group) => activeItems(group).every((item) => item.status === 'SERVED')
-const groupSubtotal = (group) => Number(group?.bill?.subtotal ?? group?.subtotal ?? 0)
 const groupTotal = (group) => Number(group?.bill?.total ?? group?.subtotal ?? 0)
 
 const orderServiceInProgress = (order) => {
@@ -85,9 +84,8 @@ const orderServiceInProgress = (order) => {
 const isActiveGroup = (group) => {
   if (group.reservationStatus !== 'ARRIVED') return false
   const serviceInProgress = (group.orders || []).some(orderServiceInProgress)
-  const paymentOutstanding = Boolean(group.bill)
-    && groupSubtotal(group) > 0
-    && group.bill.status !== 'PAID'
+  const paymentOutstanding = groupTotal(group) > 0
+    && group.bill?.status !== 'PAID'
   return serviceInProgress || paymentOutstanding
 }
 
