@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BarChart2, RefreshCw, DollarSign, CreditCard, Layers, Calendar, UtensilsCrossed, Users } from 'lucide-react'
+import { BarChart2, RefreshCw, DollarSign, CreditCard, Layers, Calendar, UtensilsCrossed, Users, Search, X } from 'lucide-react'
 import { dashboardApi } from '../api/dashboardApi'
 import './DashboardScreen.css'
 
@@ -26,6 +26,20 @@ const getPastDateString = (daysAgo) => {
   return offset.toISOString().slice(0, 10)
 }
 
+// Helper định dạng ngày giờ thanh toán
+const paidTime = (tx) => {
+  if (!tx.paidAt) return '-'
+  const value = new Date(tx.paidAt)
+  if (Number.isNaN(value.getTime())) return String(tx.paidAt).replace('T', ' ')
+  return value.toLocaleString('vi-VN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 function DashboardScreen({ isDashboardOnly = false }) {
   const navigate = useNavigate()
   // ── Các State quản lý dữ liệu (Giữ nguyên cấu trúc logic gốc) ──
@@ -41,6 +55,45 @@ function DashboardScreen({ isDashboardOnly = false }) {
 
   // State hiển thị Tooltip nổi
   const [tooltip, setTooltip] = useState({ show: false, x: 0, y: 0, label: '', value: 0, txCount: 0 })
+
+  // Các State quản lý modal chi tiết giao dịch
+  const [showTxModal, setShowTxModal] = useState(false)
+  const [modalTitle, setModalTitle] = useState('')
+  const [expandedTxId, setExpandedTxId] = useState(null)
+  const [modalSearch, setModalSearch] = useState('')
+  const [showSummaryTable, setShowSummaryTable] = useState(false)
+
+  // Helper tính khoảng cách số ngày giữa 2 chuỗi YYYY-MM-DD
+  const getDaysDiff = (startStr, endStr) => {
+    if (!startStr || !endStr) return 0
+    const start = new Date(startStr)
+    const end = new Date(endStr)
+    const diffTime = end - start
+    if (Number.isNaN(diffTime)) return 0
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  }
+
+  // Xác định các chế độ hiển thị được phép dựa trên số ngày lọc
+  const allowedModes = useMemo(() => {
+    const days = getDaysDiff(startDate, endDate)
+    if (days === 0) {
+      return ['HOUR']
+    }
+    if (days > 0 && days <= 31) {
+      return ['DAY']
+    }
+    if (days > 31 && days <= 366) {
+      return ['DAY', 'MONTH']
+    }
+    return ['MONTH', 'YEAR']
+  }, [startDate, endDate])
+
+  // Đồng bộ hóa chế độ hiển thị groupBy khi khoảng ngày thay đổi
+  useEffect(() => {
+    if (allowedModes.length > 0 && !allowedModes.includes(groupBy)) {
+      setGroupBy(allowedModes[0])
+    }
+  }, [allowedModes, groupBy])
 
   // ── Hàm gọi API tải dữ liệu ──
   const fetchStats = useCallback(async () => {
@@ -279,16 +332,26 @@ function DashboardScreen({ isDashboardOnly = false }) {
         <div className="dashboard-toolbar__group">
           <label>View by</label>
           <div className="dashboard-toggle-group">
-            {['DAY', 'MONTH', 'YEAR'].map((mode) => (
-              <button
-                key={mode}
-                type="button"
-                className={`dashboard-toggle-btn ${groupBy === mode ? 'dashboard-toggle-btn--active' : ''}`}
-                onClick={() => setGroupBy(mode)}
-              >
-                {mode === 'DAY' ? 'Day' : mode === 'MONTH' ? 'Month' : 'Year'}
-              </button>
-            ))}
+            {['HOUR', 'DAY', 'MONTH', 'YEAR'].map((mode) => {
+              const isAllowed = allowedModes.includes(mode)
+              const label = mode === 'HOUR' ? 'Hour' : mode === 'DAY' ? 'Day' : mode === 'MONTH' ? 'Month' : 'Year'
+              
+              // Ẩn nút xem theo Giờ nếu khoảng ngày lọc dài hơn 1 ngày
+              if (mode === 'HOUR' && !isAllowed) return null
+              
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  className={`dashboard-toggle-btn ${groupBy === mode ? 'dashboard-toggle-btn--active' : ''} ${!isAllowed ? 'dashboard-toggle-btn--disabled' : ''}`}
+                  onClick={() => isAllowed && setGroupBy(mode)}
+                  disabled={!isAllowed}
+                  title={!isAllowed ? 'Not available for this date range' : ''}
+                >
+                  {label}
+                </button>
+              )
+            })}
           </div>
         </div>
       </div>
@@ -360,9 +423,20 @@ function DashboardScreen({ isDashboardOnly = false }) {
       )
     }
 
+    const handleCardClick = (title) => {
+      if (isDashboardOnly) {
+        navigate('/dashboard/reports')
+      } else {
+        setModalTitle(title)
+        setShowTxModal(true)
+        setExpandedTxId(null)
+        setModalSearch('')
+      }
+    }
+
     return (
-      <div className="dashboard-kpis">
-        <article className="dashboard-card" onClick={() => navigate('/dashboard/reports')}>
+      <div className="dashboard-kpis dashboard-kpis--3cols">
+        <article className="dashboard-card dashboard-card--interactive" onClick={() => handleCardClick('Revenue Transaction Details')}>
           <div className="dashboard-card__header">
             <div className="dashboard-card__title">Total Revenue (Period)</div>
             <div className="dashboard-card__icon" style={{ backgroundColor: 'rgba(5, 150, 105, 0.1)', color: '#059669' }}>
@@ -370,8 +444,10 @@ function DashboardScreen({ isDashboardOnly = false }) {
             </div>
           </div>
           <div className="dashboard-card__value">{formatVND(stats?.totalRevenuePeriod)}</div>
+          <div className="dashboard-card__click-hint">Click to view details</div>
         </article>
-        <article className="dashboard-card" onClick={() => navigate('/dashboard/reports')}>
+        
+        <article className="dashboard-card dashboard-card--interactive" onClick={() => handleCardClick('Successful Transactions')}>
           <div className="dashboard-card__header">
             <div className="dashboard-card__title">Successful Transactions</div>
             <div className="dashboard-card__icon" style={{ backgroundColor: 'rgba(15, 92, 73, 0.1)', color: '#0F5C49' }}>
@@ -379,6 +455,18 @@ function DashboardScreen({ isDashboardOnly = false }) {
             </div>
           </div>
           <div className="dashboard-card__value">{stats?.transactionCountPeriod} transactions</div>
+          <div className="dashboard-card__click-hint">Click to view details</div>
+        </article>
+
+        <article className="dashboard-card dashboard-card--interactive" onClick={() => handleCardClick('Average Order Value (AOV)')}>
+          <div className="dashboard-card__header">
+            <div className="dashboard-card__title">Average Order Value (AOV)</div>
+            <div className="dashboard-card__icon" style={{ backgroundColor: 'rgba(37, 99, 235, 0.1)', color: '#2563EB' }}>
+              <DollarSign size={18} />
+            </div>
+          </div>
+          <div className="dashboard-card__value">{formatVND(stats?.averageOrderValue)}</div>
+          <div className="dashboard-card__click-hint">Click to view details</div>
         </article>
       </div>
     )
@@ -586,29 +674,427 @@ function DashboardScreen({ isDashboardOnly = false }) {
   // Đầu vào: Không có. Đầu ra: JSX bảng dữ liệu.
   const renderSummaryTable = () => (
     <div className="dashboard-table-card">
-      <h2>Detailed Data Summary</h2>
-      <div className="dashboard-table-wrap">
-        <table className="dashboard-table">
-          <thead>
-            <tr>
-              <th>Time Period</th>
-              <th>Revenue</th>
-              <th>Transactions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {[...chartData].reverse().map((item) => (
-              <tr key={item.timeLabel}>
-                <td><strong>{item.timeLabel}</strong></td>
-                <td style={{ fontWeight: 600 }}>{formatVND(item.revenue)}</td>
-                <td>{item.transactionCount} transactions</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="dashboard-table-card__header-toggle" onClick={() => setShowSummaryTable(!showSummaryTable)}>
+        <h2>Detailed Data Summary</h2>
+        <button type="button" className="details-toggle-btn">
+          {showSummaryTable ? 'Hide Details' : 'Show Details'}
+        </button>
       </div>
+      {showSummaryTable && (
+        <div className="dashboard-table-wrap" style={{ marginTop: 20 }}>
+          <table className="dashboard-table">
+            <thead>
+              <tr>
+                <th>Time Period</th>
+                <th>Revenue</th>
+                <th>Transactions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...chartData].reverse().map((item) => (
+                <tr key={item.timeLabel}>
+                  <td><strong>{item.timeLabel}</strong></td>
+                  <td style={{ fontWeight: 600 }}>{formatVND(item.revenue)}</td>
+                  <td>{item.transactionCount} transactions</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
+
+  // ── HÀM CON: Render biểu đồ phương thức thanh toán Doughnut SVG ──
+  const renderPaymentMethodsChart = () => {
+    const methods = stats?.paymentMethods || []
+    if (methods.length === 0) {
+      return (
+        <div className="dashboard-empty-compact">
+          No payment methods data.
+        </div>
+      )
+    }
+
+    const totalAmount = methods.reduce((acc, m) => acc + (m.totalAmount || 0), 0)
+    const totalCount = methods.reduce((acc, m) => acc + (m.count || 0), 0)
+
+    if (totalAmount === 0) {
+      return (
+        <div className="dashboard-empty-compact">
+          No payment methods recorded.
+        </div>
+      )
+    }
+
+    const circumference = 314.159
+    let accumulatedPercent = 0
+
+    const colors = {
+      CASH: '#10B981', 
+      SEPAY: '#38BDF8', 
+      UNKNOWN: '#64748B' 
+    }
+
+    return (
+      <div className="payment-methods-breakdown">
+        <div className="doughnut-container">
+          <svg width="150" height="150" viewBox="0 0 120 120">
+            <circle
+              cx="60"
+              cy="60"
+              r="50"
+              fill="transparent"
+              stroke="#F1F5F9"
+              strokeWidth="10"
+            />
+            {methods.map((method) => {
+              const pct = totalAmount > 0 ? (method.totalAmount || 0) / totalAmount : 0
+              const strokeLength = pct * circumference
+              const strokeOffset = circumference - strokeLength + (accumulatedPercent * circumference)
+              accumulatedPercent -= pct 
+              
+              const color = colors[method.provider] || colors.UNKNOWN
+
+              return (
+                <circle
+                  key={method.provider}
+                  cx="60"
+                  cy="60"
+                  r="50"
+                  fill="transparent"
+                  stroke={color}
+                  strokeWidth="10"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={strokeOffset}
+                  transform="rotate(-90 60 60)"
+                  style={{
+                    transition: 'stroke-dashoffset 0.8s ease-in-out',
+                    strokeLinecap: 'round'
+                  }}
+                />
+              )
+            })}
+            <text x="60" y="58" textAnchor="middle" className="doughnut-text-val">
+              {totalCount}
+            </text>
+            <text x="60" y="73" textAnchor="middle" className="doughnut-text-lbl">
+              txs
+            </text>
+          </svg>
+        </div>
+
+        <div className="methods-legend">
+          {methods.map((method) => {
+            const pctAmount = totalAmount > 0 ? ((method.totalAmount || 0) / totalAmount) * 100 : 0
+            const color = colors[method.provider] || colors.UNKNOWN
+            return (
+              <div key={method.provider} className="legend-item">
+                <span className="legend-dot" style={{ backgroundColor: color }} />
+                <div className="legend-info">
+                  <div className="legend-header-line">
+                    <span className="legend-name">{method.provider}</span>
+                    <span className="legend-pct">{pctAmount.toFixed(1)}%</span>
+                  </div>
+                  <span className="legend-amount">{formatVND(method.totalAmount)}</span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  // ── HÀM CON: Render biểu đồ cột ngang top món bán chạy ──
+  const renderTopSellingItemsChart = () => {
+    const items = stats?.topSellingItems || []
+    if (items.length === 0) {
+      return (
+        <div className="dashboard-empty-compact">
+          No menu items sold in this period.
+        </div>
+      )
+    }
+
+    const maxQty = Math.max(...items.map(item => item.quantity), 1)
+
+    return (
+      <div className="top-selling-items">
+        {items.map((item, idx) => {
+          const ratio = (item.quantity / maxQty) * 100
+          return (
+            <div key={item.name} className="top-selling-row">
+              <div className="top-selling-info">
+                <div className="top-item-rank-name">
+                  <span className="top-item-rank">#{idx + 1}</span>
+                  <span className="top-item-name">{item.name}</span>
+                </div>
+                <span className="top-item-qty">{item.quantity} sold</span>
+              </div>
+              <div className="top-selling-bar-container">
+                <div 
+                  className="top-selling-bar" 
+                  style={{ 
+                    width: `${ratio}%`,
+                    backgroundColor: `hsla(166, 73%, ${25 + idx * 5}%, 0.85)` 
+                  }}
+                />
+                <span className="top-item-revenue">{formatVND(item.revenue)}</span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
+  // ── HÀM CON: Render Modal danh sách chi tiết giao dịch ──
+  const renderTxModal = () => {
+    if (!showTxModal) return null
+
+    const transactions = stats?.transactions || []
+    const isRevenueMode = modalTitle.includes('Revenue')
+    const isAovMode = modalTitle.includes('Average')
+    const isSuccessMode = modalTitle.includes('Successful')
+
+    // Tính toán các chỉ số nhanh phục vụ Widget đầu Modal
+    const totalCashAmount = transactions.filter(t => t.provider === 'CASH').reduce((sum, t) => sum + (t.amount || 0), 0)
+    const totalSepayAmount = transactions.filter(t => t.provider === 'SEPAY').reduce((sum, t) => sum + (t.amount || 0), 0)
+    const countCash = transactions.filter(t => t.provider === 'CASH').length
+    const countSepay = transactions.filter(t => t.provider === 'SEPAY').length
+    const aov = stats?.averageOrderValue || 0
+    const aboveAvgCount = transactions.filter(t => (t.amount || 0) >= aov).length
+    const belowAvgCount = transactions.filter(t => (t.amount || 0) < aov).length
+
+    // Lọc theo từ khóa tìm kiếm
+    const filteredTxs = transactions.filter((tx) => {
+      const keyword = modalSearch.trim().toLowerCase()
+      if (!keyword) return true
+      return (
+        String(tx.paymentCode || '').toLowerCase().includes(keyword) ||
+        String(tx.orderCode || '').toLowerCase().includes(keyword) ||
+        String(tx.guestName || '').toLowerCase().includes(keyword) ||
+        String(tx.tableNames || '').toLowerCase().includes(keyword) ||
+        String(tx.waiterName || '').toLowerCase().includes(keyword)
+      )
+    })
+
+    // Sắp xếp dữ liệu đặc trưng cho từng loại chỉ số
+    if (isRevenueMode) {
+      // Báo cáo doanh thu: Sắp xếp theo giá tiền giảm dần (Giao dịch lớn nhất lên đầu)
+      filteredTxs.sort((a, b) => (b.amount || 0) - (a.amount || 0))
+    } else if (isSuccessMode) {
+      // Số giao dịch: Sắp xếp theo thời gian thanh toán mới nhất
+      filteredTxs.sort((a, b) => new Date(b.paidAt).getTime() - new Date(a.paidAt).getTime())
+    } else if (isAovMode) {
+      // Giá trị trung bình: Sắp xếp theo độ lệch tuyệt đối so với AOV (hiển thị ngoại lai trước)
+      filteredTxs.sort((a, b) => Math.abs(b.amount - aov) - Math.abs(a.amount - aov))
+    }
+
+    // Vẽ Widget thống kê nhanh tương ứng với từng chỉ số
+    const renderModalWidget = () => {
+      if (isRevenueMode) {
+        return (
+          <div className="modal-widget">
+            <div className="widget-item">
+              <span className="widget-label">Cash Revenue</span>
+              <strong className="widget-value text-emerald">{formatVND(totalCashAmount)}</strong>
+              <small className="widget-sub">({stats?.totalRevenuePeriod > 0 ? ((totalCashAmount / stats.totalRevenuePeriod) * 100).toFixed(1) : 0}%)</small>
+            </div>
+            <div className="widget-item">
+              <span className="widget-label">SePay Revenue</span>
+              <strong className="widget-value text-sky">{formatVND(totalSepayAmount)}</strong>
+              <small className="widget-sub">({stats?.totalRevenuePeriod > 0 ? ((totalSepayAmount / stats.totalRevenuePeriod) * 100).toFixed(1) : 0}%)</small>
+            </div>
+          </div>
+        )
+      }
+      if (isSuccessMode) {
+        return (
+          <div className="modal-widget">
+            <div className="widget-item">
+              <span className="widget-label">Cash Payments</span>
+              <strong className="widget-value text-emerald">{countCash} transactions</strong>
+              <small className="widget-sub">({transactions.length > 0 ? ((countCash / transactions.length) * 100).toFixed(1) : 0}%)</small>
+            </div>
+            <div className="widget-item">
+              <span className="widget-label">SePay Payments</span>
+              <strong className="widget-value text-sky">{countSepay} transactions</strong>
+              <small className="widget-sub">({transactions.length > 0 ? ((countSepay / transactions.length) * 100).toFixed(1) : 0}%)</small>
+            </div>
+          </div>
+        )
+      }
+      if (isAovMode) {
+        return (
+          <div className="modal-widget">
+            <div className="widget-item">
+              <span className="widget-label">Average Order Value (AOV)</span>
+              <strong className="widget-value text-blue">{formatVND(aov)}</strong>
+              <small className="widget-sub">Formula: Total Revenue / Count</small>
+            </div>
+            <div className="widget-item">
+              <span className="widget-label">High Spend (&ge; AOV)</span>
+              <strong className="widget-value text-emerald">{aboveAvgCount} bills</strong>
+              <small className="widget-sub">Above average</small>
+            </div>
+            <div className="widget-item">
+              <span className="widget-label">Low Spend (&lt; AOV)</span>
+              <strong className="widget-value text-amber">{belowAvgCount} bills</strong>
+              <small className="widget-sub">Below average</small>
+            </div>
+          </div>
+        )
+      }
+      return null
+    }
+
+    const colSpanVal = isAovMode ? 7 : 6
+
+    return (
+      <div className="dashboard-modal-backdrop" onClick={() => setShowTxModal(false)}>
+        <div className="dashboard-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="dashboard-modal-header">
+            <div>
+              <h2>{modalTitle}</h2>
+              <p>Period: {startDate} to {endDate}</p>
+            </div>
+            <button className="dashboard-modal-close" onClick={() => setShowTxModal(false)}>
+              <X size={20} />
+            </button>
+          </div>
+
+          <div className="dashboard-modal-search">
+            <div className="dashboard-modal-search__wrapper">
+              <Search size={16} className="search-icon" />
+              <input
+                type="text"
+                placeholder="Search code, guest, table, waiter..."
+                value={modalSearch}
+                onChange={(e) => setModalSearch(e.target.value)}
+              />
+            </div>
+            <span className="search-count">{filteredTxs.length} records</span>
+          </div>
+
+          <div className="dashboard-modal-body">
+            {/* Widget hiển thị thông số nhanh khác biệt cho mỗi nút bấm */}
+            {renderModalWidget()}
+
+            <div className="dashboard-modal-table-wrap">
+              <table className="dashboard-modal-table">
+                <thead>
+                  <tr>
+                    <th>Paid Time</th>
+                    <th>Order Code</th>
+                    <th>Guest / Tables</th>
+                    <th>Method</th>
+                    <th>Amount</th>
+                    {isAovMode && <th>Spending level</th>}
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTxs.length === 0 ? (
+                    <tr>
+                      <td colSpan={colSpanVal} className="dashboard-modal-empty">
+                        No transactions found matching your search.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredTxs.map((tx) => {
+                      const isExpanded = expandedTxId === tx.id
+                      return (
+                        <>
+                          <tr 
+                            key={tx.id} 
+                            className={`dashboard-modal-row ${isExpanded ? 'dashboard-modal-row--expanded' : ''}`}
+                            onClick={() => setExpandedTxId(isExpanded ? null : tx.id)}
+                          >
+                            <td>{paidTime(tx)}</td>
+                            <td>
+                              <strong>{tx.orderCode}</strong>
+                              <small>{tx.paymentCode}</small>
+                            </td>
+                            <td>
+                              <strong>{tx.guestName || 'Walk-in Guest'}</strong>
+                              <small>{tx.tableNames || 'No Table Assigned'}</small>
+                            </td>
+                            <td>
+                              <span className={`method-badge method-badge--${String(tx.provider).toLowerCase()}`}>
+                                {tx.provider}
+                              </span>
+                            </td>
+                            <td className="amount-col">{formatVND(tx.amount)}</td>
+                            {isAovMode && (
+                              <td>
+                                {(() => {
+                                  const diffPct = aov > 0 ? ((tx.amount - aov) / aov) * 100 : 0
+                                  const isAbove = (tx.amount || 0) >= aov
+                                  return (
+                                    <span className={`aov-diff-badge ${isAbove ? 'aov-diff-badge--above' : 'aov-diff-badge--below'}`}>
+                                      {isAbove ? 'High Spend' : 'Low Spend'}
+                                      <small>{isAbove ? '+' : ''}{diffPct.toFixed(0)}% vs avg</small>
+                                    </span>
+                                  )
+                                })()}
+                              </td>
+                            )}
+                            <td>
+                              <button className="details-toggle-btn">
+                                {isExpanded ? 'Hide items' : 'Show items'}
+                              </button>
+                            </td>
+                          </tr>
+                          {isExpanded && (
+                            <tr key={`items-${tx.id}`} className="row-details-expanded">
+                              <td colSpan={colSpanVal}>
+                                <div className="expanded-details-box">
+                                  <div className="expanded-meta">
+                                    <span>Waiter: <strong>{tx.waiterName || 'Unassigned'}</strong></span>
+                                    <span>Payment Method: <strong>{tx.provider}</strong></span>
+                                  </div>
+                                  <div className="expanded-items">
+                                    <h4>Ordered items:</h4>
+                                    {tx.items && tx.items.length > 0 ? (
+                                      tx.items.map((item) => (
+                                        <div key={item.id} className="expanded-item-row">
+                                          <div className="expanded-item-name">
+                                            <strong>{item.menuItemName}</strong>
+                                            {item.note && <small className="note-text">Note: {item.note}</small>}
+                                          </div>
+                                          <span className="expanded-item-qty">x{item.quantity}</span>
+                                          <span className="expanded-item-price">{formatVND(item.unitPrice)}</span>
+                                          <span className="expanded-item-total">{formatVND(item.subtotal)}</span>
+                                        </div>
+                                      ))
+                                    ) : (
+                                      <p className="no-items-text">No item information.</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="dashboard-modal-footer">
+            <div className="footer-summary">
+              <span>Total Transactions: <strong>{filteredTxs.length}</strong></span>
+              <span>Total Amount: <strong>{formatVND(filteredTxs.reduce((sum, tx) => sum + (tx.amount || 0), 0))}</strong></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   // ── Hàm render chính của Component ──
   return (
@@ -667,12 +1153,29 @@ function DashboardScreen({ isDashboardOnly = false }) {
                 {renderSvgChart()}
               </div>
 
+              {/* Biểu đồ phụ: Phân phối phương thức & Món bán chạy */}
+              {!isDashboardOnly && (
+                <div className="dashboard-charts-grid">
+                  <div className="dashboard-chart-card dashboard-chart-card--half">
+                    <h2>Payment Methods Distribution</h2>
+                    {renderPaymentMethodsChart()}
+                  </div>
+                  <div className="dashboard-chart-card dashboard-chart-card--half">
+                    <h2>Top Selling Menu Items</h2>
+                    {renderTopSellingItemsChart()}
+                  </div>
+                </div>
+              )}
+
               {/* Bảng chi tiết 3 cột */}
               {!isDashboardOnly && renderSummaryTable()}
             </>
           )}
         </>
       )}
+
+      {/* Render modal giao dịch chi tiết */}
+      {renderTxModal()}
     </section>
   )
 }
