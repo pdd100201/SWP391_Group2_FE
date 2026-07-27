@@ -178,6 +178,55 @@
   overflow-x: auto;
 }
 
+.revenue-pagination {
+  min-height: 58px;
+  padding: 10px 16px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  color: #64748b;
+  font-size: .86rem;
+  font-weight: 800;
+}
+
+.revenue-pagination__controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.revenue-pagination__controls button {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  color: #334155;
+  font: inherit;
+  cursor: pointer;
+}
+
+.revenue-pagination__controls button:hover:not(:disabled) {
+  border-color: #0f766e;
+  color: #075c46;
+}
+
+.revenue-pagination__controls button.is-active {
+  border-color: #075c46;
+  background: #075c46;
+  color: white;
+}
+
+.revenue-pagination__controls button:disabled {
+  cursor: not-allowed;
+  opacity: .4;
+}
+
 .revenue-table {
   width: 100%;
   border-collapse: collapse;
@@ -322,6 +371,13 @@
 .revenue-modal-head p {
   margin: 0;
   color: #64748b;
+}
+
+.revenue-modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
 }
 
 .revenue-modal-close {
@@ -478,5 +534,20 @@
 
   .revenue-summary {
     grid-template-columns: 1fr;
+  }
+
+  .revenue-pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .revenue-pagination__controls {
+    overflow-x: auto;
+  }
+
+  .revenue-modal-head,
+  .revenue-modal-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 }

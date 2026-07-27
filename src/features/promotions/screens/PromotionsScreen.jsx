@@ -1,7 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Edit, Loader2, Plus, Power, Save, Search, Trash2, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ChevronFirst, ChevronLast, ChevronLeft, ChevronRight, Edit, Loader2, Plus, Power, Save, Search, Trash2, X } from 'lucide-react';
+import { useToast } from '../../../shared/components/ui/Toast/ToastContext';
+import ConfirmModal from '../../../shared/components/ui/ConfirmModal/ConfirmModal';
 import { promotionApi } from '../api/promotionApi';
 import './PromotionsScreen.css';
+
+const PAGE_SIZE = 10;
 
 const emptyForm = {
   code: '',
@@ -18,22 +22,41 @@ const emptyForm = {
 };
 
 function PromotionsScreen() {
+  const showToast = useToast();
   const [promotions, setPromotions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [page, setPage] = useState(0);
+  const [pageInfo, setPageInfo] = useState({
+    size: PAGE_SIZE,
+    totalElements: 0,
+    totalPages: 0,
+  });
   const [modalMode, setModalMode] = useState(null);
   const [editingPromotion, setEditingPromotion] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState('');
+  const [confirmAction, setConfirmAction] = useState(null);
 
   const fetchPromotions = async () => {
     try {
       setLoading(true);
       setError('');
-      const response = await promotionApi.getAll();
-      setPromotions(response.data || response || []);
+      const response = await promotionApi.getAll({
+        page,
+        size: PAGE_SIZE,
+        search: search.trim() || undefined,
+        status: statusFilter,
+      });
+      const data = response.data || response || {};
+      setPromotions(data.content || []);
+      setPageInfo({
+        size: data.size || PAGE_SIZE,
+        totalElements: data.totalElements || 0,
+        totalPages: data.totalPages || 0,
+      });
     } catch (err) {
       console.error('Error fetching promotions:', err);
       setError(readError(err, 'Failed to load promotions.'));
@@ -45,24 +68,29 @@ function PromotionsScreen() {
   useEffect(() => {
     const timer = window.setTimeout(fetchPromotions, 0);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [page, search, statusFilter]);
 
-  const filteredPromotions = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-    return promotions.filter((promo) => {
-      const matchesSearch =
-        !keyword ||
-        promo.code?.toLowerCase().includes(keyword) ||
-        promo.name?.toLowerCase().includes(keyword) ||
-        promo.description?.toLowerCase().includes(keyword);
+  useEffect(() => {
+    if (pageInfo.totalPages > 0 && page >= pageInfo.totalPages) {
+      setPage(pageInfo.totalPages - 1);
+    }
+  }, [page, pageInfo.totalPages]);
 
-      const matchesStatus =
-        statusFilter === 'ALL' ||
-        (statusFilter === 'ACTIVE' ? promo.isActive : !promo.isActive);
+  const totalPages = pageInfo.totalPages;
+  const totalElements = pageInfo.totalElements;
+  const startIdx = totalElements === 0 ? 0 : page * PAGE_SIZE + 1;
+  const endIdx = Math.min((page + 1) * PAGE_SIZE, totalElements);
+  const isFirstPage = page === 0;
+  const isLastPage = totalPages === 0 || page >= totalPages - 1;
 
-      return matchesSearch && matchesStatus;
-    });
-  }, [promotions, search, statusFilter]);
+  const getPageNumbers = (maxVisible = 5) => {
+    const pages = [];
+    let start = Math.max(0, page - Math.floor(maxVisible / 2));
+    let end = Math.min(totalPages, start + maxVisible);
+    if (end - start < maxVisible) start = Math.max(0, end - maxVisible);
+    for (let i = start; i < end; i += 1) pages.push(i);
+    return pages;
+  };
 
   const openCreateModal = () => {
     setEditingPromotion(null);
@@ -104,27 +132,73 @@ function PromotionsScreen() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setError('');
+    setConfirmAction({
+      type: modalMode === 'edit' ? 'update' : 'create',
+      promotion: editingPromotion,
+      form: { ...form },
+    });
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmAction) return;
     setSaving(true);
     setError('');
 
     try {
-      const payload = buildPayload(form);
-      const response =
-        modalMode === 'edit'
-          ? await promotionApi.update(editingPromotion.id, payload)
-          : await promotionApi.create(payload);
+      if (confirmAction.type === 'delete') {
+        await promotionApi.delete(confirmAction.promotion.id);
+        setPromotions((prev) => prev.filter((item) => item.id !== confirmAction.promotion.id));
+        setPageInfo((prev) => {
+          const nextTotal = Math.max(prev.totalElements - 1, 0);
+          return {
+            ...prev,
+            totalElements: nextTotal,
+            totalPages: Math.ceil(nextTotal / PAGE_SIZE),
+          };
+        });
+        setConfirmAction(null);
+        showToast('Promotion deleted successfully');
+        return;
+      }
+
+      const payload = buildPayload(confirmAction.form);
+      const isEditMode = confirmAction.type === 'update';
+      const response = isEditMode
+        ? await promotionApi.update(confirmAction.promotion.id, payload)
+        : await promotionApi.create(payload);
 
       const saved = response.data || response;
       setPromotions((prev) => {
-        if (modalMode === 'edit') {
+        if (isEditMode) {
           return prev.map((promo) => (promo.id === saved.id ? saved : promo));
         }
         return [saved, ...prev];
       });
-      closeModal();
+      if (!isEditMode) {
+        setPageInfo((prev) => {
+          const nextTotal = prev.totalElements + 1;
+          return {
+            ...prev,
+            totalElements: nextTotal,
+            totalPages: Math.ceil(nextTotal / PAGE_SIZE),
+          };
+        });
+        setPage(0);
+      }
+      setModalMode(null);
+      setEditingPromotion(null);
+      setForm(emptyForm);
+      setConfirmAction(null);
+      showToast(isEditMode ? 'Promotion updated successfully' : 'Promotion created successfully');
     } catch (err) {
-      console.error('Error saving promotion:', err);
-      setError(readError(err, 'Failed to save promotion.'));
+      console.error('Error confirming promotion action:', err);
+      setConfirmAction(null);
+      if (confirmAction.type === 'delete') {
+        showToast(readError(err, 'Failed to delete promotion.'), 'error');
+      } else {
+        setError(readError(err, 'Failed to save promotion.'));
+      }
     } finally {
       setSaving(false);
     }
@@ -143,17 +217,36 @@ function PromotionsScreen() {
   };
 
   const handleDelete = async (promotion) => {
-    const confirmed = window.confirm(`Delete promotion ${promotion.code}? Used promotions should be deactivated instead.`);
-    if (!confirmed) return;
-
-    try {
-      await promotionApi.delete(promotion.id);
-      setPromotions((prev) => prev.filter((item) => item.id !== promotion.id));
-    } catch (err) {
-      console.error('Error deleting promotion:', err);
-      alert(readError(err, 'Failed to delete promotion.'));
-    }
+    setConfirmAction({ type: 'delete', promotion });
   };
+
+  const getConfirmContent = () => {
+    if (!confirmAction) return {};
+    if (confirmAction.type === 'delete') {
+      return {
+        title: 'Delete Promotion',
+        message: `Are you sure you want to delete promotion "${confirmAction.promotion.code}"? Used promotions should be deactivated instead.`,
+        confirmText: 'Delete',
+        confirmVariant: 'danger',
+      };
+    }
+    if (confirmAction.type === 'update') {
+      return {
+        title: 'Update Promotion Information',
+        message: `Are you sure you want to save changes for promotion "${confirmAction.form.code.trim().toUpperCase()}"?`,
+        confirmText: 'Confirm',
+        confirmVariant: 'success',
+      };
+    }
+    return {
+      title: 'Create Promotion',
+      message: `Are you sure you want to create promotion "${confirmAction.form.code.trim().toUpperCase()}"?`,
+      confirmText: 'Confirm',
+      confirmVariant: 'success',
+    };
+  };
+
+  const confirmContent = getConfirmContent();
 
   return (
     <div className="promotions-screen">
@@ -176,10 +269,20 @@ function PromotionsScreen() {
             type="text"
             placeholder="Search by code, name, or description..."
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(0);
+            }}
           />
         </div>
-        <select className="promo-filter" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+        <select
+          className="promo-filter"
+          value={statusFilter}
+          onChange={(event) => {
+            setStatusFilter(event.target.value);
+            setPage(0);
+          }}
+        >
           <option value="ALL">All Statuses</option>
           <option value="ACTIVE">Active</option>
           <option value="INACTIVE">Inactive</option>
@@ -207,8 +310,8 @@ function PromotionsScreen() {
               </tr>
             </thead>
             <tbody>
-              {filteredPromotions.length > 0 ? (
-                filteredPromotions.map((promotion) => (
+              {promotions.length > 0 ? (
+                promotions.map((promotion) => (
                   <tr key={promotion.id}>
                     <td>
                       <span className="promo-code">{promotion.code}</span>
@@ -272,6 +375,38 @@ function PromotionsScreen() {
           </table>
         </div>
       )}
+
+      {!loading && totalPages > 0 ? (
+        <nav className="promo-pagination" aria-label="Promotion pages">
+          <span>
+            Showing {startIdx}-{endIdx} of {totalElements}
+          </span>
+          <div className="promo-pagination__controls">
+            <button type="button" aria-label="First page" disabled={isFirstPage} onClick={() => setPage(0)}>
+              <ChevronFirst size={16} />
+            </button>
+            <button type="button" aria-label="Previous page" disabled={isFirstPage} onClick={() => setPage((prev) => Math.max(0, prev - 1))}>
+              <ChevronLeft size={16} />
+            </button>
+            {getPageNumbers().map((pageNumber) => (
+              <button
+                key={pageNumber}
+                type="button"
+                className={pageNumber === page ? 'is-active' : ''}
+                onClick={() => setPage(pageNumber)}
+              >
+                {pageNumber + 1}
+              </button>
+            ))}
+            <button type="button" aria-label="Next page" disabled={isLastPage} onClick={() => setPage((prev) => Math.min(totalPages - 1, prev + 1))}>
+              <ChevronRight size={16} />
+            </button>
+            <button type="button" aria-label="Last page" disabled={isLastPage} onClick={() => setPage(totalPages - 1)}>
+              <ChevronLast size={16} />
+            </button>
+          </div>
+        </nav>
+      ) : null}
 
       {modalMode ? (
         <div className="promo-modal-backdrop" role="presentation">
@@ -353,6 +488,19 @@ function PromotionsScreen() {
           </form>
         </div>
       ) : null}
+
+      <ConfirmModal
+        open={Boolean(confirmAction)}
+        title={confirmContent.title}
+        message={confirmContent.message}
+        confirmText={confirmContent.confirmText}
+        confirmVariant={confirmContent.confirmVariant}
+        loading={saving}
+        onConfirm={handleConfirmAction}
+        onCancel={() => {
+          if (!saving) setConfirmAction(null);
+        }}
+      />
     </div>
   );
 }
@@ -427,7 +575,7 @@ function numberText(value) {
 }
 
 function readError(error, fallback) {
-  return error?.response?.data?.message || error?.response?.data?.error || fallback;
+  return error?.response?.data?.message || error?.response?.data?.error || error?.message || fallback;
 }
 
 export default PromotionsScreen;

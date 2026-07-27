@@ -43,9 +43,6 @@ const errorMessage = (error, fallback) => error.response?.data?.message || fallb
 const groupDate = (group) => Date.parse(group.createdAt || '') || 0
 const tableLabel = (value) => {
   if (!value?.tableId && !value?.tableNumber && !value?.tableName) return 'No table assigned'
-  if (value.tableNumber && value.tableName && value.tableNumber !== value.tableName) {
-    return `${value.tableNumber} - ${value.tableName}`
-  }
   return value.tableName || value.tableNumber || `Table ${value.tableId}`
 }
 
@@ -54,7 +51,22 @@ const reservationTablesLabel = (reservation) => {
   const numbers = Array.isArray(reservation?.tableNumbers) ? reservation.tableNumbers.filter(Boolean) : []
   if (names.length) return names.join(', ')
   if (numbers.length) return numbers.join(', ')
-  return tableLabel(reservation)
+  return ''
+}
+
+const reservationCodeLabel = (reservation) => (
+  reservation?.reservationCode
+    || reservation?.code
+    || `RES-${String(reservation?.reservationId || '').padStart(6, '0')}`
+)
+
+const reservationOrderOptionLabel = (reservation) => {
+  const assignedTables = reservationTablesLabel(reservation)
+  return [
+    reservationCodeLabel(reservation),
+    reservation.fullName || 'Guest',
+    assignedTables,
+  ].filter(Boolean).join(' - ')
 }
 
 const normalizeGroup = (group) => ({
@@ -152,7 +164,6 @@ function OrdersServiceScreen() {
       : 'ACTIVE',
   }))
   const [groups, setGroups] = useState([])
-  const [activeReservationIds, setActiveReservationIds] = useState(() => new Set())
   const [selectedReservationId, setSelectedReservationId] = useState(routeTarget.reservationId)
   const [selectedOrderId, setSelectedOrderId] = useState(routeTarget.orderId)
   const [menu, setMenu] = useState([])
@@ -175,10 +186,10 @@ function OrdersServiceScreen() {
     () => sortedGroups.filter((group) => (
       matchesGroupSearch(group, orderSearch)
       && (groupFilter === 'ACTIVE'
-        ? activeReservationIds.has(Number(group.reservationId))
+        ? isActiveGroup(group)
         : matchesFilter(group, groupFilter))
     )),
-    [activeReservationIds, groupFilter, orderSearch, sortedGroups]
+    [groupFilter, orderSearch, sortedGroups]
   )
   const pagination = usePagination(filteredGroups, GROUPS_PER_PAGE)
   const setOrdersPage = pagination.setPage
@@ -192,7 +203,10 @@ function OrdersServiceScreen() {
   const canComplete = selectedGroup?.reservationStatus === 'ARRIVED'
     && billStatus === 'PAID'
     && allItemsServed(selectedGroup)
-  const activeGroupCount = activeReservationIds.size
+  const activeGroupCount = useMemo(
+    () => sortedGroups.filter(isActiveGroup).length,
+    [sortedGroups]
+  )
 
   const categories = useMemo(
     () => ['All', ...new Set(menu.map((item) => item.category).filter(Boolean))],
@@ -227,13 +241,6 @@ function OrdersServiceScreen() {
         ? current.map((group) => group.reservationId === next.reservationId ? next : group)
         : [next, ...current]
     })
-    setActiveReservationIds((current) => {
-      const updated = new Set(current)
-      const reservationKey = Number(next.reservationId)
-      if (isActiveGroup(next)) updated.add(reservationKey)
-      else updated.delete(reservationKey)
-      return updated
-    })
     setSelectedReservationId(next.reservationId)
     setSelectedOrderId((current) => next.orders.some((order) => order.id === current)
       ? current
@@ -244,18 +251,13 @@ function OrdersServiceScreen() {
     setLoading(true)
     setError('')
     try {
-      const [groupsResponse, activeGroupsResponse, menuResponse, reservationsResponse] = await Promise.all([
+      const [groupsResponse, menuResponse, reservationsResponse] = await Promise.all([
         orderApi.getGroups(false),
-        orderApi.getGroups(true),
         menuService.getAll(),
         getAllReservations(),
       ])
       const nextGroups = (groupsResponse.data || []).map(normalizeGroup)
-      const nextActiveReservationIds = new Set(
-        (activeGroupsResponse.data || []).map((group) => Number(group.reservationId))
-      )
       setGroups(nextGroups)
-      setActiveReservationIds(nextActiveReservationIds)
       setMenu(menuResponse.data || [])
       setReservations(reservationsResponse.data || [])
 
@@ -269,17 +271,18 @@ function OrdersServiceScreen() {
       )) || nextSortedGroups.find((group) => (
         routeTarget.tableId && (group.orders || []).some((order) => Number(order.tableId) === routeTarget.tableId)
       ))
-      const requestedGroupMatchesFilter = !requestedGroup
-        || (routeTarget.filter === 'ACTIVE'
-          ? nextActiveReservationIds.has(Number(requestedGroup.reservationId))
+      const requestedGroupMatchesFilter = requestedGroup
+        ? (routeTarget.filter === 'ACTIVE'
+          ? isActiveGroup(requestedGroup)
           : matchesFilter(requestedGroup, routeTarget.filter))
-      const nextFilter = requestedGroupMatchesFilter ? routeTarget.filter : 'ALL'
+        : true
+      const nextFilter = requestedGroupMatchesFilter ? routeTarget.filter : 'ACTIVE'
       const nextVisibleGroups = nextSortedGroups.filter((group) => (
         nextFilter === 'ACTIVE'
-          ? nextActiveReservationIds.has(Number(group.reservationId))
+          ? isActiveGroup(group)
           : matchesFilter(group, nextFilter)
       ))
-      const nextGroup = requestedGroup || nextVisibleGroups[0] || null
+      const nextGroup = requestedGroupMatchesFilter ? (requestedGroup || nextVisibleGroups[0] || null) : (nextVisibleGroups[0] || null)
       const selectedGroupIndex = nextVisibleGroups.findIndex((group) => (
         Number(group.reservationId) === Number(nextGroup?.reservationId)
       ))
@@ -352,7 +355,7 @@ function OrdersServiceScreen() {
     pagination.setPage(0)
     const first = sortedGroups.find((group) => (
       nextFilter === 'ACTIVE'
-        ? activeReservationIds.has(Number(group.reservationId))
+        ? isActiveGroup(group)
         : matchesFilter(group, nextFilter)
     ))
     if (first) selectGroup(first)
@@ -363,11 +366,11 @@ function OrdersServiceScreen() {
   }
 
   const changeOrderSearch = (value) => {
-    const nextFilter = value.trim() ? 'ALL' : 'ACTIVE'
+    const nextFilter = 'ACTIVE'
     const nextGroups = sortedGroups.filter((group) => (
       matchesGroupSearch(group, value)
       && (nextFilter === 'ACTIVE'
-        ? activeReservationIds.has(Number(group.reservationId))
+        ? isActiveGroup(group)
         : matchesFilter(group, nextFilter))
     ))
 
@@ -416,10 +419,10 @@ function OrdersServiceScreen() {
         <label className="orders-reservation-field">
           <span>Checked-in reservation</span>
           <select value={reservationId} onChange={(event) => setReservationId(event.target.value)}>
-            <option value="">Choose a reservation with missing table orders</option>
+            <option value="">Choose a checked-in reservation</option>
             {reservationsNeedingOrders.map((reservation) => (
               <option key={reservation.reservationId} value={reservation.reservationId}>
-                #{reservation.reservationId} - {reservation.fullName} - {reservationTablesLabel(reservation)}
+                {reservationOrderOptionLabel(reservation)}
               </option>
             ))}
           </select>

@@ -47,7 +47,7 @@ function AuthScreen() {
     const { name, value } = event.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
-
+//xử lý login/register success
   const persistAuthAndRedirect = (data) => {
     sessionStorage.setItem('token', data.token)
     sessionStorage.setItem('role', data.role)
@@ -61,7 +61,12 @@ function AuthScreen() {
       navigate('/dashboard')
     }
   }
-
+  // Login Google
+  /**Google trả credential token
+   -> FE gửi credential token cho backend
+   -> backend verify Google token
+   -> backend trả JWT hệ thống
+   -> FE lưu JWT và chuyển trang**/
   const handleGoogleSuccess = async (response) => {
     try {
       setError('')
@@ -79,7 +84,7 @@ function AuthScreen() {
   const handleGoogleError = () => {
     setError('Google login was cancelled or failed')
   }
-
+  //Submit không reload trang
   const handleSubmit = async (event) => {
     event.preventDefault()
     setError('')

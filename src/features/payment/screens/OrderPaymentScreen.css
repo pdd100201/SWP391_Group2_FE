@@ -382,6 +382,10 @@
   width: 100%;
 }
 
+.payment-print-button {
+  width: 100%;
+}
+
 .payment-alert {
   padding: 12px 15px;
   margin-bottom: 14px;
