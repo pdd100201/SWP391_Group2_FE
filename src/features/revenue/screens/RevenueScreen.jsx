@@ -1,8 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { CreditCard, Eye, Printer, ReceiptText, RefreshCw, Search, WalletCards, X } from 'lucide-react'
+import {
+  ChevronFirst,
+  ChevronLast,
+  ChevronLeft,
+  ChevronRight,
+  CreditCard,
+  Eye,
+  Printer,
+  ReceiptText,
+  RefreshCw,
+  Search,
+  WalletCards,
+  X,
+} from 'lucide-react'
 import { revenueApi } from '../api/revenueApi'
 import { printInvoice } from '../../../shared/utils/printInvoice'
 import './RevenueScreen.css'
+
+const PAGE_SIZE = 10
 
 const todayInputValue = () => {
   const now = new Date()
@@ -36,6 +51,7 @@ function RevenueScreen() {
   const [dateFilter, setDateFilter] = useState(todayInputValue())
   const [methodFilter, setMethodFilter] = useState('ALL')
   const [search, setSearch] = useState('')
+  const [page, setPage] = useState(0)
   const [selectedBill, setSelectedBill] = useState(null)
 
   const load = useCallback(async () => {
@@ -99,6 +115,21 @@ function RevenueScreen() {
     return { total, cash, sepay, count: filteredBills.length }
   }, [filteredBills])
 
+  const totalPages = Math.ceil(filteredBills.length / PAGE_SIZE)
+  const currentPage = totalPages === 0 ? 0 : Math.min(page, totalPages - 1)
+  const pageStart = currentPage * PAGE_SIZE
+  const pageEnd = Math.min(pageStart + PAGE_SIZE, filteredBills.length)
+  const visibleBills = filteredBills.slice(pageStart, pageEnd)
+
+  const getPageNumbers = (maxVisible = 5) => {
+    const pages = []
+    let start = Math.max(0, currentPage - Math.floor(maxVisible / 2))
+    const end = Math.min(totalPages, start + maxVisible)
+    if (end - start < maxVisible) start = Math.max(0, end - maxVisible)
+    for (let index = start; index < end; index += 1) pages.push(index)
+    return pages
+  }
+
   if (loading) return <div className="revenue-loading">Loading revenue...</div>
 
   return (
@@ -126,11 +157,24 @@ function RevenueScreen() {
       <div className="revenue-toolbar">
         <label>
           <span>Date</span>
-          <input type="date" value={dateFilter} onChange={(event) => setDateFilter(event.target.value)} />
+          <input
+            type="date"
+            value={dateFilter}
+            onChange={(event) => {
+              setDateFilter(event.target.value)
+              setPage(0)
+            }}
+          />
         </label>
         <label>
           <span>Method</span>
-          <select value={methodFilter} onChange={(event) => setMethodFilter(event.target.value)}>
+          <select
+            value={methodFilter}
+            onChange={(event) => {
+              setMethodFilter(event.target.value)
+              setPage(0)
+            }}
+          >
             <option value="ALL">All methods</option>
             <option value="CASH">Cash</option>
             <option value="SEPAY">SePay</option>
@@ -140,10 +184,26 @@ function RevenueScreen() {
           <span>Search paid bills</span>
           <div>
             <Search size={17} />
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Bill, guest, table, payment code..." />
+            <input
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value)
+                setPage(0)
+              }}
+              placeholder="Bill, guest, table, payment code..."
+            />
           </div>
         </label>
-        <button type="button" className="revenue-button revenue-button--ghost" onClick={() => setDateFilter('')}>All dates</button>
+        <button
+          type="button"
+          className="revenue-button revenue-button--ghost"
+          onClick={() => {
+            setDateFilter('')
+            setPage(0)
+          }}
+        >
+          All dates
+        </button>
       </div>
 
       <section className="revenue-table-card">
@@ -165,9 +225,9 @@ function RevenueScreen() {
               </tr>
             </thead>
             <tbody>
-              {filteredBills.length === 0 ? (
+              {visibleBills.length === 0 ? (
                 <tr><td colSpan="7" className="revenue-empty">No paid bills match your filters.</td></tr>
-              ) : filteredBills.map((bill) => (
+              ) : visibleBills.map((bill) => (
                 <tr key={bill.id} className="revenue-clickable-row" onClick={() => setSelectedBill(bill)}>
                   <td>{paidTime(bill)}</td>
                   <td><strong>{bill.billCode}</strong><small>Reservation #{bill.reservationId}</small></td>
@@ -194,6 +254,52 @@ function RevenueScreen() {
             </tbody>
           </table>
         </div>
+        {totalPages > 0 ? (
+          <nav className="revenue-pagination" aria-label="Revenue pages">
+            <span>
+              Showing {pageStart + 1}-{pageEnd} of {filteredBills.length}
+            </span>
+            <div className="revenue-pagination__controls">
+              <button type="button" aria-label="First page" disabled={currentPage === 0} onClick={() => setPage(0)}>
+                <ChevronFirst size={16} />
+              </button>
+              <button
+                type="button"
+                aria-label="Previous page"
+                disabled={currentPage === 0}
+                onClick={() => setPage(Math.max(0, currentPage - 1))}
+              >
+                <ChevronLeft size={16} />
+              </button>
+              {getPageNumbers().map((pageNumber) => (
+                <button
+                  key={pageNumber}
+                  type="button"
+                  className={pageNumber === currentPage ? 'is-active' : ''}
+                  onClick={() => setPage(pageNumber)}
+                >
+                  {pageNumber + 1}
+                </button>
+              ))}
+              <button
+                type="button"
+                aria-label="Next page"
+                disabled={currentPage >= totalPages - 1}
+                onClick={() => setPage(Math.min(totalPages - 1, currentPage + 1))}
+              >
+                <ChevronRight size={16} />
+              </button>
+              <button
+                type="button"
+                aria-label="Last page"
+                disabled={currentPage >= totalPages - 1}
+                onClick={() => setPage(totalPages - 1)}
+              >
+                <ChevronLast size={16} />
+              </button>
+            </div>
+          </nav>
+        ) : null}
       </section>
 
       {selectedBill ? (

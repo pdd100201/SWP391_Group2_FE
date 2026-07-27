@@ -159,19 +159,6 @@ function OrderPaymentScreen() {
         </div>
       </div>
 
-      {billStatus === 'PAID' ? (
-        <div className="payment-print-bar">
-          <span>Payment is completed. You can print the customer invoice.</span>
-          <button
-            type="button"
-            className="payment-button payment-button--secondary"
-            onClick={() => printInvoice({ group, bill })}
-          >
-            <Printer size={17} /> Print invoice
-          </button>
-        </div>
-      ) : null}
-
       <div className="payment-grid">
         <main className="payment-main">
           <section className="payment-panel">
