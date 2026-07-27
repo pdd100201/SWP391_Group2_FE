@@ -4,7 +4,9 @@ import { useParams } from 'react-router-dom'
 import { publicOrderApi } from '../api/orderApi'
 import './PublicOrderScreen.css'
 
+// Chuyển số tiền backend trả về sang định dạng tiền Việt để hiển thị cho khách.
 const money = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} VND`
+
 // Trang gọi món công khai hiển thị tên bàn từ dữ liệu order lấy bằng token.
 const tableLabel = (order) => {
   const tableNames = Array.isArray(order?.tableNames) ? order.tableNames.filter(Boolean) : []
@@ -17,19 +19,29 @@ const tableLabel = (order) => {
 
 function PublicOrderScreen() {
   // Trang gọi món dành cho khách, mở từ /order-access/:token.
+  // Khách không cần đăng nhập; backend dùng token để xác định và giới hạn đúng order.
   const { token } = useParams()
+
+  // order là giỏ hàng/đơn hiện tại; menu là danh sách món khách được phép chọn.
   const [order, setOrder] = useState(null)
   const [menu, setMenu] = useState([])
+
+  // Các state điều khiển bộ lọc danh mục và trạng thái tải/gửi request.
   const [category, setCategory] = useState('All')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+
+  // Danh mục và menu hiển thị được tính từ dữ liệu đã tải, không gọi lại API khi đổi tab.
   const categories = useMemo(() => ['All', ...new Set(menu.map((item) => item.category))], [menu])
   const shownMenu = category === 'All' ? menu : menu.filter((item) => item.category === category)
+
+  // Chỉ món DRAFT còn được khách sửa số lượng, ghi chú hoặc xóa trước khi gửi bếp.
   const drafts = order?.items.filter((item) => item.status === 'DRAFT') || []
 
   useEffect(() => {
     // Tải cả order hiện tại và menu công khai trước khi hiển thị trang cho khách.
+    // Menu chỉ được tải khi order vẫn OPEN; order đã đóng chỉ hiện thông báo liên hệ nhân viên.
     const load = async () => {
       try {
         const orderResponse = await publicOrderApi.getOrder(token)
@@ -49,6 +61,7 @@ function PublicOrderScreen() {
 
   const run = async (action, fallback) => {
     // Thực hiện thao tác order công khai rồi thay order trên màn hình bằng dữ liệu máy chủ trả về.
+    // busy khóa các nút để tránh khách gửi nhiều request trùng nhau.
     setBusy(true)
     setError('')
     try {
@@ -66,6 +79,7 @@ function PublicOrderScreen() {
 
   return (
     <main className="public-order-screen">
+      {/* Thông tin nhận diện nhà hàng, khách, mã order và bàn lấy trực tiếp từ order. */}
       <header className="public-order-header">
         <span><UtensilsCrossed size={18} /> Golden Spoon</span>
         <h1>Order for {order.reservationGuestName}</h1>
@@ -77,6 +91,7 @@ function PublicOrderScreen() {
 
       {order.status === 'OPEN' && (
         <div className="public-order-layout">
+          {/* Danh sách món khả dụng; nút Add luôn thêm một đơn vị vào trạng thái DRAFT. */}
           <section>
             <div className="public-order-categories">
               {categories.map((name) => <button type="button" key={name} className={category === name ? 'is-active' : ''} onClick={() => setCategory(name)}>{name}</button>)}
@@ -94,6 +109,7 @@ function PublicOrderScreen() {
             </div>
           </section>
 
+          {/* Giỏ nháp chỉ chứa món DRAFT để khách chỉnh sửa trước khi xác nhận gửi bếp. */}
           <aside className="public-cart">
             <h2><ShoppingBag size={20} /> Your draft <span>{drafts.length}</span></h2>
             {drafts.length === 0 ? <p className="public-cart-empty">Choose a dish to start your order.</p> : drafts.map((item) => (
@@ -110,18 +126,20 @@ function PublicOrderScreen() {
                 </div>
                 <input
                   defaultValue={item.note || ''}
-                  placeholder="Special request, e.g. no onion"
-                  onBlur={(event) => {
-                    const note = event.target.value.trim() || null
+                   placeholder="Special request, e.g. no onion"
+                   onBlur={(event) => {
+                     // Chỉ lưu ghi chú khi người dùng rời ô nhập và nội dung thực sự thay đổi.
+                     const note = event.target.value.trim() || null
                     if (note !== item.note) run(
                       () => publicOrderApi.updateItem(token, item.id, { quantity: item.quantity, note }),
                       'Could not save note.')
                   }}
                 />
               </article>
-            ))}
-            <div className="public-cart-total"><span>Draft total</span><strong>{money(drafts.reduce((sum, item) => sum + Number(item.lineTotal), 0))}</strong></div>
-            <button type="button" className="public-submit" disabled={busy || drafts.length === 0} onClick={() => run(
+             ))}
+             <div className="public-cart-total"><span>Draft total</span><strong>{money(drafts.reduce((sum, item) => sum + Number(item.lineTotal), 0))}</strong></div>
+            {/* Sau khi submit, backend đổi DRAFT thành CONFIRMED và khách không tự sửa được nữa. */}
+             <button type="button" className="public-submit" disabled={busy || drafts.length === 0} onClick={() => run(
               () => publicOrderApi.submit(token), 'Could not submit your dishes.')}><Send size={17} /> Submit to kitchen</button>
             <p className="public-cart-hint">Confirmed dishes can only be changed by restaurant staff.</p>
           </aside>
