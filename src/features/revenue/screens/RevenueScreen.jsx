@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { CreditCard, Eye, ReceiptText, RefreshCw, Search, WalletCards, X } from 'lucide-react'
+import { CreditCard, Eye, Printer, ReceiptText, RefreshCw, Search, WalletCards, X } from 'lucide-react'
 import { revenueApi } from '../api/revenueApi'
+import { printInvoice } from '../../../shared/utils/printInvoice'
 import './RevenueScreen.css'
 
 const todayInputValue = () => {
@@ -204,7 +205,16 @@ function RevenueScreen() {
                 <h2>{selectedBill.billCode}</h2>
                 <p>Paid at {paidTime(selectedBill)}</p>
               </div>
-              <button type="button" className="revenue-modal-close" onClick={() => setSelectedBill(null)}><X size={18} /></button>
+              <div className="revenue-modal-actions">
+                <button
+                  type="button"
+                  className="revenue-icon-button"
+                  onClick={() => printInvoice({ group: selectedBill.group, bill: selectedBill })}
+                >
+                  <Printer size={16} /> Print invoice
+                </button>
+                <button type="button" className="revenue-modal-close" onClick={() => setSelectedBill(null)}><X size={18} /></button>
+              </div>
             </div>
 
             <div className="revenue-detail-grid">

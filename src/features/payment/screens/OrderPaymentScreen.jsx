@@ -5,6 +5,7 @@ import {
   Banknote,
   Check,
   CreditCard,
+  Printer,
   QrCode,
   ReceiptText,
   RefreshCw,
@@ -13,6 +14,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { paymentApi } from '../api/paymentApi'
+import { printInvoice } from '../../../shared/utils/printInvoice'
 import './OrderPaymentScreen.css'
 
 const money = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} VND`
@@ -156,6 +158,19 @@ function OrderPaymentScreen() {
           {bill?.paymentStatus || billStatus}
         </div>
       </div>
+
+      {billStatus === 'PAID' ? (
+        <div className="payment-print-bar">
+          <span>Payment is completed. You can print the customer invoice.</span>
+          <button
+            type="button"
+            className="payment-button payment-button--secondary"
+            onClick={() => printInvoice({ group, bill })}
+          >
+            <Printer size={17} /> Print invoice
+          </button>
+        </div>
+      ) : null}
 
       <div className="payment-grid">
         <main className="payment-main">
@@ -325,6 +340,16 @@ function OrderPaymentScreen() {
               </div>
             ) : null}
           </section>
+
+          {billStatus === 'PAID' ? (
+            <button
+              type="button"
+              className="payment-button payment-button--secondary payment-print-button"
+              onClick={() => printInvoice({ group, bill })}
+            >
+              <Printer size={17} /> Print invoice
+            </button>
+          ) : null}
 
           <button
             type="button"
