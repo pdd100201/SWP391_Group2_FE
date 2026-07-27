@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, CheckCircle } from 'lucide-react'
 import './ConfirmModal.css'
 
 function ConfirmModal({ open, title, message, onConfirm, onCancel, loading = false, confirmText = 'Delete', confirmVariant = 'danger' }) {
   const cancelRef = useRef(null)
+  const Icon = confirmVariant === 'danger' ? AlertTriangle : CheckCircle
 
   useEffect(() => {
     if (open) {
@@ -28,8 +29,8 @@ function ConfirmModal({ open, title, message, onConfirm, onCancel, loading = fal
   return (
     <div className="confirm-modal__backdrop" onClick={!loading ? onCancel : undefined}>
       <div className="confirm-modal__card" onClick={(e) => e.stopPropagation()} role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
-        <div className="confirm-modal__icon-wrapper">
-          <AlertTriangle size={28} />
+        <div className={`confirm-modal__icon-wrapper confirm-modal__icon-wrapper--${confirmVariant}`}>
+          <Icon size={28} />
         </div>
 
         <h2 id="confirm-title" className="confirm-modal__title">{title || 'Confirm Action'}</h2>

@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ChevronFirst, ChevronLast, ChevronLeft, ChevronRight, Edit, Loader2, Plus, Power, Save, Search, Trash2, X } from 'lucide-react';
+import { useToast } from '../../../shared/components/ui/Toast/ToastContext';
+import ConfirmModal from '../../../shared/components/ui/ConfirmModal/ConfirmModal';
 import { promotionApi } from '../api/promotionApi';
 import './PromotionsScreen.css';
 
@@ -20,6 +22,7 @@ const emptyForm = {
 };
 
 function PromotionsScreen() {
+  const showToast = useToast();
   const [promotions, setPromotions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -35,6 +38,7 @@ function PromotionsScreen() {
   const [editingPromotion, setEditingPromotion] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState('');
+  const [confirmAction, setConfirmAction] = useState(null);
 
   const fetchPromotions = async () => {
     try {
@@ -128,24 +132,50 @@ function PromotionsScreen() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setError('');
+    setConfirmAction({
+      type: modalMode === 'edit' ? 'update' : 'create',
+      promotion: editingPromotion,
+      form: { ...form },
+    });
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmAction) return;
     setSaving(true);
     setError('');
 
     try {
-      const payload = buildPayload(form);
-      const response =
-        modalMode === 'edit'
-          ? await promotionApi.update(editingPromotion.id, payload)
-          : await promotionApi.create(payload);
+      if (confirmAction.type === 'delete') {
+        await promotionApi.delete(confirmAction.promotion.id);
+        setPromotions((prev) => prev.filter((item) => item.id !== confirmAction.promotion.id));
+        setPageInfo((prev) => {
+          const nextTotal = Math.max(prev.totalElements - 1, 0);
+          return {
+            ...prev,
+            totalElements: nextTotal,
+            totalPages: Math.ceil(nextTotal / PAGE_SIZE),
+          };
+        });
+        setConfirmAction(null);
+        showToast('Promotion deleted successfully');
+        return;
+      }
+
+      const payload = buildPayload(confirmAction.form);
+      const isEditMode = confirmAction.type === 'update';
+      const response = isEditMode
+        ? await promotionApi.update(confirmAction.promotion.id, payload)
+        : await promotionApi.create(payload);
 
       const saved = response.data || response;
       setPromotions((prev) => {
-        if (modalMode === 'edit') {
+        if (isEditMode) {
           return prev.map((promo) => (promo.id === saved.id ? saved : promo));
         }
         return [saved, ...prev];
       });
-      if (modalMode !== 'edit') {
+      if (!isEditMode) {
         setPageInfo((prev) => {
           const nextTotal = prev.totalElements + 1;
           return {
@@ -156,10 +186,19 @@ function PromotionsScreen() {
         });
         setPage(0);
       }
-      closeModal();
+      setModalMode(null);
+      setEditingPromotion(null);
+      setForm(emptyForm);
+      setConfirmAction(null);
+      showToast(isEditMode ? 'Promotion updated successfully' : 'Promotion created successfully');
     } catch (err) {
-      console.error('Error saving promotion:', err);
-      setError(readError(err, 'Failed to save promotion.'));
+      console.error('Error confirming promotion action:', err);
+      setConfirmAction(null);
+      if (confirmAction.type === 'delete') {
+        showToast(readError(err, 'Failed to delete promotion.'), 'error');
+      } else {
+        setError(readError(err, 'Failed to save promotion.'));
+      }
     } finally {
       setSaving(false);
     }
@@ -178,25 +217,36 @@ function PromotionsScreen() {
   };
 
   const handleDelete = async (promotion) => {
-    const confirmed = window.confirm(`Delete promotion ${promotion.code}? Used promotions should be deactivated instead.`);
-    if (!confirmed) return;
-
-    try {
-      await promotionApi.delete(promotion.id);
-      setPromotions((prev) => prev.filter((item) => item.id !== promotion.id));
-      setPageInfo((prev) => {
-        const nextTotal = Math.max(prev.totalElements - 1, 0);
-        return {
-          ...prev,
-          totalElements: nextTotal,
-          totalPages: Math.ceil(nextTotal / PAGE_SIZE),
-        };
-      });
-    } catch (err) {
-      console.error('Error deleting promotion:', err);
-      alert(readError(err, 'Failed to delete promotion.'));
-    }
+    setConfirmAction({ type: 'delete', promotion });
   };
+
+  const getConfirmContent = () => {
+    if (!confirmAction) return {};
+    if (confirmAction.type === 'delete') {
+      return {
+        title: 'Delete Promotion',
+        message: `Are you sure you want to delete promotion "${confirmAction.promotion.code}"? Used promotions should be deactivated instead.`,
+        confirmText: 'Delete',
+        confirmVariant: 'danger',
+      };
+    }
+    if (confirmAction.type === 'update') {
+      return {
+        title: 'Update Promotion Information',
+        message: `Are you sure you want to save changes for promotion "${confirmAction.form.code.trim().toUpperCase()}"?`,
+        confirmText: 'Confirm',
+        confirmVariant: 'success',
+      };
+    }
+    return {
+      title: 'Create Promotion',
+      message: `Are you sure you want to create promotion "${confirmAction.form.code.trim().toUpperCase()}"?`,
+      confirmText: 'Confirm',
+      confirmVariant: 'success',
+    };
+  };
+
+  const confirmContent = getConfirmContent();
 
   return (
     <div className="promotions-screen">
@@ -438,6 +488,19 @@ function PromotionsScreen() {
           </form>
         </div>
       ) : null}
+
+      <ConfirmModal
+        open={Boolean(confirmAction)}
+        title={confirmContent.title}
+        message={confirmContent.message}
+        confirmText={confirmContent.confirmText}
+        confirmVariant={confirmContent.confirmVariant}
+        loading={saving}
+        onConfirm={handleConfirmAction}
+        onCancel={() => {
+          if (!saving) setConfirmAction(null);
+        }}
+      />
     </div>
   );
 }
