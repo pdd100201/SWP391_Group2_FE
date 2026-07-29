@@ -1,3 +1,4 @@
+/* Biến màu và khung nền chung của toàn bộ màn hình quản lý Menu. */
 .menu-screen {
   --menu-primary: #075c46;
   --menu-primary-dark: #064e3b;
@@ -12,6 +13,7 @@
   color: var(--menu-text);
 }
 
+/* Khu vực tiêu đề, mô tả và các nút thao tác chính ở đầu trang. */
 .menu-screen__header {
   display: flex;
   align-items: flex-start;
@@ -88,6 +90,7 @@
 
 .menu-button--wide { width: 100%; }
 
+/* Ba thẻ thống kê: tổng số món, đang phục vụ và đã ngừng phục vụ. */
 .menu-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -127,6 +130,7 @@
   font-size: 0.8rem;
 }
 
+/* Thanh tìm kiếm và hai bộ lọc theo danh mục/trạng thái. */
 .menu-filters {
   display: flex;
   gap: 12px;
@@ -171,6 +175,7 @@
   border-radius: 10px;
 }
 
+/* Thông báo lỗi, trạng thái đang tải và màn hình không có dữ liệu. */
 .menu-page-error,
 .menu-form-error {
   display: flex;
@@ -203,12 +208,14 @@
 .menu-spin { animation: menu-spin 0.9s linear infinite; }
 @keyframes menu-spin { to { transform: rotate(360deg); } }
 
+/* Lưới card món ăn tự co giãn theo chiều rộng màn hình. */
 .menu-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
 }
 
+/* Nội dung chi tiết của từng card: ảnh, trạng thái, tên, mô tả và giá. */
 .menu-pagination-footer {
   display: flex;
   align-items: center;
@@ -395,6 +402,7 @@
   font-size: 0.76rem;
 }
 
+/* Lớp nền che trang và hộp thoại dùng để tạo/chỉnh sửa món. */
 .menu-modal-backdrop {
   position: fixed;
   z-index: 1000;
@@ -406,6 +414,7 @@
   backdrop-filter: blur(4px);
 }
 
+/* Bố cục các trường nhập liệu và nhóm nút Lưu/Hủy trong modal. */
 .menu-modal {
   width: min(940px, 100%);
   max-height: calc(100vh - 48px);

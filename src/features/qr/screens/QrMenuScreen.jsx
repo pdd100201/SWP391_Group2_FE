@@ -57,7 +57,7 @@ export default function QrMenuScreen() {
 
         sessionStorage.setItem('qr_session_token', sessionData.sessionToken)
         sessionStorage.setItem('qr_table_id', sessionData.tableId)
-        setTableNumber(sessionData.tableNumber || `Bàn ${tableId}`)
+        setTableNumber(sessionData.tableNumber || `Table ${tableId}`)
         setCategories(menuData.categories || [])
         setActiveOrder(orderData || null)
       } catch (err) {
@@ -65,7 +65,7 @@ export default function QrMenuScreen() {
           if (err?.response?.status === 409) {
             setNotCheckedIn(true)
           } else {
-            setError('Không thể tải menu. Vui lòng thử lại.')
+            setError('The menu could not be loaded. Please try again.')
           }
         }
       } finally {

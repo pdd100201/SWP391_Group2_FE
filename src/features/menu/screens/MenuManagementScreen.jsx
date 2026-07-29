@@ -19,6 +19,7 @@ import { usePagination } from '../../../shared/hooks/usePagination'
 import ImageUploader from '../../../shared/components/ui/ImageUploader/ImageUploader'
 import './MenuManagementScreen.css'
 
+// Mẫu dữ liệu rỗng dùng khi người quản lý mở form tạo một món mới.
 const EMPTY_FORM = {
   name: '',
   category: '',
@@ -29,15 +30,20 @@ const EMPTY_FORM = {
 
 const PAGE_SIZE = 8
 
+// Định dạng giá thành kiểu tiền Việt Nam, ví dụ 149000 thành "149.000 VND".
 const money = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} VND`
+
+// Đếm số từ trong mô tả để giới hạn nội dung ở mức tối đa 200 từ.
 const wordCount = (value) => value.trim() ? value.trim().split(/\s+/).length : 0
 
+// Lấy thông báo lỗi cụ thể do backend trả về; nếu không có thì dùng thông báo dự phòng.
 function getErrorMessage(error, fallback) {
   const errors = error.response?.data?.errors
   if (errors) return Object.values(errors).join('. ')
   return error.response?.data?.message || fallback
 }
 
+// Hiển thị nhãn trạng thái của món bằng màu sắc và biểu tượng dễ nhận biết.
 function AvailabilityBadge({ status }) {
   const config = {
     AVAILABLE: { label: 'Available', className: 'menu-badge--available', icon: CheckCircle2 },
@@ -55,7 +61,8 @@ function AvailabilityBadge({ status }) {
 }
 
 function DishModal({ item, categories, onClose, onSaved }) {
-  // Một modal dùng chung cho cả tạo mới và chỉnh sửa; item=null là chế độ tạo mới.
+  // Modal này dùng chung cho cả tạo mới và chỉnh sửa:
+  // item = null là tạo mới; item có dữ liệu là chỉnh sửa món đang tồn tại.
   const [form, setForm] = useState(() => item
     ? {
         name: item.name,
@@ -66,18 +73,23 @@ function DishModal({ item, categories, onClose, onSaved }) {
       }
     : EMPTY_FORM
   )
+
+  // saving khóa nút lưu khi request đang chạy; error chứa lỗi hiển thị ngay trong form.
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
+  // Mọi ô nhập liệu dùng chung hàm này; thuộc tính "name" của ô quyết định field nào được cập nhật.
   const updateField = (event) => {
     const { name, value } = event.target
     setForm((current) => ({ ...current, [name]: value }))
   }
 
   const handleSubmit = async (event) => {
+    // Ngăn trình duyệt tải lại trang theo hành vi mặc định của thẻ form.
     event.preventDefault()
     setError('')
 
+    // Kiểm tra dữ liệu ở frontend để người dùng nhận phản hồi ngay trước khi gọi backend.
     const price = Number(form.price)
     if (!form.name.trim() || !form.category) {
       setError('Dish name and category are required')
@@ -100,20 +112,24 @@ function DishModal({ item, categories, onClose, onSaved }) {
       return
     }
 
+    // Chuẩn hóa dữ liệu trước khi gửi: bỏ khoảng trắng thừa và chuyển giá sang dạng số.
     const payload = {
       name: form.name.trim(),
       category: form.category,
       description: form.description.trim() || null,
-      // ImageUploader đã upload file trước và đưa secure URL của Cloudinary vào state.
+      // ImageUploader đã upload file trước; request tạo món chỉ gửi URL HTTPS của Cloudinary.
       imageUrl: form.imageUrl.trim() || null,
       price,
     }
 
     setSaving(true)
     try {
+      // Nếu có item thì cập nhật món cũ; nếu không có item thì tạo món mới.
       const response = item
         ? await menuService.update(item.id, payload)
         : await menuService.create(payload)
+
+      // Báo cho màn hình cha biết món đã lưu thành công để cập nhật danh sách và đóng modal.
       onSaved(response.data)
     } catch (submitError) {
       setError(getErrorMessage(submitError, 'Unable to save menu item'))
@@ -190,15 +206,25 @@ function DishModal({ item, categories, onClose, onSaved }) {
 }
 
 function MenuManagementScreen() {
+  // Role được lưu sau khi đăng nhập. Chỉ ADMIN và MANAGER nhìn thấy các thao tác quản trị.
+  // Đây là kiểm soát giao diện; backend vẫn kiểm tra JWT và role để bảo vệ API.
   const role = sessionStorage.getItem('role')
   const canManage = ['ADMIN', 'MANAGER'].includes(role)
+
+  // Dữ liệu chính lấy từ backend.
   const [menuItems, setMenuItems] = useState([])
   const [menuCategories, setMenuCategories] = useState([])
+
+  // Trạng thái tải dữ liệu và lỗi dùng chung của toàn màn hình.
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+
+  // Các điều kiện tìm kiếm/lọc được xử lý trực tiếp trên danh sách đã tải về.
   const [keyword, setKeyword] = useState('')
   const [category, setCategory] = useState('')
   const [availability, setAvailability] = useState('')
+
+  // Trạng thái điều khiển modal tạo/sửa và nút bật/tắt món.
   const [editingItem, setEditingItem] = useState(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [togglingId, setTogglingId] = useState(null)
@@ -207,6 +233,7 @@ function MenuManagementScreen() {
     setLoading(true)
     setError('')
     try {
+      // Tải danh sách món và danh mục song song để giảm thời gian chờ của màn hình.
       const [menuResponse, categoryResponse] = await Promise.all([
         menuService.getAll(),
         menuService.getCategories(),
@@ -221,13 +248,14 @@ function MenuManagementScreen() {
   }
 
   useEffect(() => {
-    // Initial API synchronization for this management screen.
+    // Đồng bộ dữ liệu từ backend một lần khi người dùng mở màn hình quản lý Menu.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData()
   }, [])
 
   const filteredItems = menuItems.filter((item) => {
-    // Lọc tại client vì endpoint hiện trả toàn bộ menu trong một request.
+    // Lọc tại frontend vì endpoint hiện trả toàn bộ menu trong một request.
+    // Một món chỉ được hiển thị khi đồng thời thỏa từ khóa, danh mục và trạng thái.
     const matchesKeyword = item.name.toLowerCase().includes(keyword.trim().toLowerCase())
     const matchesCategory = !category || item.category === category
     const matchesAvailability = !availability || item.availability === availability
@@ -235,7 +263,10 @@ function MenuManagementScreen() {
   })
   const pagination = usePagination(filteredItems, PAGE_SIZE)
 
+  // Danh mục ở bộ lọc được rút ra từ các món hiện có; Set giúp loại bỏ tên bị lặp.
   const filterCategories = [...new Set(menuItems.map((item) => item.category))].sort()
+
+  // Các con số tổng quan luôn được tính trên toàn bộ menu, không phụ thuộc bộ lọc hiện tại.
   const stats = {
     total: menuItems.length,
     available: menuItems.filter((item) => item.availability === 'AVAILABLE').length,
@@ -243,6 +274,7 @@ function MenuManagementScreen() {
   }
 
   const handleRefresh = () => {
+    // Xóa các điều kiện lọc rồi lấy lại dữ liệu mới nhất từ backend.
     setKeyword('')
     setCategory('')
     setAvailability('')
@@ -251,12 +283,14 @@ function MenuManagementScreen() {
   }
 
   const openCreate = () => {
+    // Không truyền món hiện tại để DishModal chuyển sang chế độ tạo mới.
     setEditingItem(null)
     setModalOpen(true)
   }
 
   const handleSaved = (savedItem) => {
-    // Cập nhật đúng card vừa lưu để không cần gọi lại API lấy toàn bộ danh sách.
+    // Nếu là chỉnh sửa thì thay đúng card cũ; nếu là tạo mới thì thêm món lên đầu danh sách.
+    // Cách này giúp giao diện cập nhật ngay mà không phải gọi lại API lấy toàn bộ menu.
     setMenuItems((current) => {
       const exists = current.some((item) => item.id === savedItem.id)
       return exists
@@ -268,10 +302,13 @@ function MenuManagementScreen() {
   }
 
   const toggleActive = async (item) => {
+    // Ghi nhớ ID đang xử lý để chỉ khóa nút của món đó, tránh người dùng nhấn liên tục.
     setTogglingId(item.id)
     setError('')
     try {
       const response = await menuService.toggleActive(item.id)
+
+      // Backend trả về món sau khi đổi trạng thái; thay đúng phần tử tương ứng trong state.
       setMenuItems((current) => current.map((currentItem) =>
         currentItem.id === item.id ? response.data : currentItem
       ))
@@ -284,6 +321,7 @@ function MenuManagementScreen() {
 
   return (
     <div className="menu-screen">
+      {/* Tiêu đề màn hình và các thao tác tải lại/tạo món. */}
       <header className="menu-screen__header">
         <div>
           <span className="menu-screen__eyebrow"><ChefHat size={16} /> Menu pricing</span>
@@ -302,12 +340,14 @@ function MenuManagementScreen() {
         </div>
       </header>
 
+      {/* Thống kê nhanh tổng số món, số món đang phục vụ và số món đã ngừng phục vụ. */}
       <section className="menu-stats">
         <article><UtensilsCrossed /><div><strong>{stats.total}</strong><span>Total dishes</span></div></article>
         <article><CheckCircle2 /><div><strong>{stats.available}</strong><span>Available</span></div></article>
         <article><AlertTriangle /><div><strong>{stats.inactive}</strong><span>Inactive</span></div></article>
       </section>
 
+      {/* Bộ lọc hoạt động ngay trên dữ liệu đã tải, không phát sinh thêm request. */}
       <section className="menu-filters">
         <label className="menu-search">
           <Search size={17} />
@@ -326,6 +366,7 @@ function MenuManagementScreen() {
 
       {error && <div className="menu-page-error"><AlertTriangle size={18} />{error}</div>}
 
+      {/* Chọn đúng trạng thái giao diện: đang tải, không có kết quả hoặc danh sách món. */}
       {loading ? (
         <div className="menu-loading"><RefreshCw className="menu-spin" /><span>Loading menu...</span></div>
       ) : filteredItems.length === 0 ? (
@@ -394,6 +435,7 @@ function MenuManagementScreen() {
         </>
       )}
 
+      {/* Modal chỉ tồn tại trong cây giao diện khi người dùng có quyền và modal đang mở. */}
       {canManage && modalOpen && (
         <DishModal
           item={editingItem}
