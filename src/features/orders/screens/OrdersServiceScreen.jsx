@@ -35,6 +35,7 @@ const itemStatusLabels = {
   READY: 'Ready',
   SERVED: 'Served',
   CANCELLED: 'Cancelled',
+  VOIDED: 'Voided',
 }
 
 const money = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} ₫`
@@ -80,7 +81,7 @@ const normalizeGroup = (group) => ({
 const groupItems = (group) => (group?.orders || [])
   .filter((order) => order.status !== 'CANCELLED')
   .flatMap((order) => order.items || [])
-const activeItems = (group) => groupItems(group).filter((item) => item.status !== 'CANCELLED')
+const activeItems = (group) => groupItems(group).filter((item) => item.status !== 'CANCELLED' && item.status !== 'VOIDED')
 const allItemsServed = (group) => activeItems(group).every((item) => item.status === 'SERVED')
 const groupTotal = (group) => Number(group?.bill?.total ?? group?.subtotal ?? 0)
 
@@ -89,7 +90,7 @@ const orderServiceInProgress = (order) => {
   if (order.serviceStatus) return order.serviceStatus !== 'SERVED'
 
   const items = order.items || []
-  const nonCancelledItems = items.filter((item) => item.status !== 'CANCELLED')
+  const nonCancelledItems = items.filter((item) => item.status !== 'CANCELLED' && item.status !== 'VOIDED')
   return items.length === 0 || nonCancelledItems.some((item) => item.status !== 'SERVED')
 }
 
@@ -101,9 +102,11 @@ const isActiveGroup = (group) => {
   return serviceInProgress || paymentOutstanding
 }
 
+const isManageableOrderGroup = (group) => isActiveGroup(group) && group.bill?.status !== 'PAID'
+
 const matchesFilter = (group, filter) => {
   if (filter === 'ALL') return true
-  if (filter === 'ACTIVE') return isActiveGroup(group)
+  if (filter === 'ACTIVE') return isManageableOrderGroup(group)
   if (filter === 'OPEN') return (group.orders || []).some((order) => order.status === 'OPEN')
   if (filter === 'COMPLETED') {
     return group.reservationStatus === 'COMPLETED'
@@ -152,6 +155,16 @@ const matchesGroupSearch = (group, rawTerm) => {
   return normalizeSearchTerm(searchableValues.join(' ')).includes(term)
 }
 
+const matchesRouteTarget = (group, routeTarget) => {
+  if (routeTarget.reservationId && Number(group.reservationId) === Number(routeTarget.reservationId)) {
+    return true
+  }
+  return (group.orders || []).some((order) => (
+    (routeTarget.orderId && Number(order.id) === Number(routeTarget.orderId))
+    || (routeTarget.tableId && Number(order.tableId) === Number(routeTarget.tableId))
+  ))
+}
+
 function OrdersServiceScreen() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -186,7 +199,7 @@ function OrdersServiceScreen() {
     () => sortedGroups.filter((group) => (
       matchesGroupSearch(group, orderSearch)
       && (groupFilter === 'ACTIVE'
-        ? isActiveGroup(group)
+        ? isManageableOrderGroup(group)
         : matchesFilter(group, groupFilter))
     )),
     [groupFilter, orderSearch, sortedGroups]
@@ -200,11 +213,12 @@ function OrdersServiceScreen() {
   const bill = selectedGroup?.bill || null
   const billStatus = bill?.status || 'DRAFT'
   const billEditable = billStatus === 'DRAFT'
+  const canManagePayment = ['ADMIN', 'MANAGER', 'RECEPTIONIST'].includes(role)
   const canComplete = selectedGroup?.reservationStatus === 'ARRIVED'
     && billStatus === 'PAID'
     && allItemsServed(selectedGroup)
   const activeGroupCount = useMemo(
-    () => sortedGroups.filter(isActiveGroup).length,
+    () => sortedGroups.filter(isManageableOrderGroup).length,
     [sortedGroups]
   )
 
@@ -271,18 +285,15 @@ function OrdersServiceScreen() {
       )) || nextSortedGroups.find((group) => (
         routeTarget.tableId && (group.orders || []).some((order) => Number(order.tableId) === routeTarget.tableId)
       ))
-      const requestedGroupMatchesFilter = requestedGroup
-        ? (routeTarget.filter === 'ACTIVE'
-          ? isActiveGroup(requestedGroup)
-          : matchesFilter(requestedGroup, routeTarget.filter))
-        : true
-      const nextFilter = requestedGroupMatchesFilter ? routeTarget.filter : 'ACTIVE'
+      const nextFilter = routeTarget.filter
       const nextVisibleGroups = nextSortedGroups.filter((group) => (
         nextFilter === 'ACTIVE'
-          ? isActiveGroup(group)
+          ? isManageableOrderGroup(group)
           : matchesFilter(group, nextFilter)
       ))
-      const nextGroup = requestedGroupMatchesFilter ? (requestedGroup || nextVisibleGroups[0] || null) : (nextVisibleGroups[0] || null)
+      const nextGroup = requestedGroup && nextVisibleGroups.some((group) => matchesRouteTarget(group, routeTarget))
+        ? requestedGroup
+        : nextVisibleGroups[0] || null
       const selectedGroupIndex = nextVisibleGroups.findIndex((group) => (
         Number(group.reservationId) === Number(nextGroup?.reservationId)
       ))
@@ -736,29 +747,31 @@ function OrdersServiceScreen() {
                   ) : null}
                 </div>
 
-                <aside className="orders-bill-panel">
-                  <div className="orders-bill-title">
-                    <CreditCard size={18} />
-                    <div><strong>Payment</strong><small>Manage bill, discount, cash, and SePay QR on the payment page.</small></div>
-                  </div>
-
-                  <div className={`orders-payment-box ${billStatus === 'PAID' ? 'orders-payment-box--paid' : ''}`}>
-                    <div className="orders-payment-head">
-                      <span><CreditCard size={17} /> {bill?.billCode || 'Shared bill'}</span>
-                      <strong>{bill?.paymentStatus || billStatus}</strong>
+                {canManagePayment ? (
+                  <aside className="orders-bill-panel">
+                    <div className="orders-bill-title">
+                      <CreditCard size={18} />
+                      <div><strong>Payment</strong><small>Manage bill, discount, cash, and SePay QR on the payment page.</small></div>
                     </div>
-                    <p className="orders-payment-note">
-                      Open the payment page to apply promotion codes, review totals, create SePay QR, or record cash payment.
-                    </p>
-                    <button
-                      type="button"
-                      className="orders-button orders-button--primary"
-                      onClick={() => navigate(`/dashboard/orders-service/${selectedGroup.reservationId}/payment`)}
-                    >
-                      <CreditCard size={17} /> Open payment
-                    </button>
-                  </div>
-                </aside>
+
+                    <div className={`orders-payment-box ${billStatus === 'PAID' ? 'orders-payment-box--paid' : ''}`}>
+                      <div className="orders-payment-head">
+                        <span><CreditCard size={17} /> {bill?.billCode || 'Shared bill'}</span>
+                        <strong>{bill?.paymentStatus || billStatus}</strong>
+                      </div>
+                      <p className="orders-payment-note">
+                        Open the payment page to apply promotion codes, review totals, create SePay QR, or record cash payment.
+                      </p>
+                      <button
+                        type="button"
+                        className="orders-button orders-button--primary"
+                        onClick={() => navigate(`/dashboard/orders-service/${selectedGroup.reservationId}/payment`)}
+                      >
+                        <CreditCard size={17} /> Open payment
+                      </button>
+                    </div>
+                  </aside>
+                ) : null}
               </div>
             </>
           )}

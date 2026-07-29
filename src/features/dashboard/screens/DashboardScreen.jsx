@@ -1058,20 +1058,31 @@ function DashboardScreen({ isDashboardOnly = false }) {
                                   <div className="expanded-items">
                                     <h4>Ordered items:</h4>
                                     {tx.items && tx.items.length > 0 ? (
-                                      tx.items.map((item) => (
-                                        <div key={item.id} className="expanded-item-row">
+                                      tx.items.map((item) => {
+                                        const isVoided = item.status === 'VOIDED'
+                                        return (
+                                        <div key={item.id} className={`expanded-item-row${isVoided ? ' expanded-item-row--voided' : ''}`}>
                                           <div className="expanded-item-name">
                                             <strong>{item.menuItemName}</strong>
                                             {item.note && <small className="note-text">Note: {item.note}</small>}
+                                            {isVoided && (
+                                              <small className="voided-text">VOIDED{item.voidReason ? `: ${item.voidReason}` : ''}</small>
+                                            )}
                                           </div>
                                           <span className="expanded-item-qty">x{item.quantity}</span>
                                           <span className="expanded-item-price">{formatVND(item.unitPrice)}</span>
                                           <span className="expanded-item-total">{formatVND(item.subtotal)}</span>
                                         </div>
-                                      ))
+                                        )
+                                      })
                                     ) : (
                                       <p className="no-items-text">No item information.</p>
                                     )}
+                                  </div>
+                                  <div className="expanded-bill-summary">
+                                    <span>Subtotal <strong>{formatVND(tx.subtotal ?? tx.amount)}</strong></span>
+                                    <span>Discount <strong>-{formatVND(tx.discountAmount || 0)}</strong></span>
+                                    <span>Total <strong>{formatVND(tx.total ?? tx.amount)}</strong></span>
                                   </div>
                                 </div>
                               </td>

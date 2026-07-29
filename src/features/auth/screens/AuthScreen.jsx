@@ -10,12 +10,18 @@ import { forgotPassword, login, loginWithGoogle, registerCustomer, resetPassword
 import './AuthScreen.css'
 
 function AuthScreen() {
+  // Router state: biet URL hien tai va dung de chuyen trang sau khi login/register.
   const location = useLocation()
   const navigate = useNavigate()
+  // Hien/an mat khau trong input password.
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  // Form co 4 buoc: credentials, forgot-email, otp, new-password.
   const [authStep, setAuthStep] = useState('credentials') // credentials | forgot-email | otp | new-password
+  //Cho biết OTP đã xác thực chưa.
+  // Chi cho reset password sau khi OTP da verify thanh cong.
   const [otpVerified, setOtpVerified] = useState(false)
+  // Tat ca du lieu input duoc gom vao formData.
   const [formData, setFormData] = useState({
     fullName: '',
     customersEmail: '',
@@ -32,9 +38,11 @@ function AuthScreen() {
   const [successMessage, setSuccessMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Dua vao URL de xac dinh dang hien form Login hay Register.
   const activeTab = location.pathname === '/register' ? 'register' : 'login'
   const isLogin = activeTab === 'login'
 
+  // Doi tab Login/Register va reset loi, message, OTP step.
   const changeAuthTab = (path) => {
     setError('')
     setSuccessMessage('')
@@ -43,18 +51,19 @@ function AuthScreen() {
     navigate(path)
   }
 
+  // Dung chung cho moi input: field nao thay doi thi update field do trong formData.
   const handleChange = (event) => {
     const { name, value } = event.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
-//xử lý login/register success
+  // Sau khi login/register thanh cong: luu token/user info va chuyen trang theo role.
   const persistAuthAndRedirect = (data) => {
     sessionStorage.setItem('token', data.token)
     sessionStorage.setItem('role', data.role)
     sessionStorage.setItem('fullName', data.fullName)
     sessionStorage.setItem('email', data.email)
     window.dispatchEvent(new Event('auth-changed'))
-
+    //chuyển trang theo role
     if (data.role === 'CUSTOMER') {
       navigate('/')
     } else {
@@ -67,6 +76,7 @@ function AuthScreen() {
    -> backend verify Google token
    -> backend trả JWT hệ thống
    -> FE lưu JWT và chuyển trang**/
+  // Google tra credential token; FE gui token nay ve BE de BE verify va tra JWT cua he thong.
   const handleGoogleSuccess = async (response) => {
     try {
       setError('')
@@ -80,18 +90,22 @@ function AuthScreen() {
       setIsSubmitting(false)
     }
   }
-
+  //hiển thị lỗi khi login Google không thành công.
+  // Login Google bi huy hoac that bai thi hien loi.
   const handleGoogleError = () => {
     setError('Google login was cancelled or failed')
   }
   //Submit không reload trang
+  // Submit chinh cua man auth: xu ly forgot password, OTP, reset password, login, register.
   const handleSubmit = async (event) => {
     event.preventDefault()
+    //xóa lỗi cũ/ xóa message thành công cũ/ bật loading submit
     setError('')
     setSuccessMessage('')
     setIsSubmitting(true)
 
     try {
+      // Buoc 1 quen mat khau: gui email de BE tao/gui OTP.
       if (authStep === 'forgot-email') {
         if (!formData.resetEmail.trim()) {
           setError('Email is required')
@@ -102,17 +116,20 @@ function AuthScreen() {
         return
       }
 
+      // Buoc 2 quen mat khau: gui OTP cho BE kiem tra.
       if (authStep === 'otp') {
         if (!formData.otp.trim()) {
           setError('OTP is required')
           return
         }
+        // đúng otp thì đánh dấu verify --> đặt pass mới
         await verifyOtp(formData.resetEmail, formData.otp)
         setOtpVerified(true)
         setAuthStep('new-password')
         return
       }
 
+      // Buoc 3 quen mat khau: dat mat khau moi sau khi OTP dung.
       if (authStep === 'new-password') {
         if (!formData.newPassword.trim()) {
           setError('New password is required')
@@ -130,6 +147,7 @@ function AuthScreen() {
         return
       }
 
+      // Luong login bang email/password.
       if (isLogin) {
         if (!formData.email.trim()) {
           setError('Email is required')
@@ -145,6 +163,7 @@ function AuthScreen() {
         return
       }
 
+      // Luong register customer: validate form truoc khi goi API dang ky.
       if (!formData.fullName.trim()) {
         setError('Full name is required')
         return
@@ -169,7 +188,7 @@ function AuthScreen() {
         setError('Passwords do not match')
         return
       }
-
+      //gom dât gui cho backend
       const response = await registerCustomer({
         fullName: formData.fullName,
         customersEmail: formData.customersEmail,
@@ -177,9 +196,10 @@ function AuthScreen() {
         phone: formData.phone,
         avatarUrl: formData.avatarUrl,
       })
-
+      //dki success thi goi ham nay
       persistAuthAndRedirect(response.data)
     } catch (err) {
+      // Uu tien hien loi validate field tu BE; neu khong co thi hien loi tong quat.
       const status = err.response?.status
       const backendMessage = err.response?.data?.message
       const fieldErrors = err.response?.data?.errors
@@ -207,6 +227,7 @@ function AuthScreen() {
     }
   }
 
+  // Khi bam Forgot password: doi form sang buoc nhap email reset password.
   const openForgotFlow = () => {
     setError('')
     setSuccessMessage('')
@@ -214,6 +235,7 @@ function AuthScreen() {
     setFormData((prev) => ({ ...prev, resetEmail: prev.email || prev.customersEmail }))
   }
 
+  // Tieu de tren form thay doi theo buoc hien tai.
   const renderTitle = () => {
     if (authStep === 'forgot-email') return 'Forgot Password'
     if (authStep === 'otp') return 'Verify OTP'
@@ -221,7 +243,9 @@ function AuthScreen() {
     return isLogin ? 'Login' : 'Register'
   }
 
+  // Render noi dung form tuy theo authStep.
   const renderForm = () => {
+    // Form nhap email de yeu cau gui OTP.
     if (authStep === 'forgot-email') {
       return (
         <>
@@ -244,6 +268,7 @@ function AuthScreen() {
       )
     }
 
+    // Form nhap OTP da duoc gui ve email.
     if (authStep === 'otp') {
       return (
         <>
@@ -267,6 +292,7 @@ function AuthScreen() {
       )
     }
 
+    // Form dat mat khau moi sau khi OTP dung.
     if (authStep === 'new-password') {
       return (
         <>
@@ -318,8 +344,10 @@ function AuthScreen() {
       )
     }
 
+    // Mac dinh la form credentials: Login hoac Register.
     return (
       <>
+        {/* Register moi can fullName va phone; Login khong hien 2 field nay. */}
         {!isLogin && (
           <>
             <InputField
@@ -344,6 +372,7 @@ function AuthScreen() {
           </>
         )}
 
+        {/* Login dung field email, Register dung field customersEmail theo request BE. */}
         <InputField
           icon={Mail}
           type="email"
@@ -374,6 +403,7 @@ function AuthScreen() {
           }
         />
 
+        {/* Register can confirm password de FE kiem tra 2 mat khau co trung nhau khong. */}
         {!isLogin && (
           <InputField
             icon={Lock}
@@ -396,6 +426,7 @@ function AuthScreen() {
           />
         )}
 
+        {/* Login moi hien Remember me va Forgot password. */}
         {isLogin && (
           <div className="auth-screen__meta-row">
             <label className="auth-screen__remember">
@@ -408,6 +439,7 @@ function AuthScreen() {
           </div>
         )}
 
+        {/* Nut submit doi text theo trang hien tai va bi khoa khi dang goi API. */}
         <Button type="submit" disabled={isSubmitting}>
           {isSubmitting ? 'Please wait...' : isLogin ? 'Login' : 'Register'}
         </Button>
@@ -415,6 +447,7 @@ function AuthScreen() {
     )
   }
 
+  // JSX chinh cua man hinh auth.
   return (
     <div className="auth-screen">
       <Navbar />
@@ -422,6 +455,7 @@ function AuthScreen() {
         <div className="auth-screen__card">
           <div className="auth-screen__brand">Golden Spoon</div>
 
+          {/* Hai tab Login/Register thuc chat chuyen URL /login va /register. */}
           <div className="auth-screen__tabs" role="tablist" aria-label="Authentication modes">
             <button
               type="button"
@@ -446,13 +480,16 @@ function AuthScreen() {
           <div className="auth-screen__content">
             <h1>{renderTitle()}</h1>
 
+            {/* Hien loi hoac thong bao thanh cong neu co. */}
             {error && <p className="auth-screen__error" role="alert">{error}</p>}
             {successMessage && <p className="auth-screen__success" role="status">{successMessage}</p>}
 
+            {/* Tat ca form deu submit vao handleSubmit, ben trong handleSubmit tu chia theo authStep/isLogin. */}
             <form className="auth-screen__form" onSubmit={handleSubmit}>
               {renderForm()}
             </form>
 
+            {/* Chi hien Google Login o man Login/Register, khong hien trong luong forgot password. */}
             {authStep === 'credentials' && (
               <>
                 <div className="auth-screen__divider">

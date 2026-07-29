@@ -125,7 +125,14 @@ function AppRoutes() {
         <Route path="reservations" element={<DashboardReservationsScreen />} />
         <Route path="orders-service" element={<OrdersServiceScreen />} />
         <Route path="orders-service/active" element={<LegacyActiveOrdersRedirect />} />
-        <Route path="orders-service/:reservationId/payment" element={<OrderPaymentScreen />} />
+        <Route
+          path="orders-service/:reservationId/payment"
+          element={(
+            <RequireAuth allowedRoles={['ADMIN', 'MANAGER', 'RECEPTIONIST']}>
+              <OrderPaymentScreen />
+            </RequireAuth>
+          )}
+        />
         <Route
           path="revenue"
           element={(

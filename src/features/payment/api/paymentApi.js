@@ -12,6 +12,8 @@ export const paymentApi = {
     axiosClient.post(`/payments/bills/reservations/${reservationId}/cash`),
   cancelPayment: (reservationId) =>
     axiosClient.post(`/payments/bills/reservations/${reservationId}/cancel-payment`),
+  voidItem: (orderId, itemId, reason) =>
+    axiosClient.post(`/orders/${orderId}/items/${itemId}/void`, { reason }),
   completeReservation: (reservationId) =>
     axiosClient.patch(`/orders/reservations/${reservationId}/complete`),
 }

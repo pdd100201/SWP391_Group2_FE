@@ -42,6 +42,8 @@ const paidTime = (bill) => {
 
 const tableLabel = (order) => order?.tableName || order?.tableNumber || `Table ${order?.tableId || '-'}`
 const groupTables = (group) => (group?.orders || []).map(tableLabel).join(', ') || '-'
+const displayableItems = (order) => (order.items || [])
+  .filter((item) => item.status !== 'CANCELLED')
 
 function RevenueScreen() {
   const [bills, setBills] = useState([])
@@ -337,14 +339,23 @@ function RevenueScreen() {
               {selectedBill.group?.orders?.length ? selectedBill.group.orders.map((order) => (
                 <section className="revenue-table-order" key={order.id}>
                   <header><span><strong>{tableLabel(order)}</strong><small>{order.orderCode}</small></span><b>{money(order.subtotal ?? order.total)}</b></header>
-                  {(order.items || []).filter((item) => item.status !== 'CANCELLED').length ? (
-                    order.items.filter((item) => item.status !== 'CANCELLED').map((item) => (
-                      <article key={item.id}>
-                        <div><strong>{item.menuItemName}</strong><small>{item.note || 'No special request'}</small></div>
+                  {displayableItems(order).length ? (
+                    displayableItems(order).map((item) => {
+                      const isVoided = item.status === 'VOIDED'
+                      return (
+                      <article key={item.id} className={isVoided ? 'revenue-item--voided' : ''}>
+                        <div>
+                          <strong>{item.menuItemName}</strong>
+                          <small>{item.note || 'No special request'}</small>
+                          {isVoided ? (
+                            <small className="revenue-item-status">VOIDED{item.voidReason ? `: ${item.voidReason}` : ''}</small>
+                          ) : null}
+                        </div>
                         <span>x{item.quantity}</span>
                         <b>{money(item.lineTotal)}</b>
                       </article>
-                    ))
+                      )
+                    })
                   ) : <p className="revenue-empty revenue-empty--compact">No billable items for this table.</p>}
                 </section>
               )) : <p className="revenue-empty revenue-empty--compact">Order breakdown is unavailable.</p>}

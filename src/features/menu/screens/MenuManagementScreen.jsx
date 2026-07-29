@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import {
   AlertTriangle,
+  ChevronFirst,
+  ChevronLast,
+  ChevronLeft,
+  ChevronRight,
   CheckCircle2,
   ChefHat,
   Pencil,
@@ -11,6 +15,7 @@ import {
   X,
 } from 'lucide-react'
 import { menuService } from '../services/menuService'
+import { usePagination } from '../../../shared/hooks/usePagination'
 import ImageUploader from '../../../shared/components/ui/ImageUploader/ImageUploader'
 import './MenuManagementScreen.css'
 
@@ -21,6 +26,8 @@ const EMPTY_FORM = {
   imageUrl: '',
   price: '',
 }
+
+const PAGE_SIZE = 8
 
 const money = (value) => `${Math.round(Number(value) || 0).toLocaleString('vi-VN')} VND`
 const wordCount = (value) => value.trim() ? value.trim().split(/\s+/).length : 0
@@ -226,6 +233,7 @@ function MenuManagementScreen() {
     const matchesAvailability = !availability || item.availability === availability
     return matchesKeyword && matchesCategory && matchesAvailability
   })
+  const pagination = usePagination(filteredItems, PAGE_SIZE)
 
   const filterCategories = [...new Set(menuItems.map((item) => item.category))].sort()
   const stats = {
@@ -238,6 +246,7 @@ function MenuManagementScreen() {
     setKeyword('')
     setCategory('')
     setAvailability('')
+    pagination.reset()
     loadData()
   }
 
@@ -302,13 +311,13 @@ function MenuManagementScreen() {
       <section className="menu-filters">
         <label className="menu-search">
           <Search size={17} />
-          <input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="Search dishes..." />
+          <input value={keyword} onChange={(event) => { setKeyword(event.target.value); pagination.reset() }} placeholder="Search dishes..." />
         </label>
-        <select value={category} onChange={(event) => setCategory(event.target.value)}>
+        <select value={category} onChange={(event) => { setCategory(event.target.value); pagination.reset() }}>
           <option value="">All categories</option>
           {filterCategories.map((itemCategory) => <option key={itemCategory}>{itemCategory}</option>)}
         </select>
-        <select value={availability} onChange={(event) => setAvailability(event.target.value)}>
+        <select value={availability} onChange={(event) => { setAvailability(event.target.value); pagination.reset() }}>
           <option value="">All availability</option>
           <option value="AVAILABLE">Available</option>
           <option value="INACTIVE">Inactive</option>
@@ -322,50 +331,67 @@ function MenuManagementScreen() {
       ) : filteredItems.length === 0 ? (
         <div className="menu-empty"><ChefHat size={44} /><h2>No menu items found</h2><p>Create a dish or clear the current filters.</p></div>
       ) : (
-        <section className="menu-grid">
-          {filteredItems.map((item) => (
-            <article className="menu-card" key={item.id}>
-              <div className="menu-card__image">
-                {item.imageUrl
-                  ? <img src={item.imageUrl} alt={item.name} />
-                  : <div className="menu-card__placeholder"><ChefHat size={34} /></div>}
-                <AvailabilityBadge status={item.availability} />
-              </div>
-              <div className="menu-card__body">
-                <div className="menu-card__title-row">
-                  <div><span>{item.category}</span><h2>{item.name}</h2></div>
+        <>
+          <section className="menu-grid">
+            {pagination.currentItems.map((item) => (
+              <article className="menu-card" key={item.id}>
+                <div className="menu-card__image">
+                  {item.imageUrl
+                    ? <img src={item.imageUrl} alt={item.name} />
+                    : <div className="menu-card__placeholder"><ChefHat size={34} /></div>}
+                  <AvailabilityBadge status={item.availability} />
+                </div>
+                <div className="menu-card__body">
+                  <div className="menu-card__title-row">
+                    <div><span>{item.category}</span><h2>{item.name}</h2></div>
+                    {canManage && (
+                      <button
+                        type="button"
+                        className="menu-icon-button"
+                        onClick={() => { setEditingItem(item); setModalOpen(true) }}
+                        aria-label={`Edit ${item.name}`}
+                      >
+                        <Pencil size={17} />
+                      </button>
+                    )}
+                  </div>
+                  <p className="menu-card__description">{item.description || 'No description provided.'}</p>
+
+                  <div className="menu-card__metrics">
+                    <div><span>Price</span><strong>{money(item.price)}</strong></div>
+                    <div><span>Status</span><strong>{item.availability?.replaceAll('_', ' ') || 'Unavailable'}</strong></div>
+                  </div>
+
                   {canManage && (
                     <button
                       type="button"
-                      className="menu-icon-button"
-                      onClick={() => { setEditingItem(item); setModalOpen(true) }}
-                      aria-label={`Edit ${item.name}`}
+                      className={`menu-button menu-button--wide ${item.isActive ? 'menu-button--danger-soft' : 'menu-button--primary'}`}
+                      onClick={() => toggleActive(item)}
+                      disabled={togglingId === item.id}
                     >
-                      <Pencil size={17} />
+                      {togglingId === item.id ? 'Updating...' : item.isActive ? 'Stop serving manually' : 'Activate dish'}
                     </button>
                   )}
                 </div>
-                <p className="menu-card__description">{item.description || 'No description provided.'}</p>
+              </article>
+            ))}
+          </section>
 
-                <div className="menu-card__metrics">
-                  <div><span>Price</span><strong>{money(item.price)}</strong></div>
-                  <div><span>Status</span><strong>{item.availability?.replaceAll('_', ' ') || 'Unavailable'}</strong></div>
-                </div>
-
-                {canManage && (
-                  <button
-                    type="button"
-                    className={`menu-button menu-button--wide ${item.isActive ? 'menu-button--danger-soft' : 'menu-button--primary'}`}
-                    onClick={() => toggleActive(item)}
-                    disabled={togglingId === item.id}
-                  >
-                    {togglingId === item.id ? 'Updating...' : item.isActive ? 'Stop serving manually' : 'Activate dish'}
-                  </button>
-                )}
-              </div>
-            </article>
-          ))}
-        </section>
+          <div className="menu-pagination-footer">
+            <span>Showing {pagination.startIdx}-{pagination.endIdx} of {pagination.totalElements}</span>
+            <div className="menu-pagination">
+              <button type="button" aria-label="First page" disabled={pagination.isFirst} onClick={() => pagination.setPage(0)}><ChevronFirst size={16} /></button>
+              <button type="button" aria-label="Previous page" disabled={pagination.isFirst} onClick={() => pagination.setPage(pagination.page - 1)}><ChevronLeft size={16} /></button>
+              {pagination.getPageNumbers().map((pageNumber) => (
+                <button key={pageNumber} type="button" className={pageNumber === pagination.page ? 'is-active' : ''} onClick={() => pagination.setPage(pageNumber)}>
+                  {pageNumber + 1}
+                </button>
+              ))}
+              <button type="button" aria-label="Next page" disabled={pagination.isLast} onClick={() => pagination.setPage(pagination.page + 1)}><ChevronRight size={16} /></button>
+              <button type="button" aria-label="Last page" disabled={pagination.isLast} onClick={() => pagination.setPage(Math.max(0, pagination.totalPages - 1))}><ChevronLast size={16} /></button>
+            </div>
+          </div>
+        </>
       )}
 
       {canManage && modalOpen && (

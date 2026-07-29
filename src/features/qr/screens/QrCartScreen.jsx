@@ -72,8 +72,8 @@ export default function QrCartScreen() {
       await createOrder(sessionToken, payload)
       sessionStorage.removeItem(CART_KEY)
       navigate(`/qr/table/${tableId}/status`)
-    } catch {
-      setError('Order failed. Please try again.')
+    } catch (orderError) {
+      setError(orderError.response?.data?.message || 'Order failed. Please try again.')
     } finally {
       setSubmitting(false)
     }

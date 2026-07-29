@@ -23,6 +23,26 @@ const displayValue = (value) => {
   return value
 }
 
+const reservationDateTimeLabel = (reservation) => {
+  const values = [displayValue(reservation?.reservationDate), displayValue(reservation?.reservationTime)]
+    .filter((value) => value !== '-')
+  return values.length ? values.join(' ') : '-'
+}
+
+const reservationTables = (reservation) => {
+  const tableNames = Array.isArray(reservation?.tableNames) ? reservation.tableNames.filter(Boolean) : []
+  const tableNumbers = Array.isArray(reservation?.tableNumbers) ? reservation.tableNumbers.filter(Boolean) : []
+  const tableIds = Array.isArray(reservation?.tableIds) ? reservation.tableIds.filter(Boolean) : []
+
+  if (tableNames.length) return tableNames
+  if (tableNumbers.length) return tableNumbers
+  if (reservation?.tableName) return [reservation.tableName]
+  if (reservation?.tableNumber) return [reservation.tableNumber]
+  if (tableIds.length) return tableIds.map((tableId) => `Table ${tableId}`)
+  if (reservation?.tableId) return [`Table ${reservation.tableId}`]
+  return []
+}
+
 const canCancelReservation = (status, role) => status === 'PENDING'
   || (status === 'ARRIVED' && ['ADMIN', 'MANAGER'].includes(role))
 const canConfirmReservation = (status) => status === 'PENDING'
@@ -49,6 +69,7 @@ function DashboardReservationsScreen() {
   const [walkInForm, setWalkInForm] = useState(createInitialWalkInForm)
   const [creatingWalkIn, setCreatingWalkIn] = useState(false)
   const [walkInError, setWalkInError] = useState('')
+  const [detailReservation, setDetailReservation] = useState(null)
   const userRole = sessionStorage.getItem('role')?.toUpperCase()
   const canCreateWalkIn = ['ADMIN', 'MANAGER', 'RECEPTIONIST'].includes(userRole)
   
@@ -341,33 +362,37 @@ function DashboardReservationsScreen() {
                         ) : <span className="dashboard-no-action">Not opened</span>}
                       </td>
                       <td className="actions-cell">
-                        {canConfirmReservation(reservation.status) || canCancelReservation(reservation.status, role) ? (
-                          <div className="dashboard-action-buttons">
-                            {canConfirmReservation(reservation.status) && (
-                              <button
-                                type="button"
-                                className="dashboard-btn-confirm"
-                                disabled={confirmingId === reservation.reservationId || cancelingId === reservation.reservationId}
-                                onClick={() => triggerModal('confirm', reservation.reservationId, reservation.fullName)}
-                              >
-                                {confirmingId === reservation.reservationId ? 'Confirming...' : 'Confirm'}
-                              </button>
-                            )}
+                        <div className="dashboard-action-buttons">
+                          <button
+                            type="button"
+                            className="dashboard-btn-detail"
+                            onClick={() => setDetailReservation(reservation)}
+                          >
+                            Detail
+                          </button>
 
-                            {canCancelReservation(reservation.status, role) && (
-                              <button
-                                type="button"
-                                className="dashboard-btn-cancel"
-                                disabled={cancelingId === reservation.reservationId || confirmingId === reservation.reservationId}
-                                onClick={() => triggerModal('cancel', reservation.reservationId, reservation.fullName)}
-                              >
-                                {cancelingId === reservation.reservationId ? 'Canceling...' : 'Cancel'}
-                              </button>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="dashboard-no-action">No action</span>
-                        )}
+                          {canConfirmReservation(reservation.status) && (
+                            <button
+                              type="button"
+                              className="dashboard-btn-confirm"
+                              disabled={confirmingId === reservation.reservationId || cancelingId === reservation.reservationId}
+                              onClick={() => triggerModal('confirm', reservation.reservationId, reservation.fullName)}
+                            >
+                              {confirmingId === reservation.reservationId ? 'Confirming...' : 'Confirm'}
+                            </button>
+                          )}
+
+                          {canCancelReservation(reservation.status, role) && (
+                            <button
+                              type="button"
+                              className="dashboard-btn-cancel"
+                              disabled={cancelingId === reservation.reservationId || confirmingId === reservation.reservationId}
+                              onClick={() => triggerModal('cancel', reservation.reservationId, reservation.fullName)}
+                            >
+                              {cancelingId === reservation.reservationId ? 'Canceling...' : 'Cancel'}
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -529,6 +554,77 @@ function DashboardReservationsScreen() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {detailReservation && (
+        <div className="custom-confirm-modal-overlay" onClick={() => setDetailReservation(null)}>
+          <div className="reservation-detail-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="reservation-detail-modal__header">
+              <div>
+                <h2 className="reservation-detail-modal__title">Reservation #{detailReservation.reservationId}</h2>
+                <p className="reservation-detail-modal__subtitle">{reservationDateTimeLabel(detailReservation)}</p>
+              </div>
+              <span className={`reservation-status-badge reservation-status-badge--${detailReservation.status?.toLowerCase()}`}>
+                {displayValue(detailReservation.status)}
+              </span>
+            </div>
+
+            <div className="reservation-detail-grid">
+              <div className="reservation-detail-field">
+                <span>Guest name</span>
+                <strong>{displayValue(detailReservation.fullName)}</strong>
+              </div>
+              <div className="reservation-detail-field">
+                <span>Phone</span>
+                <strong>{displayValue(detailReservation.phone)}</strong>
+              </div>
+              <div className="reservation-detail-field">
+                <span>Email</span>
+                <strong>{displayValue(detailReservation.email)}</strong>
+              </div>
+              <div className="reservation-detail-field">
+                <span>Guests</span>
+                <strong>{displayValue(detailReservation.numberOfGuests)}</strong>
+              </div>
+              <div className="reservation-detail-field reservation-detail-field--full">
+                <span>Assigned tables</span>
+                <strong>{reservationTables(detailReservation).join(', ') || '-'}</strong>
+              </div>
+              <div className="reservation-detail-field reservation-detail-field--full">
+                <span>Special request</span>
+                <strong>{displayValue(detailReservation.note)}</strong>
+              </div>
+            </div>
+
+            <div className="reservation-detail-section">
+              <h3>Orders</h3>
+              {reservationOrders(detailReservation).length ? (
+                <div className="reservation-detail-orders">
+                  {reservationOrders(detailReservation).map((order) => (
+                    <div className="reservation-detail-order" key={order.id || order.orderCode}>
+                      <strong>{order.orderCode || `Order #${order.id}`}</strong>
+                      <span>
+                        {order.tableNumber || order.tableName || `Table ${order.tableId || '-'}`} - {displayValue(order.status)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="reservation-detail-empty">Not opened</p>
+              )}
+            </div>
+
+            <div className="reservation-detail-modal__actions">
+              <button
+                type="button"
+                className="custom-confirm-modal__btn custom-confirm-modal__btn--confirm"
+                onClick={() => setDetailReservation(null)}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

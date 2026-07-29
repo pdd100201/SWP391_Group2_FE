@@ -30,15 +30,17 @@ const tableLabel = (value) => {
 const activeItems = (orders) => orders
   .filter((order) => order.status !== 'CANCELLED')
   .flatMap((order) => order.items || [])
-  .filter((item) => item.status !== 'CANCELLED')
+  .filter((item) => item.status !== 'CANCELLED' && item.status !== 'VOIDED')
 
 function OrderPaymentScreen() {
   const { reservationId } = useParams()
   const navigate = useNavigate()
+  const role = String(sessionStorage.getItem('role') || '').replace('ROLE_', '').toUpperCase()
   const [group, setGroup] = useState(null)
   const [promotionCode, setPromotionCode] = useState('')
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('SEPAY')
   const [showCashConfirm, setShowCashConfirm] = useState(false)
+  const [voidModal, setVoidModal] = useState({ open: false, item: null, reason: '' })
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -51,6 +53,7 @@ function OrderPaymentScreen() {
   const billEditable = billStatus === 'DRAFT'
   const canCreatePayment = billEditable && allServed && Number(bill?.total ?? group?.subtotal ?? 0) > 0
   const canComplete = group?.reservationStatus === 'ARRIVED' && billStatus === 'PAID' && allServed
+  const canVoidServedItems = ['ADMIN', 'MANAGER', 'RECEPTIONIST'].includes(role) && billStatus !== 'PAID'
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -116,6 +119,25 @@ function OrderPaymentScreen() {
     run(() => paymentApi.cancelPayment(reservationId), 'Unable to cancel the pending payment.')
   }
 
+  const openVoidModal = (item) => {
+    setVoidModal({ open: true, item, reason: '' })
+  }
+
+  const closeVoidModal = () => {
+    if (busy) return
+    setVoidModal({ open: false, item: null, reason: '' })
+  }
+
+  const confirmVoidItem = () => {
+    const reason = voidModal.reason.trim()
+    if (!voidModal.item || !reason) return
+    run(
+      () => paymentApi.voidItem(voidModal.item.order.id, voidModal.item.id, reason),
+      'Unable to void this item.',
+      () => setVoidModal({ open: false, item: null, reason: '' })
+    )
+  }
+
   const completeReservation = () => {
     run(() => paymentApi.completeReservation(reservationId), 'Unable to complete reservation.', () => {
       navigate('/dashboard/orders-service')
@@ -174,13 +196,26 @@ function OrderPaymentScreen() {
             </div>
             <div className="payment-items">
               {orders.flatMap((order) => (order.items || []).map((item) => ({ ...item, order }))).map((item) => (
-                <article key={`${item.order.id}-${item.id}`}>
+                <article key={`${item.order.id}-${item.id}`} className={item.status === 'VOIDED' ? 'payment-item--voided' : ''}>
                   <div>
                     <strong>{item.menuItemName}</strong>
                     <small>{tableLabel(item.order)} - {item.note || 'No special request'}</small>
+                    {item.status === 'VOIDED' ? (
+                      <small>Voided: {item.voidReason || 'No reason provided'}</small>
+                    ) : null}
                   </div>
                   <span>x{item.quantity}</span>
                   <b>{money(item.lineTotal)}</b>
+                  {canVoidServedItems && item.status === 'SERVED' ? (
+                    <button
+                      type="button"
+                      className="payment-item-void"
+                      disabled={busy}
+                      onClick={() => openVoidModal(item)}
+                    >
+                      <XCircle size={15} /> Void
+                    </button>
+                  ) : null}
                 </article>
               ))}
             </div>
@@ -299,6 +334,7 @@ function OrderPaymentScreen() {
                   </div>
                 ) : null}
                 {bill?.paymentQrImageUrl ? (
+                    //FE nhận paymentQrImageUrl rồi hiển thị ảnh:
                   <img className="payment-qr" src={bill.paymentQrImageUrl} alt="SePay payment QR" />
                 ) : (
                   <p className="payment-note">Create the payment QR when the bill is ready.</p>
@@ -366,6 +402,45 @@ function OrderPaymentScreen() {
               </button>
               <button type="button" className="payment-button payment-button--primary" disabled={busy} onClick={confirmCashPayment}>
                 {busy ? 'Confirming...' : 'Confirm Cash'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {voidModal.open && (
+        <div className="payment-modal-backdrop" onClick={closeVoidModal}>
+          <div className="payment-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="payment-modal-icon"><XCircle size={28} /></div>
+            <h2>Void Served Item</h2>
+            <p>
+              Remove <strong>{voidModal.item?.menuItemName}</strong> from this bill and keep an audit record.
+            </p>
+            <div className="payment-modal-summary">
+              <span>Quantity <strong>x{voidModal.item?.quantity}</strong></span>
+              <span>Amount <strong>{money(voidModal.item?.lineTotal)}</strong></span>
+            </div>
+            <label className="payment-void-reason">
+              <span>Reason</span>
+              <textarea
+                value={voidModal.reason}
+                onChange={(event) => setVoidModal((prev) => ({ ...prev, reason: event.target.value }))}
+                maxLength={255}
+                rows={3}
+                placeholder="Example: Waiter ordered the wrong dish"
+              />
+            </label>
+            <div className="payment-modal-actions">
+              <button type="button" className="payment-button payment-button--secondary" disabled={busy} onClick={closeVoidModal}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="payment-button payment-button--primary"
+                disabled={busy || !voidModal.reason.trim()}
+                onClick={confirmVoidItem}
+              >
+                {busy ? 'Voiding...' : 'Void item'}
               </button>
             </div>
           </div>

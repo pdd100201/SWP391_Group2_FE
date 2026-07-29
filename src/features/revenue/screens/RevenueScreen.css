@@ -467,13 +467,28 @@
 }
 
 .revenue-detail-items article + article {
-  margin-top: 8px;
+    margin-top: 8px;
+}
+
+.revenue-detail-items article.revenue-item--voided {
+    background: #f8fafc;
+    color: #64748b;
+}
+
+.revenue-detail-items article.revenue-item--voided strong,
+.revenue-detail-items article.revenue-item--voided b {
+    text-decoration: line-through;
 }
 
 .revenue-detail-items small {
-  display: block;
-  margin-top: 4px;
-  color: #64748b;
+    display: block;
+    margin-top: 4px;
+    color: #64748b;
+}
+
+.revenue-detail-items .revenue-item-status {
+    color: #b45309;
+    font-weight: 700;
 }
 
 .revenue-detail-total {

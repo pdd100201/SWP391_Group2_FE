@@ -1042,18 +1042,35 @@
 }
 
 .expanded-item-row:last-child {
-  border-bottom: none;
+    border-bottom: none;
+}
+
+.expanded-item-row--voided {
+    color: #64748b;
+    background: #f8fafc;
+}
+
+.expanded-item-row--voided strong,
+.expanded-item-row--voided .expanded-item-total {
+    text-decoration: line-through;
 }
 
 .expanded-item-name {
-  display: flex;
-  flex-direction: column;
+    display: flex;
+    flex-direction: column;
 }
 
 .note-text {
-  font-size: 0.72rem;
-  color: #D97706;
-  margin-top: 2px;
+    font-size: 0.72rem;
+    color: #D97706;
+    margin-top: 2px;
+}
+
+.voided-text {
+    font-size: 0.72rem;
+    color: #B45309;
+    font-weight: 700;
+    margin-top: 2px;
 }
 
 .expanded-item-qty {
@@ -1069,6 +1086,27 @@
   font-weight: 600;
   text-align: right;
   color: var(--sb-text);
+}
+
+.expanded-bill-summary {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--sb-border);
+}
+
+.expanded-bill-summary span {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 0.84rem;
+  color: var(--sb-text-muted);
+}
+
+.expanded-bill-summary span:last-child {
+  color: var(--sb-text-title);
+  font-weight: 700;
 }
 
 .no-items-text {

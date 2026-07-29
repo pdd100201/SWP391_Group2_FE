@@ -169,7 +169,7 @@
 
 .payment-items article {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: 12px;
   padding: 10px;
@@ -177,9 +177,47 @@
   border-radius: 10px;
 }
 
+.payment-item--voided {
+  background: #f8fafc;
+  opacity: .68;
+}
+
+.payment-item--voided strong,
+.payment-item--voided b {
+  text-decoration: line-through;
+}
+
 .payment-items article > div {
   display: grid;
   gap: 3px;
+}
+
+.payment-item-void {
+  min-height: 32px;
+  padding: 6px 9px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: #fff1f2;
+  color: #b42318;
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.payment-item-void:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.payment-item-void:hover:not(:disabled) {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: white;
 }
 
 .payment-promo-form input {
@@ -464,6 +502,38 @@
 .payment-modal-summary strong {
   color: #14211d;
   text-align: right;
+}
+
+.payment-void-reason {
+  display: grid;
+  gap: 7px;
+  margin: 12px 0 16px;
+  text-align: left;
+}
+
+.payment-void-reason span {
+  color: #475569;
+  font-size: .85rem;
+  font-weight: 800;
+}
+
+.payment-void-reason textarea {
+  width: 100%;
+  min-height: 86px;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  color: #14211d;
+  background: white;
+  font: inherit;
+  resize: vertical;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.payment-void-reason textarea:focus {
+  border-color: #0f766e;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, .10);
 }
 
 .payment-modal-actions {

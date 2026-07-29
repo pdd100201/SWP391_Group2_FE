@@ -30,7 +30,7 @@ const tableLabel = (order) => {
 const orderItems = (orders) => (orders || [])
   .filter((order) => order.status !== 'CANCELLED')
   .flatMap((order) => (order.items || [])
-    .filter((item) => item.status !== 'CANCELLED')
+    .filter((item) => item.status !== 'CANCELLED' && item.status !== 'VOIDED')
     .map((item) => ({ ...item, tableName: tableLabel(order), orderCode: order.orderCode })))
 
 export const printInvoice = ({ group, bill }) => {
