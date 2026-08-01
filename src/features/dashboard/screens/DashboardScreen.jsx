@@ -4,6 +4,31 @@ import { BarChart2, RefreshCw, DollarSign, CreditCard, Layers, Calendar, Utensil
 import { dashboardApi } from '../api/dashboardApi'
 import './DashboardScreen.css'
 
+/**
+ * ====================================================================================
+ * BẢN HƯỚNG DẪN CHI TIẾT DÀNH CHO LẬP TRÌNH VIÊN REACT (DASHBOARD REPORT SCREEN)
+ * ====================================================================================
+ * CÁCH REACT HOẠT ĐỘNG THEO TỪNG BƯỚC (STEP-BY-STEP FLOW):
+ * 
+ * 1. KHỞI TẠO STATE (Trạng thái giao diện):
+ *    - useState(null/true): Khai báo nơi lưu trữ dữ liệu động (stats, loading, error, startDate, endDate, groupBy).
+ *    - Mỗi khi State thay đổi, React sẽ tự động vẽ lại (Re-render) thành phần giao diện liên quan.
+ * 
+ * 2. GỌI API BẮT ĐẦU TẢI DỮ LIỆU (useEffect & useCallback):
+ *    - useEffect(() => { fetchStats() }, [fetchStats]): Ngay khi màn hình vừa mở (Mount), 
+ *      React kích hoạt hàm fetchStats() để gọi sang Spring Boot Backend qua Axios.
+ * 
+ * 3. QUY TRÌNH GỬI REQUEST & NHẬN DỮ LIỆU (Axios Request -> Spring Boot -> Response):
+ *    - dashboardApi.getRevenueStats({ startDate, endDate, groupBy }): Gửi request HTTP GET sang Backend.
+ *    - Khi Backend trả về JSON thành công -> React gọi setStats(response.data) -> Tắt Loading.
+ * 
+ * 4. VẼ GIAO DIỆN (UI Rendering):
+ *    - renderKpiCards(): Vẽ 3 thẻ chỉ số (Tổng doanh thu, Số giao dịch, Giá trị trung bình AOV).
+ *    - renderSvgChart(): Vẽ biểu đồ đường cong doanh thu bằng thẻ SVG với hiệu ứng Gradient.
+ *    - renderSummaryTable(): Vẽ bảng dữ liệu 3 cột chi tiết (Thời gian, Doanh thu, Giao dịch).
+ * ====================================================================================
+ */
+
 const EMPTY_CHART_DATA = []
 
 // Helper chuyển đổi số tiền sang dạng hiển thị VND
@@ -100,11 +125,29 @@ function DashboardScreen({ isDashboardOnly = false }) {
     setLoading(true)
     setError('')
     try {
+      // Đảm bảo groupBy hợp lệ với khoảng ngày hiện tại trước khi gọi API
+      const days = getDaysDiff(startDate, endDate)
+      let validModes = ['DAY']
+      if (days === 0) {
+        validModes = ['HOUR']
+      } else if (days > 0 && days <= 31) {
+        validModes = ['DAY']
+      } else if (days > 31 && days <= 366) {
+        validModes = ['DAY', 'MONTH']
+      } else {
+        validModes = ['MONTH', 'YEAR']
+      }
+
+      let effectiveGroupBy = groupBy
+      if (!validModes.includes(effectiveGroupBy)) {
+        effectiveGroupBy = validModes[0]
+      }
+
       // 1. Lấy dữ liệu thống kê doanh thu vẽ biểu đồ
       const response = await dashboardApi.getRevenueStats({
         startDate,
         endDate,
-        groupBy: groupBy.toLowerCase(),
+        groupBy: effectiveGroupBy.toLowerCase(),
       })
       setStats(response.data)
 
@@ -135,6 +178,7 @@ function DashboardScreen({ isDashboardOnly = false }) {
   const handleQuickFilter = (days) => {
     const today = getTodayString()
     setEndDate(today)
+    setGroupBy('DAY')
     if (days === 'THIS_MONTH') {
       const now = new Date()
       const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
