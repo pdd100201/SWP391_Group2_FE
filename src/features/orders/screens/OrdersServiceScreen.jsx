@@ -114,15 +114,14 @@ const isActiveGroup = (group) => {
   const serviceInProgress = (group.orders || []).some(orderServiceInProgress)
   const paymentOutstanding = groupTotal(group) > 0
     && group.bill?.status !== 'PAID'
-  return serviceInProgress || paymentOutstanding
+  const pendingCompletion = group.bill?.status === 'PAID'
+  return serviceInProgress || paymentOutstanding || pendingCompletion
 }
-
-const isManageableOrderGroup = (group) => isActiveGroup(group) && group.bill?.status !== 'PAID'
 
 // Hàm dùng chung cho các chế độ lọc; một số chế độ được giữ để hỗ trợ liên kết từ màn hình khác.
 const matchesFilter = (group, filter) => {
   if (filter === 'ALL') return true
-  if (filter === 'ACTIVE') return isManageableOrderGroup(group)
+  if (filter === 'ACTIVE') return isActiveGroup(group)
   if (filter === 'OPEN') return (group.orders || []).some((order) => order.status === 'OPEN')
   if (filter === 'COMPLETED') {
     return group.reservationStatus === 'COMPLETED'
@@ -228,7 +227,7 @@ function OrdersServiceScreen() {
     () => sortedGroups.filter((group) => (
       matchesGroupSearch(group, orderSearch)
       && (groupFilter === 'ACTIVE'
-        ? isManageableOrderGroup(group)
+        ? isActiveGroup(group)
         : matchesFilter(group, groupFilter))
     )),
     [groupFilter, orderSearch, sortedGroups]
@@ -250,7 +249,7 @@ function OrdersServiceScreen() {
     && billStatus === 'PAID'
     && allItemsServed(selectedGroup)
   const activeGroupCount = useMemo(
-    () => sortedGroups.filter(isManageableOrderGroup).length,
+    () => sortedGroups.filter(isActiveGroup).length,
     [sortedGroups]
   )
 
@@ -327,7 +326,7 @@ function OrdersServiceScreen() {
       const nextFilter = routeTarget.filter
       const nextVisibleGroups = nextSortedGroups.filter((group) => (
         nextFilter === 'ACTIVE'
-          ? isManageableOrderGroup(group)
+          ? isActiveGroup(group)
           : matchesFilter(group, nextFilter)
       ))
       const nextGroup = requestedGroup && nextVisibleGroups.some((group) => matchesRouteTarget(group, routeTarget))
