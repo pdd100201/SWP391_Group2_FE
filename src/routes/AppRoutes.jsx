@@ -113,7 +113,14 @@ function AppRoutes() {
         )}
       >
         <Route index element={<DashboardIndex />} />
-        <Route path="check-in" element={<CheckInScreen />} />
+        <Route
+          path="check-in"
+          element={(
+            <RequireAuth allowedRoles={['ADMIN', 'MANAGER', 'RECEPTIONIST']}>
+              <CheckInScreen />
+            </RequireAuth>
+          )}
+        />
         <Route
           path="tables"
           element={(

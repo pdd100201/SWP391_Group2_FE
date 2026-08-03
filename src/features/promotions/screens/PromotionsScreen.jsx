@@ -7,6 +7,8 @@ import './PromotionsScreen.css';
 
 const PAGE_SIZE = 10;
 
+// Form mac dinh khi tao moi promotion.
+// Promotion trong du an nay la ma giam gia ap vao tong bill, khong ap vao tung mon an.
 const emptyForm = {
   code: '',
   name: '',
@@ -23,9 +25,13 @@ const emptyForm = {
 
 function PromotionsScreen() {
   const showToast = useToast();
+
+  // State luu danh sach promotion va trang thai load/save cua man hinh.
   const [promotions, setPromotions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // State dieu khien filter, search va phan trang.
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [page, setPage] = useState(0);
@@ -34,12 +40,18 @@ function PromotionsScreen() {
     totalElements: 0,
     totalPages: 0,
   });
+
+  // State dieu khien modal create/edit va form dang nhap.
   const [modalMode, setModalMode] = useState(null);
   const [editingPromotion, setEditingPromotion] = useState(null);
   const [form, setForm] = useState(emptyForm);
+
+  // State luu loi hien thi va action dang cho nguoi dung xac nhan.
   const [error, setError] = useState('');
   const [confirmAction, setConfirmAction] = useState(null);
 
+  // Goi API lay danh sach promotion theo phan trang, search va status filter.
+  // Backend tra ve dang Page nen FE lay content de render bang va totalPages de render pagination.
   const fetchPromotions = async () => {
     try {
       setLoading(true);
@@ -66,16 +78,19 @@ function PromotionsScreen() {
   };
 
   useEffect(() => {
+    // Moi lan doi page, search hoac status filter thi load lai danh sach promotion.
     const timer = window.setTimeout(fetchPromotions, 0);
     return () => window.clearTimeout(timer);
   }, [page, search, statusFilter]);
 
   useEffect(() => {
+    // Neu xoa item lam tong so page giam thi dua page hien tai ve page hop le cuoi cung.
     if (pageInfo.totalPages > 0 && page >= pageInfo.totalPages) {
       setPage(pageInfo.totalPages - 1);
     }
   }, [page, pageInfo.totalPages]);
 
+  // Tinh cac gia tri hien thi pagination tu pageInfo backend tra ve.
   const totalPages = pageInfo.totalPages;
   const totalElements = pageInfo.totalElements;
   const startIdx = totalElements === 0 ? 0 : page * PAGE_SIZE + 1;
@@ -84,6 +99,7 @@ function PromotionsScreen() {
   const isLastPage = totalPages === 0 || page >= totalPages - 1;
 
   const getPageNumbers = (maxVisible = 5) => {
+    // Tao danh sach so trang can hien thi, gioi han toi da maxVisible trang.
     const pages = [];
     let start = Math.max(0, page - Math.floor(maxVisible / 2));
     let end = Math.min(totalPages, start + maxVisible);
@@ -93,12 +109,15 @@ function PromotionsScreen() {
   };
 
   const openCreateModal = () => {
+    // Mo modal tao moi va gan san thoi gian hieu luc mac dinh.
     setEditingPromotion(null);
     setForm(defaultForm());
     setError('');
     setModalMode('create');
   };
 
+  // Mo modal edit va gan data promotion dang chon vao form.
+  // Date tu backend phai doi sang format yyyy-MM-ddTHH:mm de input datetime-local doc duoc.
   const openEditModal = (promotion) => {
     setEditingPromotion(promotion);
     setForm({
@@ -119,6 +138,7 @@ function PromotionsScreen() {
   };
 
   const closeModal = () => {
+    // Khong cho dong modal khi dang save de tranh submit trung hoac mat loading state.
     if (saving) return;
     setModalMode(null);
     setEditingPromotion(null);
@@ -126,6 +146,7 @@ function PromotionsScreen() {
   };
 
   const handleChange = (event) => {
+    // Cap nhat form theo name cua tung input, select hoac textarea.
     const { name, value } = event.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
@@ -133,6 +154,7 @@ function PromotionsScreen() {
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
+    // Chua goi API ngay, chi luu action de hien modal xac nhan truoc.
     setConfirmAction({
       type: modalMode === 'edit' ? 'update' : 'create',
       promotion: editingPromotion,
@@ -147,6 +169,8 @@ function PromotionsScreen() {
 
     try {
       if (confirmAction.type === 'delete') {
+        // Xoa promotion chi thanh cong neu promotion chua tung duoc bill su dung.
+        // Neu da duoc dung thi backend se chan xoa, luc do nen deactivate de giu lich su bill.
         await promotionApi.delete(confirmAction.promotion.id);
         setPromotions((prev) => prev.filter((item) => item.id !== confirmAction.promotion.id));
         setPageInfo((prev) => {
@@ -162,6 +186,7 @@ function PromotionsScreen() {
         return;
       }
 
+      // Create va update dung chung payload vi backend nhan cung PromotionRequest.
       const payload = buildPayload(confirmAction.form);
       const isEditMode = confirmAction.type === 'update';
       const response = isEditMode
@@ -206,6 +231,8 @@ function PromotionsScreen() {
 
   const handleToggleStatus = async (promotion) => {
     try {
+      // Doi nhanh ACTIVE/INACTIVE ngay tren bang, khong can mo modal edit.
+      // FE gui trang thai nguoc voi hien tai, backend tra ve promotion da update.
       const nextStatus = !promotion.isActive;
       const response = await promotionApi.toggleStatus(promotion.id, nextStatus);
       const updated = response.data || response;
@@ -217,10 +244,12 @@ function PromotionsScreen() {
   };
 
   const handleDelete = async (promotion) => {
+    // Khong xoa ngay, chi mo modal confirm de tranh bam nham.
     setConfirmAction({ type: 'delete', promotion });
   };
 
   const getConfirmContent = () => {
+    // Tao noi dung modal confirm tuy theo action dang thuc hien.
     if (!confirmAction) return {};
     if (confirmAction.type === 'delete') {
       return {
@@ -250,6 +279,7 @@ function PromotionsScreen() {
 
   return (
     <div className="promotions-screen">
+      {/* Header cua man hinh quan ly promotion va nut mo modal tao moi. */}
       <header className="promo-header">
         <div className="promo-header__info">
           <h1>Promotions Management</h1>
@@ -260,8 +290,10 @@ function PromotionsScreen() {
         </button>
       </header>
 
+      {/* Loi load danh sach hien tren man hinh chinh, loi trong modal se hien ben trong modal. */}
       {error && !modalMode ? <div className="promo-alert">{error}</div> : null}
 
+      {/* Thanh search va filter status, khi thay doi se reset ve page dau tien. */}
       <div className="promo-toolbar">
         <div className="promo-search">
           <Search size={18} color="#64748b" />
@@ -290,11 +322,13 @@ function PromotionsScreen() {
       </div>
 
       {loading ? (
+        // Trang thai loading khi dang goi API lay danh sach promotion.
         <div className="promo-loading">
           <Loader2 className="animate-spin" size={24} />
           <span>Loading promotions...</span>
         </div>
       ) : (
+        // Bang danh sach promotion da load tu backend.
         <div className="promo-table-container">
           <table className="promo-table">
             <thead>
@@ -311,6 +345,7 @@ function PromotionsScreen() {
             </thead>
             <tbody>
               {promotions.length > 0 ? (
+                // Moi promotion duoc render thanh mot dong trong bang.
                 promotions.map((promotion) => (
                   <tr key={promotion.id}>
                     <td>
@@ -342,6 +377,7 @@ function PromotionsScreen() {
                       </span>
                     </td>
                     <td>
+                      {/* Cac nut thao tac tren tung promotion: active/deactive, edit va delete. */}
                       <div className="promo-actions">
                         <button
                           className="promo-btn-action promo-btn-action--power"
@@ -365,6 +401,7 @@ function PromotionsScreen() {
                   </tr>
                 ))
               ) : (
+                // Hien thi khi backend tra ve danh sach rong.
                 <tr>
                   <td colSpan="8" className="promo-empty">
                     No promotions found.
@@ -377,6 +414,7 @@ function PromotionsScreen() {
       )}
 
       {!loading && totalPages > 0 ? (
+        // Pagination chi hien khi da load xong va co it nhat 1 page.
         <nav className="promo-pagination" aria-label="Promotion pages">
           <span>
             Showing {startIdx}-{endIdx} of {totalElements}
@@ -409,6 +447,7 @@ function PromotionsScreen() {
       ) : null}
 
       {modalMode ? (
+        // Modal dung chung cho create va edit promotion.
         <div className="promo-modal-backdrop" role="presentation">
           <form className="promo-modal" onSubmit={handleSubmit}>
             <div className="promo-modal__header">
@@ -421,8 +460,10 @@ function PromotionsScreen() {
               </button>
             </div>
 
+            {/* Loi validate/save tu backend hien tai day de nguoi dung sua form. */}
             {error ? <div className="promo-alert">{error}</div> : null}
 
+            {/* Form nhap thong tin promotion theo dung cac field backend yeu cau. */}
             <div className="promo-form-grid">
               <label>
                 Code
@@ -476,6 +517,7 @@ function PromotionsScreen() {
               </label>
             </div>
 
+            {/* Nut Cancel dong modal, nut submit se mo ConfirmModal truoc khi goi API. */}
             <div className="promo-modal__footer">
               <button type="button" className="promo-btn-secondary" onClick={closeModal}>
                 Cancel
@@ -489,6 +531,7 @@ function PromotionsScreen() {
         </div>
       ) : null}
 
+      {/* Modal xac nhan dung cho create, update va delete promotion. */}
       <ConfirmModal
         open={Boolean(confirmAction)}
         title={confirmContent.title}
@@ -506,6 +549,7 @@ function PromotionsScreen() {
 }
 
 function defaultForm() {
+  // Khi bam Add Promotion, FE tu dien san thoi gian hieu luc mac dinh la 1 thang.
   const now = new Date();
   const nextMonth = new Date(now);
   nextMonth.setMonth(nextMonth.getMonth() + 1);
@@ -517,6 +561,11 @@ function defaultForm() {
 }
 
 function buildPayload(form) {
+  // Chuan hoa du lieu form truoc khi gui backend.
+  // Code duoc trim va viet hoa de tranh trung kieu SUMMER26/summer26.
+  // Input number tren HTML van la string nen can doi sang Number.
+  // Cac truong optional neu de trong thi gui null.
+  // datetime-local khong co giay nen them :00 de khop LocalDateTime ben backend.
   return {
     code: form.code.trim().toUpperCase(),
     name: form.name.trim(),
@@ -533,6 +582,7 @@ function buildPayload(form) {
 }
 
 function formatDiscount(promotion) {
+  // Hien thi gia tri giam theo dung loai: PERCENT la %, FIXED la tien VND.
   if (promotion.type === 'PERCENT') {
     return `${numberText(promotion.value)}%`;
   }
@@ -540,15 +590,18 @@ function formatDiscount(promotion) {
 }
 
 function formatMoney(value) {
+  // Format tien theo VND de hien thi tren bang promotion.
   const numeric = Number(value || 0);
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(numeric);
 }
 
 function formatLimit(value) {
+  // Neu khong nhap maxDiscountAmount thi hieu la khong gioi han so tien giam toi da.
   return value === null || value === undefined ? 'No limit' : formatMoney(value);
 }
 
 function formatDateTime(value) {
+  // Chuyen date time tu backend sang dang hien thi dd/mm/yyyy hh:mm.
   if (!value) return '-';
   return new Intl.DateTimeFormat('vi-VN', {
     day: '2-digit',
@@ -560,6 +613,7 @@ function formatDateTime(value) {
 }
 
 function toDateTimeInput(value) {
+  // Chuyen date time sang format yyyy-MM-ddTHH:mm cho input datetime-local.
   if (!value) return '';
   const date = new Date(value);
   const offsetMs = date.getTimezoneOffset() * 60000;
@@ -567,14 +621,17 @@ function toDateTimeInput(value) {
 }
 
 function valueToInput(value) {
+  // Input HTML dung string nen null/undefined duoc doi thanh chuoi rong.
   return value === null || value === undefined ? '' : String(value);
 }
 
 function numberText(value) {
+  // Format so ngan gon, dung cho gia tri phan tram.
   return Number(value || 0).toLocaleString('vi-VN', { maximumFractionDigits: 2 });
 }
 
 function readError(error, fallback) {
+  // Uu tien message tra ve tu backend, neu khong co thi dung fallback cua FE.
   return error?.response?.data?.message || error?.response?.data?.error || error?.message || fallback;
 }
 

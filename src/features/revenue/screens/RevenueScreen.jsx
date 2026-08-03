@@ -363,6 +363,7 @@ function RevenueScreen() {
 
             <div className="revenue-detail-total">
               <span>Subtotal <strong>{money(selectedBill.subtotal)}</strong></span>
+              <span>Promotion <strong>{selectedBill.promotionCode ? `${selectedBill.promotionCode}${selectedBill.promotionName ? ` - ${selectedBill.promotionName}` : ''}` : 'No promotion applied'}</strong></span>
               <span>Discount <strong>-{money(selectedBill.discountAmount || 0)}</strong></span>
               <span>Total <strong>{money(selectedBill.total)}</strong></span>
             </div>

@@ -1125,6 +1125,7 @@ function DashboardScreen({ isDashboardOnly = false }) {
                                   </div>
                                   <div className="expanded-bill-summary">
                                     <span>Subtotal <strong>{formatVND(tx.subtotal ?? tx.amount)}</strong></span>
+                                    <span>Promotion <strong>{tx.promotionCode ? `${tx.promotionCode}${tx.promotionName ? ` - ${tx.promotionName}` : ''}` : 'No promotion applied'}</strong></span>
                                     <span>Discount <strong>-{formatVND(tx.discountAmount || 0)}</strong></span>
                                     <span>Total <strong>{formatVND(tx.total ?? tx.amount)}</strong></span>
                                   </div>

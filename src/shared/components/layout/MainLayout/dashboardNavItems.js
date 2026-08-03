@@ -16,7 +16,7 @@ export const dashboardNavItems = [
     icon: Table2,
     roles: ['ADMIN', 'MANAGER', 'RECEPTIONIST', 'WAITER'],
     children: [
-      { label: 'Check-in', to: '/dashboard/check-in' },
+      { label: 'Check-in', to: '/dashboard/check-in', roles: ['ADMIN', 'MANAGER', 'RECEPTIONIST'] },
       { label: 'Tables', to: '/dashboard/tables' },
     ],
   },
