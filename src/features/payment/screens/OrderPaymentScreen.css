@@ -183,8 +183,28 @@
 }
 
 .payment-item--voided strong,
+.payment-item--voided > span,
 .payment-item--voided b {
   text-decoration: line-through;
+}
+
+.payment-item--voided b {
+  color: #64748b;
+}
+
+.payment-item-void-reason {
+  color: #b42318;
+}
+
+.payment-item-voided-badge {
+  min-height: 26px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #b42318;
+  font-size: .75rem;
+  font-style: normal;
+  font-weight: 800;
 }
 
 .payment-items article > div {
@@ -502,6 +522,32 @@
 .payment-modal-summary strong {
   color: #14211d;
   text-align: right;
+}
+
+.payment-void-stepper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.payment-void-stepper button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  color: #0f766e;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.payment-void-stepper button:disabled {
+  color: #94a3b8;
+  background: #f8fafc;
+  cursor: not-allowed;
 }
 
 .payment-void-reason {
