@@ -5,6 +5,8 @@ import {
   Banknote,
   Check,
   CreditCard,
+  Minus,
+  Plus,
   Printer,
   QrCode,
   ReceiptText,
@@ -29,11 +31,12 @@ const tableLabel = (value) => {
   return value?.tableName || value?.tableNumber || `Table ${value?.tableId || '-'}`
 }
 
-// Chi lay cac mon con tinh tien trong bill, bo order da cancel va item da cancel/void.
-const activeItems = (orders) => orders
+// Lay cac mon can hien trong bill.
+// Item VOIDED van phai hien de nhan vien thay lich su huy, chi item CANCELLED/order CANCELLED moi an khoi bill.
+const billDisplayItems = (orders) => orders
   .filter((order) => order.status !== 'CANCELLED')
   .flatMap((order) => (order.items || []).map((item) => ({ ...item, order })))
-  .filter((item) => item.status !== 'CANCELLED' && item.status !== 'VOIDED')
+  .filter((item) => item.status !== 'CANCELLED')
 
 function OrderPaymentScreen() {
   // Doc reservationId tu URL de biet dang thanh toan cho reservation nao. (1)
@@ -51,7 +54,7 @@ function OrderPaymentScreen() {
 
   // State dieu khien modal xac nhan tien mat va modal void mon.
   const [showCashConfirm, setShowCashConfirm] = useState(false)
-  const [voidModal, setVoidModal] = useState({ open: false, item: null, reason: '' })
+  const [voidModal, setVoidModal] = useState({ open: false, item: null, reason: '', quantity: 1 })
 
   // loading dung cho lan tai dau tien, busy dung cho cac thao tac dang goi API.
   const [loading, setLoading] = useState(true)
@@ -63,13 +66,17 @@ function OrderPaymentScreen() {
   const billStatus = bill?.status || 'DRAFT'
   const orders = useMemo(() => group?.orders || [], [group])
   const activeOrders = useMemo(() => orders.filter((order) => order.status !== 'CANCELLED'), [orders])
-  const items = useMemo(() => activeItems(orders), [orders])
+  const items = useMemo(() => billDisplayItems(orders), [orders])
+  const billableItems = useMemo(() => items.filter((item) => item.status !== 'VOIDED'), [items])
+  const maxVoidQuantity = Math.max(1, Number(voidModal.item?.quantity) || 1)
+  const selectedVoidQuantity = Math.min(Math.max(1, Number(voidModal.quantity) || 1), maxVoidQuantity)
+  const selectedVoidAmount = Number(voidModal.item?.unitPrice || 0) * selectedVoidQuantity
 
   // Cac dieu kien nghiep vu cua trang payment:
   // - Tat ca mon hop le phai SERVED moi duoc tao payment.
   // - Bill PAID va reservation ARRIVED moi duoc complete reservation.
   // - Chi role noi bo duoc void mon, va khong void sau khi bill da PAID.
-  const allServed = items.length > 0 && items.every((item) => item.status === 'SERVED')
+  const allServed = billableItems.length > 0 && billableItems.every((item) => item.status === 'SERVED')
   const billEditable = billStatus === 'DRAFT'
   const canCreatePayment = billEditable && allServed && Number(bill?.total ?? group?.subtotal ?? 0) > 0
   const canComplete = group?.reservationStatus === 'ARRIVED' && billStatus === 'PAID' && allServed
@@ -159,13 +166,21 @@ function OrderPaymentScreen() {
 
   // Mo modal, luu item muon void vao state
   const openVoidModal = (item) => {
-    setVoidModal({ open: true, item, reason: '' })
+    setVoidModal({ open: true, item, reason: '', quantity: 1 })
   }
 
   // Dong modal void. Neu dang goi API thi khong dong de tranh sai trang thai UI.
   const closeVoidModal = () => {
     if (busy) return
-    setVoidModal({ open: false, item: null, reason: '' })
+    setVoidModal({ open: false, item: null, reason: '', quantity: 1 })
+  }
+
+  const changeVoidQuantity = (nextQuantity) => {
+    setVoidModal((prev) => {
+      const maxQuantity = Math.max(1, Number(prev.item?.quantity) || 1)
+      const quantity = Math.min(Math.max(1, nextQuantity), maxQuantity)
+      return { ...prev, quantity }
+    })
   }
 
   // Gui request void item cho BE. BE se luu ly do, cap nhat status item va tinh lai bill.
@@ -173,9 +188,9 @@ function OrderPaymentScreen() {
     const reason = voidModal.reason.trim()
     if (!voidModal.item || !reason) return
     run(
-      () => paymentApi.voidItem(voidModal.item.order.id, voidModal.item.id, reason),
+      () => paymentApi.voidItem(voidModal.item.order.id, voidModal.item.id, reason, selectedVoidQuantity),
       'Unable to void this item.',
-      () => setVoidModal({ open: false, item: null, reason: '' })
+      () => setVoidModal({ open: false, item: null, reason: '', quantity: 1 })
     )
   }
 
@@ -249,11 +264,14 @@ function OrderPaymentScreen() {
                     <strong>{item.menuItemName}</strong>
                     <small>{tableLabel(item.order)} - {item.note || 'No special request'}</small>
                     {item.status === 'VOIDED' ? (
-                      <small>Voided: {item.voidReason || 'No reason provided'}</small>
+                      <small className="payment-item-void-reason">Voided: {item.voidReason || 'No reason provided'}</small>
                     ) : null}
                   </div>
                   <span>x{item.quantity}</span>
                   <b>{money(item.lineTotal)}</b>
+                  {item.status === 'VOIDED' ? (
+                    <em className="payment-item-voided-badge">VOIDED</em>
+                  ) : null}
                   {canVoidServedItems && item.status === 'SERVED' ? (
                     <button
                       type="button"
@@ -480,8 +498,30 @@ function OrderPaymentScreen() {
               Remove <strong>{voidModal.item?.menuItemName}</strong> from this bill and keep an audit record.
             </p>
             <div className="payment-modal-summary">
-              <span>Quantity <strong>x{voidModal.item?.quantity}</strong></span>
-              <span>Amount <strong>{money(voidModal.item?.lineTotal)}</strong></span>
+              <span>Available <strong>x{maxVoidQuantity}</strong></span>
+              <span>
+                Void quantity
+                <strong className="payment-void-stepper">
+                  <button
+                    type="button"
+                    disabled={busy || selectedVoidQuantity <= 1}
+                    onClick={() => changeVoidQuantity(selectedVoidQuantity - 1)}
+                    aria-label="Decrease void quantity"
+                  >
+                    <Minus size={14} />
+                  </button>
+                  x{selectedVoidQuantity}
+                  <button
+                    type="button"
+                    disabled={busy || selectedVoidQuantity >= maxVoidQuantity}
+                    onClick={() => changeVoidQuantity(selectedVoidQuantity + 1)}
+                    aria-label="Increase void quantity"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </strong>
+              </span>
+              <span>Amount <strong>{money(selectedVoidAmount)}</strong></span>
             </div>
             <label className="payment-void-reason">
               <span>Reason</span>
