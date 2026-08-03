@@ -32,7 +32,7 @@ const tableLabel = (value) => {
 // Chi lay cac mon con tinh tien trong bill, bo order da cancel va item da cancel/void.
 const activeItems = (orders) => orders
   .filter((order) => order.status !== 'CANCELLED')
-  .flatMap((order) => order.items || [])
+  .flatMap((order) => (order.items || []).map((item) => ({ ...item, order })))
   .filter((item) => item.status !== 'CANCELLED' && item.status !== 'VOIDED')
 
 function OrderPaymentScreen() {
@@ -62,6 +62,7 @@ function OrderPaymentScreen() {
   const bill = group?.bill || null
   const billStatus = bill?.status || 'DRAFT'
   const orders = useMemo(() => group?.orders || [], [group])
+  const activeOrders = useMemo(() => orders.filter((order) => order.status !== 'CANCELLED'), [orders])
   const items = useMemo(() => activeItems(orders), [orders])
 
   // Cac dieu kien nghiep vu cua trang payment:
@@ -156,7 +157,7 @@ function OrderPaymentScreen() {
     run(() => paymentApi.cancelPayment(reservationId), 'Unable to cancel the pending payment.')
   }
 
-  // Mo modal void item de staff nhap ly do truoc khi tru mon khoi bill.
+  // Mo modal, luu item muon void vao state
   const openVoidModal = (item) => {
     setVoidModal({ open: true, item, reason: '' })
   }
@@ -237,12 +238,12 @@ function OrderPaymentScreen() {
             <div className="payment-order-meta">
               <span>Guest <strong>{group.reservationGuestName}</strong></span>
               <span>Reservation <strong>#{group.reservationId}</strong></span>
-              <span>Tables <strong>{orders.map(tableLabel).join(', ') || '-'}</strong></span>
+              <span>Tables <strong>{activeOrders.map(tableLabel).join(', ') || '-'}</strong></span>
               <span>Serving status <strong>{allServed ? 'Served' : 'In progress'}</strong></span>
             </div>
             <div className="payment-items">
               {/* Gom item tu tat ca table orders cua reservation de hien tren mot bill chung. */}
-              {orders.flatMap((order) => (order.items || []).map((item) => ({ ...item, order }))).map((item) => (
+              {items.map((item) => (
                 <article key={`${item.order.id}-${item.id}`} className={item.status === 'VOIDED' ? 'payment-item--voided' : ''}>
                   <div>
                     <strong>{item.menuItemName}</strong>
@@ -258,6 +259,7 @@ function OrderPaymentScreen() {
                       type="button"
                       className="payment-item-void"
                       disabled={busy}
+                      // khi bam void FE goi openVoidModal
                       onClick={() => openVoidModal(item)}
                     >
                       <XCircle size={15} /> Void
