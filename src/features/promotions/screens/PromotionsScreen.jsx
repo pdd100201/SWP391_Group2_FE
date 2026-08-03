@@ -111,8 +111,11 @@ function PromotionsScreen() {
   const openCreateModal = () => {
     // Mo modal tao moi va gan san thoi gian hieu luc mac dinh.
     setEditingPromotion(null);
+    // Reset form ve du lieu mac dinh
     setForm(defaultForm());
+    // Xoa loi cu (neu co)
     setError('');
+    // Bat modal create
     setModalMode('create');
   };
 
@@ -191,6 +194,7 @@ function PromotionsScreen() {
       const isEditMode = confirmAction.type === 'update';
       const response = isEditMode
         ? await promotionApi.update(confirmAction.promotion.id, payload)
+          // goi API tao promotion
         : await promotionApi.create(payload);
 
       const saved = response.data || response;
@@ -301,8 +305,11 @@ function PromotionsScreen() {
             type="text"
             placeholder="Search by code, name, or description..."
             value={search}
+            // user nhap vao o search thi onchange chay
             onChange={(event) => {
+              //luu keyword user nhap vao state search
               setSearch(event.target.value);
+              //reset ve trang dau tien
               setPage(0);
             }}
           />
@@ -311,6 +318,7 @@ function PromotionsScreen() {
           className="promo-filter"
           value={statusFilter}
           onChange={(event) => {
+            // luu trang thai filter moi vao statusFilter, dua phan trang ve trang dau tien
             setStatusFilter(event.target.value);
             setPage(0);
           }}
