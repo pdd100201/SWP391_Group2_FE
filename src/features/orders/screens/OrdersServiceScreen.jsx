@@ -822,6 +822,8 @@ function OrdersServiceScreen() {
                       <button
                         type="button"
                         className="orders-button orders-button--primary"
+                        // lay reservationId cua reservation dang duoc chon. VD:#127 --> /dashboard/orders-service/127/payment
+                        // lenh navigate() cua react router chuyen sang trang payment
                         onClick={() => navigate(`/dashboard/orders-service/${selectedGroup.reservationId}/payment`)}
                       >
                         <CreditCard size={17} /> Open payment
