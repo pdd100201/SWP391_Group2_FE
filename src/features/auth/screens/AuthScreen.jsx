@@ -81,6 +81,7 @@ function AuthScreen() {
     try {
       setError('')
       setIsSubmitting(true)
+      //FE lay response.credential roi gui token cho BE xac thuc
       const backendResponse = await loginWithGoogle(response.credential)
       persistAuthAndRedirect(backendResponse.data)
     } catch (err) {
@@ -495,8 +496,9 @@ function AuthScreen() {
                 <div className="auth-screen__divider">
                   <span>Or continue with</span>
                 </div>
-
+                {/* Sau khi bam Sign in with Google, thu vien Google se mo popup/prompt chon account. */}
                 <div className="auth-screen__google-button">
+                  {/* Chon account xong thi GoogleLogin goi handleGoogleSuccess. */}
                   <GoogleLogin onSuccess={handleGoogleSuccess} onError={handleGoogleError} width="100%" />
                 </div>
               </>
